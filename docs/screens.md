@@ -40,7 +40,7 @@ Home is vertically scrollable. The first viewport should prioritize the header a
 
 ### Hero behavior
 
-The hero is **not an automatic carousel**. It is a single prominent component whose content changes according to the learner state.
+The hero is **not** an automatic carousel. It is a single prominent component whose content changes according to the learner state.
 
 ### State: NEW
 
@@ -448,16 +448,96 @@ For mobile, the preferred initial interaction is tap-to-select / tap-to-match in
 
 ## Result / lesson completion
 
-May show:
+### Purpose
 
-- Score or number of correct answers.
-- Feedback.
-- XP/coins or another gamification reward.
-- Updated progress.
-- Next lesson action.
-- Return-to-route action.
+Close the lesson experience by telling the learner what they achieved, how they performed, what they earned, what may need review, and what the recommended next action is.
 
-Academic score and gamification points should be treated as separate concepts.
+This screen is separate from `SUMMARY_STEP`:
+
+- `SUMMARY_STEP` answers: **what did I learn?**
+- Result answers: **how did I do and what happens next?**
+
+Typical transition:
+
+`... -> SUMMARY_STEP -> Finalizar lección -> Result`
+
+### Core content
+
+The Result screen should normally include:
+
+- Clear lesson-completed state.
+- Lesson title/name.
+- Academic result, such as `8/10 respuestas correctas`.
+- Gamification reward, such as coins; streak may be surfaced when relevant.
+- Updated course progress.
+- Pending-review count when incorrect attempts exist.
+- A clear next action.
+
+Academic score and gamification rewards remain separate concepts.
+
+### Actions
+
+Primary action:
+
+- `Siguiente lección` when another accessible lesson exists.
+
+Secondary actions:
+
+- `Volver a la ruta`.
+- `Repasar errores` when review items exist.
+
+If there is no next accessible lesson, the primary action should adapt instead of showing a dead-end `Siguiente lección` button.
+
+### Result states
+
+Three useful visual/functional variants are currently defined:
+
+#### NORMAL
+
+The learner completed the lesson with a mixture of correct and incorrect answers.
+
+Typical content:
+
+- Completion confirmation.
+- Score.
+- Standard reward.
+- Course progress.
+- Small pending-review card.
+- `Siguiente lección` as the main CTA.
+
+#### PERFECT
+
+The learner completed the lesson with a flawless or equivalent excellent result.
+
+Differences from normal:
+
+- Slightly stronger but still restrained celebration.
+- Perfect academic result, for example `10/10`.
+- No pending-review CTA when there are no errors.
+- Reward presentation may feel more celebratory, but exact reward values are not yet fixed.
+
+#### REVIEW_PENDING
+
+The lesson is completed, but multiple errors should be reinforced.
+
+Differences from normal:
+
+- Review section receives more visual prominence.
+- Clearly communicate the number of pending review items.
+- `Repasar errores` becomes a stronger secondary action.
+- The learner is still allowed to continue unless a future explicit assessment rule says otherwise.
+
+### Visual direction
+
+The first Result mockup is the current preferred base direction; the second is a useful more-celebratory alternative. The third, denser review-focused mockup is considered less suitable as the primary layout because it risks visual saturation and scrolling.
+
+Desired qualities:
+
+- Prefer a single-screen result experience without requiring scroll when practical.
+- More celebratory than an active Lesson screen, but still clean and adult-acceptable.
+- White/light base, blue structure, red main CTA/accent.
+- Rounded cards, subtle shadows and restrained celebratory graphics.
+- Do not assume the full global header (logo, notifications, coins, streak) or bottom navigation appears on Result; immersive learning-flow screens may omit global navigation/chrome.
 
 ---
 
