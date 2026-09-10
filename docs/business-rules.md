@@ -26,9 +26,43 @@ This document records agreed or provisional product rules for the MVP. Rules may
 ## Course access and progression
 
 - Course structure is currently `Course -> Topic/Unit -> Lesson`.
-- Lessons may have access states such as available, in progress, completed or locked.
-- Monetization/access rules are still provisional and will be finalized after client validation.
+- Courses and lessons have separate **learning-progress state** and **commercial access state**. These concepts should not be collapsed into one status.
+- A course can conceptually be available, in progress, completed, access-locked or coming soon.
+- Lesson roadmap nodes can conceptually be completed, current, available, prerequisite-locked or access-locked.
+- Completed lessons should remain accessible for repetition/review.
+- A prerequisite lock means learning progression requirements are not satisfied.
+- An access lock means the learner does not have the required entitlement/payment access.
+- The UI may use a similar lock icon for both, but the reason and resulting action must be different.
 - Freemium behavior is a likely direction: some initial content can be accessible before paid access is required.
+
+### Sequential progression
+
+Current provisional direction:
+
+- The course roadmap progresses sequentially.
+- Completing the required content of the current lesson unlocks the next required lesson.
+- Do not hard-code a minimum score as an unlock requirement until this is validated with the client.
+- Exact free-navigation versus strict-sequential behavior remains a client-validation item.
+
+### Course start and resume
+
+- Starting a course creates/establishes learner progress for that course.
+- Home should then treat the learner as active and surface the current lesson.
+- Home's `Continuar` action may navigate directly to the current lesson instead of forcing the user through Courses -> Detail -> Roadmap.
+- Course cards in the Courses area normally open Course Detail.
+
+### Course completion
+
+- A course is completed when all lessons required by that course have met their completion conditions.
+- The completed course and roadmap remain accessible for review.
+- Completing a course should not automatically imply ownership/access to a subsequent premium course.
+
+## Course catalog and detail
+
+- Course cards should expose useful learning/access context such as level, progress and availability.
+- Level labels (A1, A2, etc.) should be shown when applicable.
+- `COMING_SOON` content should be visible only when it provides useful product context; it must not look actionable as if it were already available.
+- Course Detail provides the main action appropriate to state: start, continue/view route, review, unlock, or unavailable/coming soon.
 
 ## Lesson completion
 
