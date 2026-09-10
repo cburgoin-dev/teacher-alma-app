@@ -1,1 +1,1 @@
-# teacher-alma-app-
+# teacher-alma-app
