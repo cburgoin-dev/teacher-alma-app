@@ -109,6 +109,62 @@ Current provisional direction:
 - The post-lesson **Result** screen is separate and focuses on performance, rewards, progress and next actions.
 - Typical transition: `... -> SUMMARY_STEP -> Finalizar lección -> Result`.
 
+## Lesson result / completion feedback
+
+- Result is shown only after the lesson completion conditions have been satisfied and the completion has been persisted.
+- The screen communicates completion, academic result, gamification reward, updated course progress, pending review, and the next recommended action.
+- Result should generally remain a concise, preferably single-screen experience rather than a long scroll.
+- The preferred current visual direction is the balanced `NORMAL` layout; a more celebratory `PERFECT` variant is also acceptable. The denser review-heavy variant should not become the default layout.
+
+### Result variants
+
+Conceptual result variants:
+
+- `NORMAL`: lesson completed with both correct and incorrect submitted answers.
+- `PERFECT`: lesson completed with no pending errors / equivalent perfect result.
+- `REVIEW_PENDING`: lesson completed but with enough pending errors that Review deserves increased prominence.
+
+These variants are presentation/experience states and do not necessarily require a persisted `result_state` field; they may be derived from attempts and review data.
+
+### Result data
+
+Before Result is rendered, the system should be able to provide or derive:
+
+- Completed lesson identity/title.
+- Correct-answer count and relevant activity total.
+- Gamification reward earned.
+- Current streak when relevant.
+- Updated course progress.
+- Number of pending review items created by the lesson.
+- Whether a next lesson exists and is accessible.
+
+### Result actions
+
+- `Siguiente lección` is the preferred primary CTA when a next accessible lesson exists.
+- `Volver a la ruta` remains available as a secondary action.
+- `Repasar errores` is shown only when review items exist.
+- In `REVIEW_PENDING`, `Repasar errores` receives greater visual prominence but does not automatically replace progression as the primary action.
+- If there is no accessible next lesson, the primary CTA must adapt to the situation (for example returning to the route, course completion, or contextual access flow) rather than leading to an unavailable lesson.
+
+### Perfect result and rewards
+
+- A perfect result may use stronger celebratory presentation than a normal result.
+- Exact reward bonuses for perfect performance are **not yet fixed**; mockup values such as `+25 monedas` are illustrative only.
+- A perfect result with no review items should not show a redundant `Repasar errores` action.
+
+### Review-pending result
+
+- Review items originate from incorrect attempts captured during the lesson.
+- A high pending-review count may make the Review section visually more prominent.
+- Pending review does not itself invalidate lesson completion.
+- Unless a future explicit assessment rule requires otherwise, the learner may proceed to the next lesson even when review items remain.
+
+### Navigation chrome
+
+- Do not assume the global header or bottom navigation appears on Result.
+- Result belongs to the immersive learning flow and may intentionally omit logo, notifications, currency/streak indicators and/or bottom tabs.
+- Global navigation should be used only where it improves orientation without distracting from the completion flow.
+
 ## Practice activities
 
 Initial activity types:
