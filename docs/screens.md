@@ -291,42 +291,131 @@ When the final required lesson is completed:
 
 ### Purpose
 
-Present educational content as a sequence of reusable blocks rather than as one static screen.
+Deliver a guided learning experience composed of reusable content blocks and focused activities. A lesson is not treated as one static page and is not necessarily one screen per block.
 
-### Typical flow
+### Experience model
 
-1. Lesson header.
-2. Content blocks.
-3. Activities.
-4. Immediate feedback where applicable.
-5. Lesson completion/result.
+The current provisional direction is **hybrid consumption**:
 
-### Possible content blocks
+- Related explanatory content can be grouped into one scrollable content step.
+- Interactive activities are shown as focused steps.
+- The lesson should avoid both a giant continuous scroll and excessive fragmentation where every paragraph requires `Continuar`.
 
-- Video.
-- Explanatory text.
-- Examples.
-- Images/media.
-- Interactive activities.
-- Short summary.
+A conceptual lesson may contain blocks such as:
 
-Not every lesson must contain every block type.
+`TEXT -> EXAMPLE -> VIDEO -> ACTIVITY -> TEXT -> ACTIVITY -> SUMMARY`
 
-### Header
+These blocks may be grouped visually into fewer steps.
 
-May show:
+### Content block types
 
-- Topic/unit.
-- Lesson name.
-- Progress within the lesson.
+Initial conceptual block types:
+
+- `TEXT`
+- `VIDEO`
+- `IMAGE`
+- `EXAMPLE`
+- `ACTIVITY`
+- `SUMMARY`
+
+A block may conceptually include:
+
+- `id`
+- `type`
+- `position`
+- `required`
+- type-specific content/configuration
+
+Not every lesson needs every block type.
+
+### Step types
+
+The active lesson experience can be represented through:
+
+- `CONTENT_STEP`: one coherent group of explanatory content, examples, images and/or video.
+- `ACTIVITY_STEP`: one focused interactive activity with answer/check/feedback behavior.
+- `SUMMARY_STEP`: final pedagogical recap before the lesson is formally finished.
+
+A block is a content unit; a step is a presentation/navigation unit. Several blocks can belong to one step.
+
+### Header and visual hierarchy
+
+A lesson should remain visually cleaner and more focused than Home or the Roadmap.
+
+Typical header/content hierarchy:
+
 - Back navigation.
+- Topic/unit name.
+- Lesson position (for example `Lección 2 de 8`).
+- Lesson progress bar.
+- Current step content.
+- Clear primary CTA (`Continuar`, `Comprobar`, `Finalizar lección`, etc.).
+
+The progress bar represents **lesson/content progression**, not academic correctness.
 
 ### Lesson states
 
-- Not started.
-- In progress.
-- Completed.
-- Locked when access rules require it.
+Conceptual lesson states:
+
+- `NOT_STARTED`
+- `IN_PROGRESS`
+- `COMPLETED`
+- `LOCKED`
+
+`LOCKED` may result from prerequisite or commercial-access rules defined elsewhere.
+
+### Internal block/step progression
+
+Useful conceptual block state:
+
+- `NOT_VISITED`
+- `CURRENT`
+- `COMPLETED`
+
+Activity correctness is tracked separately from block completion, for example:
+
+- `UNANSWERED`
+- `CORRECT`
+- `INCORRECT`
+
+An activity can therefore be completed/submitted even when answered incorrectly.
+
+### Navigation and resume
+
+- Entering a new lesson starts at the first required step.
+- Re-entering an `IN_PROGRESS` lesson resumes at the last meaningful pending/current step.
+- The learner may revisit previous content within the lesson.
+- Required future content should not be silently skipped when sequential progression applies.
+- Leaving the lesson before completion preserves progress and submitted activity attempts.
+
+### Typical flow
+
+`Enter/resume lesson -> Content step -> Continue -> Activity step -> Check -> Feedback -> Continue -> ... -> Summary step -> Finish lesson -> Result screen`
+
+### Summary step
+
+`SUMMARY_STEP` is part of the lesson itself and is distinct from the post-lesson Result screen.
+
+Its purpose is pedagogical: remind the learner what was learned before formally ending the lesson.
+
+It may contain:
+
+- Key takeaways.
+- Important phrases/concepts.
+- Optional audio/replay actions.
+- A `Finalizar lección` CTA.
+
+### Current visual direction
+
+Lesson mockups have established a focused extension of the global visual system:
+
+- White/light base.
+- Blue primary structure.
+- Red primary CTA/accent.
+- Rounded cards and subtle shadows.
+- Clear progress indicator.
+- Minimal decorative gamification while learning.
+- Content remains the visual priority.
 
 ---
 
