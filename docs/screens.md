@@ -129,29 +129,161 @@ Current provisional direction:
 
 ---
 
-## Courses / learning route
+## Courses
 
 ### Purpose
 
-Let the learner browse courses and navigate through topics and lessons while understanding progress and locked/unlocked content.
+Provide a clear place to discover available learning content and understand which courses are available, in progress, completed, locked or not yet released.
 
-### Current preferred direction
+### Content
 
-A gamified roadmap is preferred over a purely academic list. The final visual variant is still awaiting final client validation.
+The MVP Courses screen should remain simple and should not initially require advanced search/filtering.
 
-The roadmap should support:
+Each course card may show:
 
-- Course progress.
-- Topics/modules.
-- Lesson nodes.
-- Completed state.
-- Current/available state.
-- Locked state.
-- Clear `Continuar` action for the current lesson.
+- Course title.
+- Level label when applicable (for example A1, A2, B1).
+- Short description.
+- Visual thumbnail/illustration.
+- Progress when the learner has started the course.
+- Access/release status.
+- A clear tap target or CTA.
 
-The course structure is currently modeled conceptually as:
+### Course states
+
+Conceptual states:
+
+- `AVAILABLE`: learner can start the course.
+- `IN_PROGRESS`: learner has started the course.
+- `COMPLETED`: learner completed the course.
+- `LOCKED_ACCESS`: learner lacks the required paid/access entitlement.
+- `COMING_SOON`: course exists in the catalog but is not available yet.
+
+A course may also be marked as free or premium independently from its learning-progress state.
+
+### Interaction
+
+- Tapping a normal course card opens Course Detail.
+- Home's `Continuar` action may bypass Courses/Detail and go directly to the current lesson.
+- Premium/access-locked content should explain the restriction instead of silently disabling interaction.
+
+---
+
+## Course Detail
+
+### Purpose
+
+Explain what a course contains and provide the appropriate next action before entering its learning route.
+
+### Content
+
+May show:
+
+- Course title.
+- Level label.
+- Cover/visual identity.
+- Short description.
+- Progress when already started.
+- Number of topics/modules.
+- Number of lessons.
+- Access status (free, included, purchased, premium/locked).
+- Main CTA.
+
+Optional metadata such as estimated duration should only be added if it becomes useful and can be supported reliably.
+
+### Main CTA by state
+
+- `AVAILABLE` / not started: `Comenzar curso`.
+- `IN_PROGRESS`: `Continuar` or `Ver ruta`.
+- `COMPLETED`: `Repasar curso` / `Ver ruta`.
+- `LOCKED_ACCESS`: `Desbloquear` / show Premium flow.
+- `COMING_SOON`: no start action; clearly communicate unavailable status.
+
+### Navigation
+
+`Cursos -> Detalle de curso -> Ruta de aprendizaje`
+
+For an active learner, shortcuts from Home can go directly to the current lesson to reduce friction.
+
+---
+
+## Learning Route / Roadmap
+
+### Purpose
+
+Represent the learner's progression through a course in a visually motivating way while preserving clear academic structure.
+
+### Structure
+
+The route is vertically scrollable and organized conceptually as:
 
 `Course -> Topic/Unit -> Lesson`
+
+Topics/modules divide the roadmap into recognizable learning sections. Lessons are represented as roadmap nodes/stops rather than a plain list.
+
+### Current visual direction
+
+Client feedback favors a **gamified roadmap** over a purely academic list, with the gamified option preferred over the hybrid option. Final roadmap variant is still awaiting final in-person client validation.
+
+Desired qualities:
+
+- Visually engaging path.
+- Vertical/serpentine progression.
+- Clear grouping by topic/module.
+- Blue primary, red accent, white/light base.
+- Progress and unlocking should provide most of the gamified feeling.
+- Avoid decorative overload and unnecessary motivational slogans.
+
+### Lesson-node states
+
+Conceptual states:
+
+- `COMPLETED`: lesson finished; show clear completion indicator/check.
+- `CURRENT`: the learner's current recommended lesson; visually emphasized and may expose a `Continuar` CTA.
+- `AVAILABLE`: accessible but not currently selected/in progress.
+- `LOCKED_PREREQUISITE`: unavailable because progression requirements are not yet satisfied.
+- `LOCKED_ACCESS`: unavailable because the learner lacks the required entitlement/payment access.
+
+`LOCKED_PREREQUISITE` and `LOCKED_ACCESS` may share a lock visual, but tapping them should explain different reasons.
+
+### Node interaction
+
+- `COMPLETED`: can be reopened/repeated.
+- `CURRENT`: opens/resumes the lesson.
+- `AVAILABLE`: opens/starts the lesson if progression rules permit it.
+- `LOCKED_PREREQUISITE`: explain what must be completed first.
+- `LOCKED_ACCESS`: open contextual Premium/unlock information.
+
+### Topics/modules
+
+For the roadmap-first direction, topics should function primarily as visual/structural separators for groups of lesson nodes rather than becoming large accordion/list cards.
+
+A topic may display:
+
+- Topic number/name.
+- Topic-level completion status/progress.
+- Its associated lesson segment.
+
+### Progression
+
+Sequential unlocking is the current provisional direction because it matches the roadmap concept and the client's interest in progressive unlocking. The exact rule is **not yet final** and must be validated with the client.
+
+Possible provisional behavior:
+
+- Completing required content in the current lesson unlocks the next lesson.
+- Completed lessons remain repeatable.
+- Premium access and learning prerequisites are separate concerns.
+
+Do not hard-code a passing-score requirement for unlocking until the client confirms it.
+
+### Course completion
+
+When the final required lesson is completed:
+
+- Mark the course as completed.
+- Show course completion feedback/result.
+- Keep the route accessible for review.
+- Surface an appropriate next course/review action elsewhere in the app.
 
 ---
 
