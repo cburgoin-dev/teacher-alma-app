@@ -64,13 +64,50 @@ Current provisional direction:
 - `COMING_SOON` content should be visible only when it provides useful product context; it must not look actionable as if it were already available.
 - Course Detail provides the main action appropriate to state: start, continue/view route, review, unlock, or unavailable/coming soon.
 
-## Lesson completion
+## Lesson model and completion
 
-Provisional rule:
+Current provisional direction:
 
-- A lesson is completed when all required lesson blocks and required activities have been completed.
-- Video completion requirements are not yet fixed and should not be assumed to require 100% playback unless the client requests it.
-- Optional blocks should not prevent lesson completion.
+- Lessons use a **hybrid consumption model**: related explanatory blocks can be grouped into a scrollable content step, while interactive activities are presented as focused steps.
+- A lesson should not require one screen per content block, and should also avoid becoming one very long undifferentiated page.
+- Conceptual content blocks can include text, video, image, example, activity and summary.
+- Blocks have an order and may be required or optional.
+- Optional blocks do not prevent lesson completion.
+- The learner may revisit previous content within an active lesson.
+- Required future content should not be skipped when sequential progression applies.
+
+### Lesson states and resume
+
+- Conceptual lesson states are `NOT_STARTED`, `IN_PROGRESS`, `COMPLETED` and `LOCKED`.
+- Leaving an unfinished lesson preserves meaningful progression and submitted attempts.
+- Re-entering an `IN_PROGRESS` lesson resumes at the last meaningful current/pending step rather than restarting from the beginning.
+
+### Completion rule
+
+- A lesson is completed when all required content/steps have been traversed and all required activities have been submitted at least once.
+- **Correctness is not the same as completion.** A learner can complete a required activity after an incorrect submitted attempt.
+- Incorrect answers do not by themselves block lesson completion or progression unless the client later defines an explicit assessment/passing rule.
+- Incorrect attempts should be preserved for Review.
+- Academic correctness/score and lesson-content progress must remain separate concepts.
+
+### Lesson progress
+
+- The lesson progress indicator reflects progress through lesson content/steps, not percentage of correct answers.
+- Block/step progress may conceptually distinguish not visited, current and completed states.
+- Activity result may separately distinguish unanswered, correct and incorrect.
+
+### Video behavior
+
+- Do not require 100% video playback by default.
+- For the MVP, advancing from a video-containing content step may be sufficient to consider that block traversed unless Alma later asks for stricter viewing requirements.
+- If stricter video-completion requirements are introduced, they should be explicit and configurable rather than assumed.
+
+### Summary versus result
+
+- `SUMMARY_STEP` is the final pedagogical step **inside** a lesson.
+- Its purpose is to recap key concepts/phrases before the lesson ends.
+- The post-lesson **Result** screen is separate and focuses on performance, rewards, progress and next actions.
+- Typical transition: `... -> SUMMARY_STEP -> Finalizar lección -> Result`.
 
 ## Practice activities
 
@@ -86,6 +123,7 @@ Shared rules:
 - Correct/incorrect feedback is immediate unless the activity belongs to an evaluation configured to defer feedback.
 - Incorrect attempts should be stored so they can later be surfaced in Review.
 - Explanations are shown when useful.
+- For normal practice, an incorrect answer should not trap the learner until they answer correctly; retry may be offered without making correctness mandatory for progression.
 
 ### Fill-in-the-blank answers
 
