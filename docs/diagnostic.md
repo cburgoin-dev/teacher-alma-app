@@ -127,17 +127,113 @@ The internal score does not need to be presented as an exam percentage such as `
 
 The learner-facing result should emphasize a recommendation and useful strengths/reinforcement context rather than pass/fail language.
 
-## Course availability constraint
+## Course availability direction
 
-Recommendations must reflect content that actually exists in the product.
+Current product direction is to avoid recommending a level that immediately becomes a dead end.
 
-For example, if the learner demonstrates knowledge beyond the highest currently available course, do not claim a precise advanced placement that the app cannot support. Prefer wording such as:
+Ideally, each supported level/course should expose at least a small amount of free content, for example a few introductory lessons depending on the course size. This lets a learner who is recommended B2/C1 try the recommended content before reaching a paid-access decision.
 
-- `Ya tienes bases previas`.
-- Explain the highest currently available starting point.
-- Allow the learner to choose manually.
+This is a provisional commercial/product direction, not a fixed lesson count. Alma still needs to validate how much free content each course should expose.
 
-As more levels are added, the same diagnostic architecture can map scores to a broader set of recommendations.
+If a recommended level/course is not yet published, the result should clearly say that it is coming soon and offer a useful alternative, such as reviewing a lower available level or exploring other courses.
+
+## DIAGNOSTIC_RESULT
+
+### Purpose
+
+Explain the learner's estimated starting level in a positive, qualitative way and recommend the most useful next course.
+
+The result is a recommendation, not a formal certification or restriction.
+
+### Preferred presentation
+
+The result should emphasize:
+
+- Estimated/recommended level, for example `Inglés A1` or `Inglés B2`.
+- A short qualitative explanation of why that starting point is recommended.
+- Strengths detected during the diagnostic.
+- Areas that could be reinforced.
+- Recommended course card/status.
+- A clear primary next action.
+
+Avoid making percentages, raw scores, rankings or pass/fail language the main learner-facing output.
+
+### Strengths and reinforcement areas
+
+Use qualitative labels such as:
+
+- `Fortalezas`
+- `Para reforzar`
+
+Examples:
+
+- Saludos.
+- Vocabulario cotidiano.
+- Comprensión general.
+- `Verb to be`.
+- Preguntas básicas.
+- Estructuras más complejas.
+
+The exact categories and wording depend on Alma's diagnostic content and should not be fabricated when the test does not provide enough evidence.
+
+### Result states
+
+#### RECOMMENDED_AVAILABLE
+
+The recommended course exists and has content the learner can access now.
+
+Typical actions:
+
+- Primary: `Comenzar Inglés A1` / `Probar B2` / equivalent.
+- Secondary: `Ver otros cursos`.
+
+When the course contains a free introductory segment, the result may communicate that the learner can start with free lessons.
+
+#### RECOMMENDED_COMING_SOON
+
+The estimated level maps to a course that is not yet available.
+
+Behavior:
+
+- Clearly communicate that the recommended course is coming soon.
+- Do not turn the result into an immediate paywall.
+- Offer a useful alternative such as reviewing an available lower level or exploring other courses.
+
+#### RECOMMENDED_ACCESS_LIMITED
+
+The recommended course exists, but only part of it is accessible for free.
+
+Behavior:
+
+- Let the learner enter the available/free portion first when possible.
+- Commercial decisions should happen contextually when the learner reaches paid content, not dominate the diagnostic-result experience.
+
+### Monetization separation
+
+The preferred result-screen direction is the cleaner, recommendation-focused variant.
+
+Do **not** make subscription/purchase choices the primary purpose of the diagnostic result. The screen should first answer:
+
+> What level/course should I start with?
+
+If the recommended course later requires paid access, monetization should normally appear through the dedicated locked-content / paywall flow.
+
+The broader commercial direction may eventually support both:
+
+- Premium subscription access.
+- Permanent purchase of an individual course.
+
+That hybrid model still needs final validation and pricing rules before implementation. The diagnostic architecture should therefore depend on generic access/entitlement information rather than assuming subscription-only access.
+
+### Navigation after result
+
+Typical flow:
+
+`Diagnostic result -> Start recommended course -> course progress becomes active -> Home becomes ACTIVE`
+
+If the learner only views the recommendation and leaves without starting a course, Home may remain in the `ASSESSED` state and surface the recommendation later.
+
+The learner remains free to ignore the recommendation and manually choose another course.
 
 ## Persistence
 
@@ -164,7 +260,9 @@ Direction:
 - Rounded cards and subtle shadows.
 - Friendly educational illustration/character use.
 - Focused question screen with minimal distraction.
+- Positive, qualitative result presentation.
 - Avoid treating the diagnostic as a stressful formal exam.
+- Keep payment choices out of the primary result hierarchy.
 
 The exact character/mascot artwork is temporary and may later be replaced by Alma's own branded digital character.
 
@@ -178,5 +276,8 @@ The following should remain configurable/open until Alma validates them:
 - Which activity variants are used.
 - Score-to-recommendation thresholds.
 - Whether questions may be skipped and how skipped questions affect scoring.
+- Exact amount of free content per course/level.
+- Behavior when a recommended course has not yet launched.
+- Final wording/categories for strengths and reinforcement areas.
 
-The architecture should avoid coupling the diagnostic UI to one fixed question set so these adjustments can be made without redesigning the entire feature.
+The architecture should avoid coupling the diagnostic UI to one fixed question set or one fixed commercial model so these adjustments can be made without redesigning the entire feature.
