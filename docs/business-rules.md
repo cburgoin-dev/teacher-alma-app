@@ -224,12 +224,79 @@ Shared rules:
 
 ## Premium / payments
 
-Still to be finalized:
+### MVP commercial direction
 
-- subscription versus course purchase versus hybrid model;
-- free-content boundary;
-- expiration/access behavior;
-- restoration of purchases;
-- app-store/payment-provider implementation constraints.
+- The current provisional product direction is a **freemium model with one primary Premium subscription**.
+- Free users can access the diagnostic and an initial portion of learning content.
+- Premium grants access to content/features marked as Premium while the entitlement is valid.
+- Do not introduce multiple paid tiers in the MVP unless Alma explicitly requests them later.
+- An annual plan may be added later, but it is not required for the initial MVP.
 
-Do not implement these rules as fixed assumptions until they are validated.
+### Paywall behavior
+
+- Premium is **not** a primary bottom-navigation tab.
+- The paywall should appear contextually when the learner intentionally reaches paid content or chooses to upgrade.
+- Typical entry points:
+  - tapping a Premium course/lesson;
+  - reaching the free-content boundary;
+  - an upgrade/manage-access action from Profile in the future.
+- Do not show the paywall aggressively on every app launch, Home visit, course-list visit or during free lessons.
+
+### Locked content versus Paywall
+
+These are conceptually separate experiences:
+
+- **Locked content state:** explains that a specific item requires Premium and offers `Ver planes` / `Desbloquear`.
+- **Paywall:** explains the Free/Premium offer, benefits, price and purchase action.
+
+The locked state may route directly to the paywall after the learner chooses to see the offer.
+
+### Paywall content
+
+The current visual/product direction should communicate:
+
+- Free versus Premium access in a mobile-friendly layout.
+- One clear Premium price/period once pricing is finalized.
+- Benefits such as access to Premium courses/lessons and Premium learning features actually included in the MVP.
+- Future-content wording must **not promise a fixed publishing cadence**. Prefer copy such as `Acceso al nuevo contenido que se publique` rather than `Nuevo contenido cada mes`.
+- Primary CTA: `Suscribirme` / equivalent.
+- Secondary action: `Restaurar compras` where required/appropriate.
+- Clear cancellation/renewal information according to store/provider requirements.
+
+### Entitlements and access
+
+- Premium access must be determined from a validated entitlement/subscription state, not only from a local boolean such as `user.isPremium`.
+- Learning-progress state and commercial-access state remain separate concepts.
+- The backend/app integration should be prepared to handle at least these conceptual subscription/access states:
+  - `LOCKED`
+  - `PURCHASING`
+  - `ACTIVE`
+  - `PURCHASE_FAILED`
+  - `RESTORING`
+  - `EXPIRED`
+- These are conceptual product states and do not necessarily imply one persisted enum/table exactly as written.
+
+### Purchase restoration
+
+- `Restaurar compras` means revalidating access the learner has already purchased through the app-store account; it is not a second purchase.
+- It is relevant after reinstalling the app, changing device, signing back in or when local access state is out of sync with the store/provider.
+
+### Premium active state
+
+After a successful purchase/validated entitlement:
+
+- Premium-locked content becomes accessible according to the entitlement.
+- The learner may see a concise success/active-state screen or return to the originally requested content.
+- A future Profile/account area may expose subscription-management status/actions.
+
+### Payment-provider implementation
+
+Still to be finalized before implementation:
+
+- exact subscription price;
+- exact free-content boundary;
+- renewal/expiration/access behavior;
+- whether an annual option launches with the MVP;
+- concrete Apple/Google billing and entitlement integration/provider configuration.
+
+Do not hard-code mockup prices or illustrative Premium benefits as contractual product requirements until they are validated with Alma.
