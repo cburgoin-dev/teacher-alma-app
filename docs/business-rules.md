@@ -33,7 +33,7 @@ This document records agreed or provisional product rules for the MVP. Rules may
 - A prerequisite lock means learning progression requirements are not satisfied.
 - An access lock means the learner does not have the required entitlement/payment access.
 - The UI may use a similar lock icon for both, but the reason and resulting action must be different.
-- Freemium behavior is a likely direction: some initial content can be accessible before paid access is required.
+- Freemium behavior is the current direction: each available level/course should ideally expose a small useful sample of free content before paid access is required.
 
 ### Sequential progression
 
@@ -202,16 +202,99 @@ Shared rules:
 - Academic score and gamification rewards are separate concepts.
 - Example distinction:
   - Score: 8/10 correct answers.
-  - Gamification: +XP / coins.
-- Exact XP/coin values are not yet fixed.
+  - Gamification: coins, streak and achievements.
+- Exact coin values are not yet fixed and should be configurable/balanceable.
+- Lesson completion may award a base coin reward. A better/perfect result may optionally award a modest bonus, but weaker performance should not punish or block learning.
 - Avoid life/heart penalties in the initial MVP unless later validated with the client.
 - Gamification should reinforce progress and habit without becoming the sole focus of the learning experience.
+- Coins must have a real use if they are present in the MVP; they should not exist merely as a decorative counter.
 
 ## Daily goal and streak
 
 - A daily goal may include simple objectives such as completing one lesson and/or a small number of exercises.
-- Streak represents consecutive learning days.
+- Streak represents consecutive learning days and is currently the primary habit-oriented gamification mechanic.
 - Exact streak rules, grace periods and timezone handling remain to be defined before implementation.
+
+## Coins and Shop
+
+### Purpose
+
+Coins are an internal gamification currency earned through learning/progress. The Shop exists to give those coins a small but meaningful use without making the learning experience feel pay-to-win or pay-to-learn.
+
+Current MVP principles:
+
+- Coins are earned through learning-related actions such as lesson completion, goals, streak/milestone achievements and possible performance bonuses.
+- Exact earning amounts, prices and rewards are **not yet fixed** and should be balanceable without schema/UI redesign.
+- Do not require coins to access normal explanations, basic hints, core exercises or other essential learning support.
+- Do not sell additional learning attempts or advantages that would make users feel that the quality of learning depends on spending coins.
+- Buying coins with real money is not part of the current MVP direction.
+
+### Shop navigation
+
+The Shop is a **secondary gamification screen**, not a primary app section.
+
+Primary bottom navigation remains:
+
+- `Inicio`
+- `Cursos`
+- `Progreso`
+- `Perfil`
+
+The Shop should therefore **not** be a fifth bottom-navigation tab in the current direction.
+
+Preferred access:
+
+- Tapping the coin balance/counter in a global header where that counter is shown.
+- A secondary Shop/rewards entry from Profile may be added later if useful.
+
+### Shop visual/interaction direction
+
+The MVP Shop should be intentionally simple and can fit on one screen:
+
+- Current coin balance.
+- A small list of available items/actions.
+- Current inventory/status for each item.
+- Coin cost.
+- One direct purchase/start action.
+
+Separate detail screens for each Shop item are not required for the MVP unless future items become complex enough to justify them.
+
+### Initial item: Streak Protector
+
+Purpose:
+
+- Preserve the learner's streak for a missed day.
+- Support habit continuity without affecting access to learning content.
+
+Current provisional behavior:
+
+- Purchased using coins.
+- Stored as a consumable inventory item.
+- Automatically consumed when the learner would otherwise lose their streak because of one missed eligible day.
+- The mockup currently shows a maximum inventory of `2`; exact maximum and price remain balance/configuration decisions.
+- The Shop should show status such as `Tienes: 1/2`.
+
+### Initial item/action: 7-Day Streak Challenge
+
+Purpose:
+
+- Encourage the learner to maintain the main habit mechanic for a full week.
+- Give coins a second meaningful use without affecting educational content or exercise difficulty.
+
+Current provisional behavior:
+
+- The learner spends a configured amount of coins to begin the challenge.
+- Only one 7-day challenge should be active at a time for the MVP.
+- The goal is to maintain the streak for seven consecutive days according to the app's streak rules.
+- Successful completion grants a configured coin reward/bonus.
+- The exact entry cost, reward amount and whether the entry cost is effectively returned as part of the completion reward are balancing decisions, not fixed business rules yet.
+- The Shop should expose status such as `Ningún reto activo`, active progress, or completion when relevant.
+
+### Future Shop possibilities
+
+Additional items may be added later only when they provide clear value relative to implementation effort. Possible directions include additional streak/habit tools, light cosmetic rewards or optional game-related uses.
+
+Avoid adding items solely to create a circular economy such as spending coins primarily to multiply future coin earnings.
 
 ## Assessments
 
@@ -226,77 +309,105 @@ Shared rules:
 
 ### MVP commercial direction
 
-- The current provisional product direction is a **freemium model with one primary Premium subscription**.
-- Free users can access the diagnostic and an initial portion of learning content.
-- Premium grants access to content/features marked as Premium while the entitlement is valid.
-- Do not introduce multiple paid tiers in the MVP unless Alma explicitly requests them later.
-- An annual plan may be added later, but it is not required for the initial MVP.
+The current provisional commercial model is **freemium + two paid access paths**:
+
+1. **Premium membership/subscription**: access to the set of courses/content included in Premium while the entitlement remains active.
+2. **Permanent individual course purchase**: one-time purchase that grants persistent access to that specific course according to the platform/payment entitlement.
+
+Additional rules:
+
+- Free users can access the diagnostic and an initial useful portion of learning content.
+- Each available level/course should ideally expose some free lessons/content so a learner can try the recommended level before encountering a purchase decision.
+- Selling individual lessons is **not** part of the MVP direction. It creates disproportionate pricing/access complexity and is not currently justified by product value.
+- Do not introduce multiple Premium tiers in the MVP unless Alma explicitly requests them later.
+- An annual subscription option may be added later, but it is not required for the initial MVP.
+- Exact course prices, membership price and the relationship between them remain to be validated with Alma.
+
+### Course purchase versus membership
+
+- Owning a course permanently and having an active Premium membership are different entitlement sources.
+- A learner who permanently owns a course keeps access to that course even if a separate Premium subscription expires, subject to store/platform restoration and account-linking rules.
+- An active Premium membership can unlock included courses without creating permanent ownership of each course.
+- The access layer should be able to answer whether a user can access a course without forcing the UI/business logic to care which valid entitlement source granted that access.
+- A future offer may present `Suscripción` and `Compra única` as alternative ways to unlock a course, but the exact purchase UX should be designed only after store/payment constraints and pricing are finalized.
 
 ### Paywall behavior
 
 - Premium is **not** a primary bottom-navigation tab.
 - The paywall should appear contextually when the learner intentionally reaches paid content or chooses to upgrade.
 - Typical entry points:
-  - tapping a Premium course/lesson;
+  - tapping a paid/locked course or lesson;
   - reaching the free-content boundary;
   - an upgrade/manage-access action from Profile in the future.
 - Do not show the paywall aggressively on every app launch, Home visit, course-list visit or during free lessons.
+- The diagnostic result should remain pedagogically focused and should not become an aggressive purchase screen; it may lead into a recommended course where normal access rules apply.
 
 ### Locked content versus Paywall
 
 These are conceptually separate experiences:
 
-- **Locked content state:** explains that a specific item requires Premium and offers `Ver planes` / `Desbloquear`.
-- **Paywall:** explains the Free/Premium offer, benefits, price and purchase action.
+- **Locked content state:** explains that a specific item requires paid access and offers an appropriate unlock action.
+- **Paywall/purchase choice:** explains available purchase paths, benefits, price and purchase action.
 
-The locked state may route directly to the paywall after the learner chooses to see the offer.
+The locked state may route directly to the purchase/paywall flow after the learner chooses to see the offer.
 
 ### Paywall content
 
-The current visual/product direction should communicate:
+The current visual/product direction should communicate only benefits actually supported by the chosen paid model and MVP implementation.
 
-- Free versus Premium access in a mobile-friendly layout.
-- One clear Premium price/period once pricing is finalized.
-- Benefits such as access to Premium courses/lessons and Premium learning features actually included in the MVP.
-- Future-content wording must **not promise a fixed publishing cadence**. Prefer copy such as `Acceso al nuevo contenido que se publique` rather than `Nuevo contenido cada mes`.
-- Primary CTA: `Suscribirme` / equivalent.
-- Secondary action: `Restaurar compras` where required/appropriate.
-- Clear cancellation/renewal information according to store/provider requirements.
+For membership, this may include:
+
+- Access to Premium courses/lessons while membership is active.
+- Access to newly published content that is included in Premium, without promising a fixed publishing cadence.
+
+For permanent course purchase, the product should clearly communicate that the purchase applies to the selected course rather than all future content.
+
+Relevant actions may include:
+
+- `Suscribirme` / equivalent.
+- `Comprar curso` / equivalent.
+- `Restaurar compras` where required/appropriate.
+
+Clear renewal/cancellation/ownership wording should follow the final store/provider requirements.
 
 ### Entitlements and access
 
-- Premium access must be determined from a validated entitlement/subscription state, not only from a local boolean such as `user.isPremium`.
+- Paid access must be determined from validated entitlements/purchase state, not only from a local boolean such as `user.isPremium`.
 - Learning-progress state and commercial-access state remain separate concepts.
-- The backend/app integration should be prepared to handle at least these conceptual subscription/access states:
+- The access model must support both active subscription-based access and permanent course ownership.
+- Conceptual transaction/access states may include:
   - `LOCKED`
   - `PURCHASING`
   - `ACTIVE`
   - `PURCHASE_FAILED`
   - `RESTORING`
-  - `EXPIRED`
+  - `EXPIRED` where relevant to subscriptions
 - These are conceptual product states and do not necessarily imply one persisted enum/table exactly as written.
 
 ### Purchase restoration
 
 - `Restaurar compras` means revalidating access the learner has already purchased through the app-store account; it is not a second purchase.
 - It is relevant after reinstalling the app, changing device, signing back in or when local access state is out of sync with the store/provider.
+- Restoration should be able to recover both supported subscriptions and permanent course purchases when the final provider/platform supports them.
 
 ### Premium active state
 
 After a successful purchase/validated entitlement:
 
-- Premium-locked content becomes accessible according to the entitlement.
+- Content becomes accessible according to the entitlement source.
 - The learner may see a concise success/active-state screen or return to the originally requested content.
-- A future Profile/account area may expose subscription-management status/actions.
+- A future Profile/account area may expose subscription and owned-course status/actions.
 
 ### Payment-provider implementation
 
 Still to be finalized before implementation:
 
 - exact subscription price;
-- exact free-content boundary;
+- exact per-course prices;
+- exact free-content boundary per course/level;
 - renewal/expiration/access behavior;
 - whether an annual option launches with the MVP;
-- concrete Apple/Google billing and entitlement integration/provider configuration.
+- concrete Apple/Google billing and entitlement integration/provider configuration;
+- how subscription products and permanent course purchases are represented and restored across platforms.
 
-Do not hard-code mockup prices or illustrative Premium benefits as contractual product requirements until they are validated with Alma.
+Do not hard-code mockup prices or illustrative paid benefits as contractual product requirements until they are validated with Alma.
