@@ -541,10 +541,154 @@ Desired qualities:
 
 ---
 
+## Progress
+
+### Purpose
+
+Help the learner understand **how their learning is going over time**, without duplicating Home's role as the main "what should I do now?" screen.
+
+Progress should answer:
+
+- How much have I advanced?
+- How consistent have I been?
+- What am I doing well?
+- What should I reinforce next?
+- What meaningful milestones have I achieved?
+
+The tone should be encouraging and informative rather than judgmental. Avoid presenting weak performance in a way that feels punitive or frustrating.
+
+### Relationship with Home
+
+Home and Progress are both justified only if they keep distinct responsibilities:
+
+- **Home:** next action / immediate learning continuation.
+- **Progress:** reflection, reinforcement and longitudinal progress.
+
+Progress should therefore avoid duplicating Home's large `Continuar` / `Comenzar` hero CTA or reproducing the same daily-goal/review cards with equal prominence.
+
+### Preferred visual/content hierarchy
+
+Current preferred order:
+
+1. **Course progress summary**
+2. **Para reforzar / Review access**
+3. **Consistency**
+4. **Strengths**
+5. **Achievements / milestones**
+
+The screen can scroll vertically, but the first viewport should keep the most actionable information visible. In particular, `Para reforzar` should be visible without substantial scrolling.
+
+### Course progress summary
+
+Show a concise summary such as:
+
+- Current course/level.
+- Overall course progress percentage.
+- Completed lessons/topics.
+- Secondary `Ver ruta` action.
+
+`Ver ruta` should remain a secondary navigation action, not a dominant red CTA.
+
+### Para reforzar
+
+This area combines identified reinforcement areas with the persistent entry point to Review.
+
+It may show:
+
+- Topics/concepts that need more practice.
+- Pending review count per topic when useful.
+- `Ver repaso` / `Repasar ahora` CTA.
+
+This is intentionally different from Home's compact review shortcut: Progress provides context about **what** should be reinforced, while Review provides the actual practice session.
+
+Do not label content as `worst topic`, `bad performance`, etc. Prefer supportive wording such as `Para reforzar`.
+
+### Consistency
+
+Show learning habit in a compact, positive form, for example:
+
+- Active days in the current week.
+- A simple `L M X J V S D` activity row.
+- Short summary such as `4 días esta semana`.
+
+This is more informative than merely repeating the streak value already available in global/Home UI.
+
+### Strengths
+
+Show areas where the learner is performing consistently well, for example:
+
+- Saludos.
+- Presentaciones.
+- Vocabulario básico.
+
+Prefer readable labels/badges rather than dense percentages. Strengths should only appear once enough learning data exists to support them.
+
+### Achievements / milestones
+
+Use this area to reinforce meaningful progress, for example:
+
+- First unit completed.
+- Seven consecutive learning days.
+- Ten lessons completed.
+
+Achievements should celebrate real learning/habit milestones and should not dominate the screen over reinforcement or course progress.
+
+### Progress states
+
+#### NEW / INSUFFICIENT_DATA
+
+Used when the learner has not yet generated enough learning history.
+
+Behavior:
+
+- Keep the screen useful and positive instead of filling it with discouraging `0%`, `0 days`, or empty charts.
+- Explain that strengths, reinforcement areas and milestones will appear as the learner completes lessons.
+- Show course/start context only when useful.
+- Avoid fabricating strengths or weaknesses before enough evidence exists.
+
+#### ACTIVE
+
+Main state once enough history exists.
+
+Show:
+
+- Course progress.
+- Reinforcement/review access.
+- Weekly consistency.
+- Strengths.
+- Achievements.
+
+#### NO_REVIEW_PENDING
+
+A variation of ACTIVE where no pending review exists.
+
+Instead of showing an empty/error-looking area, communicate a positive state such as `Todo al día por ahora` and keep reinforcement context subtle.
+
+### Scroll and density
+
+- Moderate vertical scroll is acceptable.
+- Avoid turning Progress into a dense analytics dashboard.
+- Actionable/relevant content belongs higher; passive statistics belong lower.
+- Avoid complex charts unless a real learning need later justifies them.
+
+### Current visual direction
+
+The latest mockups are useful provisional references but are **not final**. The preferred base is the more spacious first direction, with the hierarchy above.
+
+Visual principles remain consistent with the rest of the product:
+
+- White/light base.
+- Blue primary structure.
+- Red used mainly for important reinforcement/action accents.
+- Rounded cards and subtle shadows.
+- Friendly illustrations/icons.
+- Positive language.
+- Avoid excessive duplicated statistics and dashboard-like clutter.
+
+---
+
 ## Screens still to define in more detail
 
-- Progreso.
-- Repaso de errores.
 - Premium / Paywall.
 - Placement/diagnostic questionnaire.
 - Diagnostic result.
