@@ -131,18 +131,115 @@ Rules:
 - After checking, clearly distinguish correct and incorrect pairs.
 - Incorrect pairs feed Review like other incorrect attempts.
 
+## Review / error practice
+
+Review is not a separate exercise engine. It reuses the same activity renderers and validation rules defined above.
+
+### Purpose
+
+Turn incorrect attempts into short, focused reinforcement sessions without framing mistakes as punishment.
+
+Typical entry points:
+
+- Home `Repaso` card when pending review items exist.
+- Lesson Result via `Repasar errores`.
+- Progress area as a persistent place to see and launch pending review.
+
+### Review item lifecycle
+
+For the MVP, a review item can use a simple state model:
+
+- `ACTIVE`: the learner still needs reinforcement.
+- `RESOLVED`: the learner answered correctly during Review and the item no longer counts as pending.
+
+Typical flow:
+
+`Incorrect lesson attempt -> create/update ACTIVE ReviewItem -> Review session -> correct => RESOLVED / incorrect => remain ACTIVE`
+
+A resolved item may be reactivated later by a new incorrect attempt if needed.
+
+### Review screen/session states
+
+- `EMPTY`: no pending review items.
+- `READY`: pending items exist and the learner can start a session.
+- `IN_PROGRESS`: learner is answering review activities.
+- `COMPLETED`: the selected review session has ended.
+
+### READY state
+
+May show:
+
+- Total pending count.
+- Pending items grouped by topic/unit.
+- Counts per topic.
+- Main `Empezar repaso` CTA.
+
+The language should emphasize reinforcement rather than failure, for example `6 ejercicios para reforzar` instead of `6 errores`.
+
+### IN_PROGRESS state
+
+- Reuse the existing activity components.
+- Show review-session progress such as `2 de 6`.
+- Provide the same immediate feedback used in normal practice.
+- A correct answer resolves the current review item for the MVP.
+- An incorrect answer leaves it active.
+
+### COMPLETED state
+
+May summarize:
+
+- Number of items resolved/corrected.
+- Number still pending.
+- Topics reviewed.
+- A primary exit action such as `Volver al inicio` or contextually `Continuar aprendiendo`.
+
+### EMPTY state
+
+Keep this lightweight; a dedicated mockup is not required for the MVP planning stage.
+
+Example copy:
+
+`Todo al día. No tienes ejercicios pendientes por repasar.`
+
+### Future evolution
+
+The simple `ACTIVE -> RESOLVED` model is intentionally MVP-friendly. Preserve enough attempt/review history to allow later evolution toward:
+
+- spaced repetition;
+- weak/learning/strong mastery states;
+- topic-based review;
+- adaptive review frequency;
+- generated variants of previously missed activities.
+
+Do not implement these advanced behaviors until there is a real product/content need.
+
+### Useful conceptual data
+
+A future model may need to represent or derive information such as:
+
+- learner/user identity;
+- source activity;
+- source lesson/topic;
+- current review status;
+- number of incorrect/review attempts;
+- last reviewed timestamp;
+- resolved timestamp.
+
+The exact database schema should be decided during data modeling, not from the mockup alone.
+
 ## Content ownership
 
 The activity engine defines interaction and validation behavior. Alma determines the actual educational prompt, accepted answer(s), images, distractors, explanations and which activity variant is appropriate for the learning objective.
 
 ## Visual direction
 
-Activities belong to the focused lesson flow and should remain cleaner than Home/Roadmap:
+Activities and Review belong to the focused learning flow and should remain cleaner than Home/Roadmap:
 
 - White/light base.
 - Blue structure/selection states.
 - Red primary CTA/accent.
 - Rounded cards and subtle shadows.
-- Clear lesson progress.
+- Clear lesson/review progress.
 - Minimal global navigation/chrome while actively learning.
 - Content and interaction take priority over decorative elements.
+- Review may use the future branded Alma character/mascot selectively for encouragement and completion states.
