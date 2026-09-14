@@ -1,0 +1,465 @@
+// Source: docs/database-schema.md. Text statuses intentionally avoid native enums.
+// CHECK constraints and partial unique indexes live in the initial SQL migration.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                  String   @id @default(uuid()) @db.Uuid
+  email               String   @unique @db.Text
+  displayName         String?  @map("display_name") @db.Text
+  timezone            String   @default("UTC") @db.Text
+  authProviderSubject String?  @unique @map("auth_provider_subject") @db.Text
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  courseProgress      CourseProgress[]      @relation("CourseProgress_userId")
+  lessonProgress      LessonProgress[]      @relation("LessonProgress_userId")
+  lessonBlockProgress LessonBlockProgress[] @relation("LessonBlockProgress_userId")
+  activityAttempts    ActivityAttempt[]     @relation("ActivityAttempt_userId")
+  reviewItems         ReviewItem[]          @relation("ReviewItem_userId")
+  diagnosticAttempts  DiagnosticAttempt[]   @relation("DiagnosticAttempt_userId")
+  learningDays        LearningDay[]         @relation("LearningDay_userId")
+  coinTransactions    CoinTransaction[]     @relation("CoinTransaction_userId")
+  userInventory       UserInventory[]       @relation("UserInventory_userId")
+  streakChallenges    StreakChallenge[]     @relation("StreakChallenge_userId")
+  purchases           Purchase[]            @relation("Purchase_userId")
+  entitlements        Entitlement[]         @relation("Entitlement_userId")
+
+  @@map("users")
+}
+
+model Course {
+  id          String   @id @default(uuid()) @db.Uuid
+  title       String   @db.Text
+  slug        String   @unique @db.Text
+  level       String?  @db.Text
+  description String?  @db.Text
+  coverUrl    String?  @map("cover_url") @db.Text
+  status      String   @db.Text
+  position    Int
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  topics             Topic[]             @relation("Topic_courseId")
+  courseProgress     CourseProgress[]    @relation("CourseProgress_courseId")
+  diagnosticAttempts DiagnosticAttempt[] @relation("DiagnosticAttempt_recommendedCourseId")
+  products           Product[]           @relation("Product_courseId")
+  entitlements       Entitlement[]       @relation("Entitlement_courseId")
+
+  @@index([status, position])
+  @@map("courses")
+}
+
+model Topic {
+  id          String   @id @default(uuid()) @db.Uuid
+  courseId    String   @map("course_id") @db.Uuid
+  title       String   @db.Text
+  description String?  @db.Text
+  position    Int
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  course  Course   @relation("Topic_courseId", fields: [courseId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  lessons Lesson[] @relation("Lesson_topicId")
+
+  @@unique([courseId, position])
+  @@index([courseId])
+  @@map("topics")
+}
+
+model Lesson {
+  id          String   @id @default(uuid()) @db.Uuid
+  topicId     String   @map("topic_id") @db.Uuid
+  title       String   @db.Text
+  description String?  @db.Text
+  position    Int
+  isRequired  Boolean  @default(true) @map("is_required")
+  accessType  String   @default("FREE") @map("access_type") @db.Text
+  status      String   @default("DRAFT") @db.Text
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  topic            Topic             @relation("Lesson_topicId", fields: [topicId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  lessonBlocks     LessonBlock[]     @relation("LessonBlock_lessonId")
+  lessonProgress   LessonProgress[]  @relation("LessonProgress_lessonId")
+  activityAttempts ActivityAttempt[] @relation("ActivityAttempt_lessonId")
+  reviewItems      ReviewItem[]      @relation("ReviewItem_sourceLessonId")
+
+  @@unique([topicId, position])
+  @@index([topicId])
+  @@index([accessType])
+  @@map("lessons")
+}
+
+model Activity {
+  id          String   @id @default(uuid()) @db.Uuid
+  type        String   @db.Text
+  prompt      String   @db.Text
+  config      Json     @default("{}") @db.JsonB
+  explanation String?  @db.Text
+  status      String   @default("ACTIVE") @db.Text
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  lessonBlocks        LessonBlock[]        @relation("LessonBlock_activityId")
+  activityAttempts    ActivityAttempt[]    @relation("ActivityAttempt_activityId")
+  reviewItems         ReviewItem[]         @relation("ReviewItem_activityId")
+  diagnosticQuestions DiagnosticQuestion[] @relation("DiagnosticQuestion_activityId")
+
+  @@map("activities")
+}
+
+model LessonBlock {
+  id         String   @id @default(uuid()) @db.Uuid
+  lessonId   String   @map("lesson_id") @db.Uuid
+  type       String   @db.Text
+  position   Int
+  required   Boolean  @default(true)
+  content    Json     @default("{}") @db.JsonB
+  activityId String?  @map("activity_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  lesson              Lesson                @relation("LessonBlock_lessonId", fields: [lessonId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  activity            Activity?             @relation("LessonBlock_activityId", fields: [activityId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  lessonProgress      LessonProgress[]      @relation("LessonProgress_currentBlockId")
+  lessonBlockProgress LessonBlockProgress[] @relation("LessonBlockProgress_lessonBlockId")
+
+  @@unique([lessonId, position])
+  @@index([lessonId])
+  @@index([activityId])
+  @@map("lesson_blocks")
+}
+
+model CourseProgress {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  courseId    String    @map("course_id") @db.Uuid
+  status      String    @db.Text
+  startedAt   DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user   User   @relation("CourseProgress_userId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  course Course @relation("CourseProgress_courseId", fields: [courseId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([userId, status])
+  @@index([courseId])
+  @@map("course_progress")
+}
+
+model LessonProgress {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  lessonId       String    @map("lesson_id") @db.Uuid
+  status         String    @db.Text
+  currentBlockId String?   @map("current_block_id") @db.Uuid
+  startedAt      DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt    DateTime? @map("completed_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user         User         @relation("LessonProgress_userId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  lesson       Lesson       @relation("LessonProgress_lessonId", fields: [lessonId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  currentBlock LessonBlock? @relation("LessonProgress_currentBlockId", fields: [currentBlockId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId, status])
+  @@index([lessonId])
+  @@index([currentBlockId])
+  @@map("lesson_progress")
+}
+
+model LessonBlockProgress {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  lessonBlockId String    @map("lesson_block_id") @db.Uuid
+  status        String    @db.Text
+  completedAt   DateTime? @map("completed_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user        User        @relation("LessonBlockProgress_userId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  lessonBlock LessonBlock @relation("LessonBlockProgress_lessonBlockId", fields: [lessonBlockId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([userId, lessonBlockId])
+  @@index([userId])
+  @@index([lessonBlockId])
+  @@map("lesson_block_progress")
+}
+
+model ActivityAttempt {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  activityId    String   @map("activity_id") @db.Uuid
+  lessonId      String?  @map("lesson_id") @db.Uuid
+  reviewItemId  String?  @map("review_item_id") @db.Uuid
+  context       String   @db.Text
+  answerData    Json     @map("answer_data") @db.JsonB
+  isCorrect     Boolean  @map("is_correct")
+  attemptNumber Int      @default(1) @map("attempt_number")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user       User        @relation("ActivityAttempt_userId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  activity   Activity    @relation("ActivityAttempt_activityId", fields: [activityId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  lesson     Lesson?     @relation("ActivityAttempt_lessonId", fields: [lessonId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  reviewItem ReviewItem? @relation("ActivityAttempt_reviewItemId", fields: [reviewItemId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([userId, activityId, createdAt(sort: Desc)])
+  @@index([lessonId])
+  @@index([activityId])
+  @@index([reviewItemId])
+  @@map("activity_attempts")
+}
+
+model ReviewItem {
+  id                String    @id @default(uuid()) @db.Uuid
+  userId            String    @map("user_id") @db.Uuid
+  activityId        String    @map("activity_id") @db.Uuid
+  sourceLessonId    String?   @map("source_lesson_id") @db.Uuid
+  status            String    @default("ACTIVE") @db.Text
+  incorrectAttempts Int       @default(1) @map("incorrect_attempts")
+  lastReviewedAt    DateTime? @map("last_reviewed_at") @db.Timestamptz(6)
+  resolvedAt        DateTime? @map("resolved_at") @db.Timestamptz(6)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  activityAttempts ActivityAttempt[] @relation("ActivityAttempt_reviewItemId")
+  user             User              @relation("ReviewItem_userId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  activity         Activity          @relation("ReviewItem_activityId", fields: [activityId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  sourceLesson     Lesson?           @relation("ReviewItem_sourceLessonId", fields: [sourceLessonId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([userId, status])
+  @@index([activityId])
+  @@index([sourceLessonId])
+  @@map("review_items")
+}
+
+model Diagnostic {
+  id        String   @id @default(uuid()) @db.Uuid
+  title     String   @db.Text
+  version   Int
+  status    String   @default("DRAFT") @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  diagnosticQuestions DiagnosticQuestion[] @relation("DiagnosticQuestion_diagnosticId")
+  diagnosticAttempts  DiagnosticAttempt[]  @relation("DiagnosticAttempt_diagnosticId")
+
+  @@unique([version])
+  @@map("diagnostics")
+}
+
+model DiagnosticQuestion {
+  id           String   @id @default(uuid()) @db.Uuid
+  diagnosticId String   @map("diagnostic_id") @db.Uuid
+  activityId   String   @map("activity_id") @db.Uuid
+  position     Int
+  weight       Decimal  @default(1) @db.Decimal(6, 3)
+  targetLevel  String?  @map("target_level") @db.Text
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  diagnostic        Diagnostic         @relation("DiagnosticQuestion_diagnosticId", fields: [diagnosticId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  activity          Activity           @relation("DiagnosticQuestion_activityId", fields: [activityId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  diagnosticAnswers DiagnosticAnswer[] @relation("DiagnosticAnswer_diagnosticQuestionId")
+
+  @@unique([diagnosticId, position])
+  @@unique([diagnosticId, activityId])
+  @@index([diagnosticId])
+  @@index([activityId])
+  @@map("diagnostic_questions")
+}
+
+model DiagnosticAttempt {
+  id                  String    @id @default(uuid()) @db.Uuid
+  userId              String    @map("user_id") @db.Uuid
+  diagnosticId        String    @map("diagnostic_id") @db.Uuid
+  status              String    @db.Text
+  internalScore       Decimal?  @map("internal_score") @db.Decimal(8, 3)
+  recommendedLevel    String?   @map("recommended_level") @db.Text
+  recommendedCourseId String?   @map("recommended_course_id") @db.Uuid
+  strengths           Json?     @db.JsonB
+  reinforcementAreas  Json?     @map("reinforcement_areas") @db.JsonB
+  startedAt           DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt         DateTime? @map("completed_at") @db.Timestamptz(6)
+
+  user              User               @relation("DiagnosticAttempt_userId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  diagnostic        Diagnostic         @relation("DiagnosticAttempt_diagnosticId", fields: [diagnosticId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  recommendedCourse Course?            @relation("DiagnosticAttempt_recommendedCourseId", fields: [recommendedCourseId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  diagnosticAnswers DiagnosticAnswer[] @relation("DiagnosticAnswer_diagnosticAttemptId")
+
+  @@index([userId, startedAt(sort: Desc)])
+  @@index([diagnosticId])
+  @@index([recommendedCourseId])
+  @@map("diagnostic_attempts")
+}
+
+model DiagnosticAnswer {
+  id                   String   @id @default(uuid()) @db.Uuid
+  diagnosticAttemptId  String   @map("diagnostic_attempt_id") @db.Uuid
+  diagnosticQuestionId String   @map("diagnostic_question_id") @db.Uuid
+  answerData           Json     @map("answer_data") @db.JsonB
+  isCorrect            Boolean  @map("is_correct")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  diagnosticAttempt  DiagnosticAttempt  @relation("DiagnosticAnswer_diagnosticAttemptId", fields: [diagnosticAttemptId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  diagnosticQuestion DiagnosticQuestion @relation("DiagnosticAnswer_diagnosticQuestionId", fields: [diagnosticQuestionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([diagnosticAttemptId, diagnosticQuestionId])
+  @@index([diagnosticAttemptId])
+  @@index([diagnosticQuestionId])
+  @@map("diagnostic_answers")
+}
+
+model LearningDay {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  activityDate DateTime @map("activity_date") @db.Date
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation("LearningDay_userId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([userId, activityDate])
+  @@index([userId, activityDate(sort: Desc)])
+  @@map("learning_days")
+}
+
+model CoinTransaction {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  amount        Int
+  type          String   @db.Text
+  reason        String   @db.Text
+  referenceType String?  @map("reference_type") @db.Text
+  referenceId   String?  @map("reference_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation("CoinTransaction_userId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("coin_transactions")
+}
+
+model ShopItem {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique @db.Text
+  name        String   @db.Text
+  description String?  @db.Text
+  itemType    String   @map("item_type") @db.Text
+  coinCost    Int      @map("coin_cost")
+  maxOwned    Int?     @map("max_owned")
+  config      Json     @default("{}") @db.JsonB
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  userInventory    UserInventory[]   @relation("UserInventory_shopItemId")
+  streakChallenges StreakChallenge[] @relation("StreakChallenge_shopItemId")
+
+  @@map("shop_items")
+}
+
+model UserInventory {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  shopItemId String   @map("shop_item_id") @db.Uuid
+  quantity   Int      @default(0)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user     User     @relation("UserInventory_userId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  shopItem ShopItem @relation("UserInventory_shopItemId", fields: [shopItemId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([userId, shopItemId])
+  @@index([shopItemId])
+  @@map("user_inventory")
+}
+
+model StreakChallenge {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  shopItemId   String    @map("shop_item_id") @db.Uuid
+  status       String    @db.Text
+  startedOn    DateTime  @map("started_on") @db.Date
+  endsOn       DateTime  @map("ends_on") @db.Date
+  entryCost    Int       @map("entry_cost")
+  rewardAmount Int       @map("reward_amount")
+  completedAt  DateTime? @map("completed_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user     User     @relation("StreakChallenge_userId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  shopItem ShopItem @relation("StreakChallenge_shopItemId", fields: [shopItemId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([userId, status])
+  @@index([shopItemId])
+  @@map("streak_challenges")
+}
+
+model Product {
+  id                 String   @id @default(uuid()) @db.Uuid
+  type               String   @db.Text
+  courseId           String?  @map("course_id") @db.Uuid
+  code               String   @unique @db.Text
+  active             Boolean  @default(true)
+  providerProductIds Json     @default("{}") @map("provider_product_ids") @db.JsonB
+  metadata           Json     @default("{}") @db.JsonB
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  course    Course?    @relation("Product_courseId", fields: [courseId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  purchases Purchase[] @relation("Purchase_productId")
+
+  @@index([courseId])
+  @@map("products")
+}
+
+model Purchase {
+  id                    String    @id @default(uuid()) @db.Uuid
+  userId                String    @map("user_id") @db.Uuid
+  productId             String    @map("product_id") @db.Uuid
+  provider              String    @db.Text
+  externalTransactionId String    @map("external_transaction_id") @db.Text
+  status                String    @db.Text
+  purchasedAt           DateTime  @map("purchased_at") @db.Timestamptz(6)
+  expiresAt             DateTime? @map("expires_at") @db.Timestamptz(6)
+  metadata              Json      @default("{}") @db.JsonB
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user         User          @relation("Purchase_userId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  product      Product       @relation("Purchase_productId", fields: [productId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  entitlements Entitlement[] @relation("Entitlement_sourcePurchaseId")
+
+  @@unique([provider, externalTransactionId])
+  @@index([userId, status])
+  @@index([productId])
+  @@map("purchases")
+}
+
+model Entitlement {
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  scope            String    @db.Text
+  courseId         String?   @map("course_id") @db.Uuid
+  sourcePurchaseId String?   @map("source_purchase_id") @db.Uuid
+  status           String    @db.Text
+  startsAt         DateTime  @map("starts_at") @db.Timestamptz(6)
+  expiresAt        DateTime? @map("expires_at") @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user           User      @relation("Entitlement_userId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  course         Course?   @relation("Entitlement_courseId", fields: [courseId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  sourcePurchase Purchase? @relation("Entitlement_sourcePurchaseId", fields: [sourcePurchaseId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([userId, status, expiresAt])
+  @@index([courseId])
+  @@index([sourcePurchaseId])
+  @@map("entitlements")
+}
