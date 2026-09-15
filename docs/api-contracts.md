@@ -13,6 +13,7 @@ Business rules belong in the service layer. Controllers should remain thin: inte
 - Commercial access and learning progress are separate concerns.
 - A successful read does not create progress or mutate learning state.
 - Error responses use a stable machine-readable `code` plus a human-readable `message`.
+- Until the real authentication provider is selected, controllers/services should depend only on an application-level authenticated `userId`, not on a specific JWT/provider implementation. A replaceable development-only auth middleware may inject `req.auth.userId`; provider-specific authentication must remain outside Courses business logic.
 
 Error shape:
 
@@ -54,6 +55,23 @@ Course visibility rules used by this slice:
 - `PUBLISHED`: visible and potentially startable.
 - `COMING_SOON`: visible, but cannot be started.
 - `DRAFT`: hidden from normal users and treated as non-existent from the public/user-facing API.
+
+For Courses v1, a **relevant lesson** means `lessons.status = 'PUBLISHED'`.
+
+Relevant lessons are ordered globally by:
+
+```text
+topic.position ASC
+then lesson.position ASC
+```
+
+Clarifications for Courses v1:
+
+- `DRAFT` and `ARCHIVED` lessons are excluded from roadmap, progress totals, prerequisites and next-lesson selection.
+- All `PUBLISHED` lessons count toward `totalLessons` and appear in the active roadmap, regardless of `is_required`.
+- Sequential progression for this slice follows all `PUBLISHED` lessons in the ordered path. `is_required` does not cause a displayed published lesson to be silently skipped.
+- `completedLessons` counts relevant lessons whose `lesson_progress.status = 'COMPLETED'` for the authenticated user.
+- `is_required` may later participate in course-completion or optional-content rules, but it does not change the Courses v1 roadmap sequence.
 
 Commercial access does not come from `course_progress`. Starting a course never creates a purchase or entitlement.
 
@@ -126,7 +144,7 @@ NONE
 - Sort by configured `position`.
 - Progress is specific to the authenticated user.
 - Access is specific to the authenticated user.
-- `percentage` is derived from completed lessons and total relevant lessons; it is not a separately persisted UI value.
+- `percentage` is derived from completed relevant lessons and total relevant lessons; it is not a separately persisted UI value.
 - This endpoint is read-only and must not create `course_progress`.
 
 ### Relevant failures
@@ -183,6 +201,8 @@ Required.
 ```
 
 `progress` may be `null` if the user has never started the course.
+
+`content.lessonCount` and `content.freeLessonCount` count only relevant (`PUBLISHED`) lessons. `content.topicCount` counts topics that contain at least one relevant lesson for the active learner-facing course structure.
 
 ### Business rules
 
@@ -347,14 +367,15 @@ Examples:
 
 ### Progression rules
 
-Initial MVP progression is sequential within the ordered course path:
+Initial MVP progression is sequential within the ordered course path of relevant (`PUBLISHED`) lessons:
 
 - The first relevant lesson is initially progression-unlocked.
-- Completing lesson `N` unlocks the next lesson in the configured path.
+- Completing lesson `N` unlocks the next relevant lesson in global `topic.position`, then `lesson.position`, order.
 - A completed lesson remains accessible for repetition.
 - Correctness and completion are separate concepts.
 - Wrong answers do not by themselves prevent progression.
 - Lesson completion follows the lesson completion rules defined elsewhere; this endpoint only reports the resulting state.
+- `is_required = false` does not remove a published lesson from the Courses v1 sequence.
 
 A lesson may be progression-unlocked but still commercially inaccessible. In that case `unlocked` may be `true` while `access.hasAccess` is `false`; `lockReason = "ACCESS"` represents that effective block for entering the lesson.
 
@@ -366,8 +387,12 @@ Before a course has been explicitly started, the first lesson may be progression
 
 After the course is started, the next relevant pending lesson becomes `isCurrent = true`.
 
+If all relevant lessons are completed, no lesson is current.
+
 ### Business rules
 
+- Return only relevant (`PUBLISHED`) lessons.
+- Topics containing no relevant lessons are omitted from the learner-facing roadmap.
 - Topics and lessons are returned in configured order.
 - `DRAFT` courses are treated as non-existent.
 - `COMING_SOON` courses may expose their public structure only if product/design later requires it; they must never become startable through this endpoint. For the initial implementation, the service may return the same visible structure rules used by Course Detail without creating progress.
@@ -429,6 +454,17 @@ None.
 
 If the course was already started, the same endpoint returns the current existing progress and the current next relevant lesson. It does not create duplicates.
 
+When every relevant lesson is completed, `nextLesson` is `null` and the derived progress response is:
+
+```json
+{
+  "status": "COMPLETED",
+  "completedLessons": 10,
+  "totalLessons": 10,
+  "percentage": 100
+}
+```
+
 ### Idempotency
 
 The operation is intentionally idempotent at the domain level:
@@ -449,7 +485,7 @@ A successful first call and a repeated successful call both return `200 OK`. The
 ```text
 Authenticated user
   -> request course start
-  -> validate course state/access
+  -> validate course state/content/access
   -> if course_progress exists: return existing state
   -> otherwise create course_progress
   -> return current progress + next lesson
@@ -459,25 +495,42 @@ Starting a course creates `course_progress` only.
 
 It does **not** create `lesson_progress`. A lesson becomes started only through the future lesson-start use case.
 
+### Empty published course
+
+A `PUBLISHED` course with zero relevant (`PUBLISHED`) lessons cannot be started. This is treated as a content/state conflict rather than as a missing course.
+
+Return `409 Conflict`:
+
+```json
+{
+  "error": {
+    "code": "COURSE_HAS_NO_CONTENT",
+    "message": "Course has no available content"
+  }
+}
+```
+
+The start operation must not create `course_progress` in this case.
+
 ### Commercial access rule
 
 Starting a course never creates or modifies `purchase` or `entitlement` records.
 
-The service may allow a user without full commercial access to start a course when the beginning of that course contains accessible free content.
+The service may allow a user without full commercial access to start a course when the first relevant lesson is accessible free content.
 
 Conceptually:
 
 ```text
-Initial content is FREE
+First relevant lesson is FREE
   -> start allowed
 
-Initial content is paid
+First relevant lesson is PAID
   -> valid course purchase? -> allowed
   -> valid Premium subscription? -> allowed
   -> otherwise -> denied
 ```
 
-If the user has no accessible content with which to begin the course, return `403 Forbidden`:
+If the user has no access to the first relevant lesson with which to begin the course, return `403 Forbidden`:
 
 ```json
 {
@@ -494,7 +547,7 @@ This rule preserves the freemium model while keeping learning progress independe
 
 #### PUBLISHED
 
-May be started when the access rule above is satisfied.
+May be started when the content and access rules above are satisfied.
 
 #### COMING_SOON
 
@@ -535,10 +588,11 @@ Conceptually, the service/controller flow should enforce:
 2. Require authenticated user.
 3. Resolve visible course.
 4. Reject COMING_SOON for start.
-5. Determine whether the user can access the initial study content.
-6. Reuse existing course_progress or create it once.
-7. Derive current progress and next lesson.
-8. Return response.
+5. Resolve relevant lessons and reject an empty published course.
+6. Determine whether the user can access the first relevant lesson.
+7. Reuse existing course_progress or create it once.
+8. Derive current progress and next lesson.
+9. Return response.
 ```
 
 HTTP/basic request validation belongs at the boundary. Business decisions such as whether the user can start a course belong in the service layer.
@@ -578,9 +632,32 @@ When future operations require multiple dependent writes that must succeed or fa
 - `403 COURSE_ACCESS_REQUIRED`
 - `404 COURSE_NOT_FOUND`
 - `409 COURSE_NOT_AVAILABLE`
+- `409 COURSE_HAS_NO_CONTENT`
 - `500` unexpected failure
 
 ---
+
+## Authentication boundary for Courses v1
+
+Authentication provider selection is intentionally outside this slice.
+
+For implementation now:
+
+```text
+request
+  -> replaceable auth middleware
+      -> req.auth.userId
+          -> controller
+              -> CourseService(userId, ...)
+```
+
+Rules:
+
+- Courses services receive an application user id; they do not parse tokens.
+- No provider-specific auth SDK may be introduced by Courses v1.
+- A temporary development-only middleware/context may inject a known user id so the HTTP slice can be exercised before real authentication exists.
+- The temporary mechanism must be isolated and replaceable, and must not contain Courses business rules.
+- Unauthenticated requests still map to `401` at the HTTP boundary.
 
 ## Service-layer responsibility
 
