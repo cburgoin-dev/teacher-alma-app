@@ -1,14 +1,12 @@
 import 'dotenv/config';
-import express from 'express';
-import cors from 'cors';
+import { PrismaCourseRepository } from './modules/courses/course.repository.js';
+import { CourseService } from './modules/courses/course.service.js';
+import { createApp } from './shared/app.js';
+import { developmentAuth } from './shared/auth.js';
+import { prisma } from './shared/prisma.js';
 
-const app = express();
-app.use(cors());
-app.use(express.json());
-
-app.get('/health', (_request, response) => {
-  response.json({ status: 'ok' });
-});
+const app = createApp(new CourseService(new PrismaCourseRepository(prisma)),
+  developmentAuth(process.env.NODE_ENV, process.env.DEV_AUTH_USER_ID));
 
 const port = Number(process.env.PORT ?? 3000);
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
