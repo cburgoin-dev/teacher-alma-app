@@ -20,6 +20,25 @@ Meaning:
 
 Premium is not a primary tab for the MVP. It should appear contextually when paid content is reached or from account/access areas.
 
+### Navigation chrome
+
+For the primary browsing/navigation areas, keep the global bottom navigation visible so users can switch sections without backing out of nested course screens.
+
+Bottom navigation should remain visible on:
+
+- Courses catalog.
+- Course Detail.
+- Learning Route / Roadmap.
+
+Learning-flow screens such as Lesson, Activity, Summary and Result may use reduced/immersive chrome and may hide the global bottom navigation when focus benefits from it.
+
+Use two header patterns instead of forcing one identical top bar everywhere:
+
+- **Section/global header:** for top-level areas such as Home and Courses. It may show brand identity and contextual global actions/counters (notifications, coins, streak) only when real data for those elements is available.
+- **Contextual subpage header:** for screens such as Course Detail and Roadmap. It should prioritize back navigation and screen/course context. It does not need to repeat the full logo, notifications, coins and streak on every subpage.
+
+Mockup chrome is a visual reference, not a requirement to duplicate unsupported counters or global actions. Do not fabricate coin/streak/notification values only to match a mockup.
+
 ---
 
 ## Home
@@ -163,9 +182,17 @@ A course may also be marked as free or premium independently from its learning-p
 
 ### Interaction
 
-- Tapping a normal course card opens Course Detail.
-- Home's `Continuar` action may bypass Courses/Detail and go directly to the current lesson.
-- Premium/access-locked content should explain the restriction instead of silently disabling interaction.
+Course-card navigation should reduce unnecessary intermediate screens:
+
+- `AVAILABLE` / not started: open Course Detail before starting.
+- `IN_PROGRESS`: open the Roadmap directly.
+- `COMPLETED`: open the Roadmap directly for review/repetition.
+- `LOCKED_ACCESS`: open Course Detail so the restriction and unlock action can be explained contextually.
+- `COMING_SOON`: open Course Detail in a non-actionable/unavailable state.
+
+Home's `Continuar` action may bypass Courses/Detail/Roadmap and go directly to the current lesson.
+
+Premium/access-locked content should explain the restriction instead of silently disabling interaction.
 
 ---
 
@@ -193,15 +220,21 @@ Optional metadata such as estimated duration should only be added if it becomes 
 
 ### Main CTA by state
 
+Course Detail uses one core layout rather than a separate full-screen design for every progress state.
+
 - `AVAILABLE` / not started: `Comenzar curso`.
-- `IN_PROGRESS`: `Continuar` or `Ver ruta`.
-- `COMPLETED`: `Repasar curso` / `Ver ruta`.
-- `LOCKED_ACCESS`: `Desbloquear` / show Premium flow.
+- `LOCKED_ACCESS`: `Desbloquear` / show contextual Premium or purchase flow.
 - `COMING_SOON`: no start action; clearly communicate unavailable status.
+
+`IN_PROGRESS` and `COMPLETED` courses normally bypass Course Detail from the Courses catalog and open the Roadmap directly. Course Detail may still render safely if reached through another navigation path, but a separate progress-heavy Course Detail variant is not required for Courses v1.
 
 ### Navigation
 
-`Cursos -> Detalle de curso -> Ruta de aprendizaje`
+Primary flows:
+
+- `Courses -> Course Detail -> Start -> Roadmap` for a not-started course.
+- `Courses -> Roadmap` for an in-progress or completed course.
+- `Courses -> Course Detail` for locked-access or coming-soon states.
 
 For an active learner, shortcuts from Home can go directly to the current lesson to reduce friction.
 
