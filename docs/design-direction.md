@@ -17,6 +17,21 @@ Current direction established across Home, Courses, Lesson and Activities:
 - Avoid flags as a recurring visual device.
 - Prefer Alma's real brand assets as they become available: logo, custom illustrations and potentially a digitalized version of her physical doll/character.
 
+## Navigation chrome
+
+Navigation chrome should support orientation without forcing the same header on every screen.
+
+Current direction:
+
+- Keep the primary bottom navigation visible across the main browsing hierarchy, including Courses, Course Detail and Roadmap.
+- Use a richer section/global header on top-level areas when useful.
+- Use a simpler contextual header on nested screens, prioritizing back navigation and screen/course context.
+- Do not repeat the full logo, notification control, coin counter and streak counter on every nested screen by default.
+- Global counters/actions should only be rendered when their real state is available; mockup values are illustrative and must not be fabricated for visual fidelity.
+- Lesson/Activity/Summary/Result belong to a more focused learning flow and may intentionally reduce or hide global chrome.
+
+This chrome model should remain consistent even if individual mockups show slightly different combinations of logo, counters or bottom navigation.
+
 ## Home
 
 Home is currently one of the most mature visual directions.
