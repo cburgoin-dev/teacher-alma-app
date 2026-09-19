@@ -49,7 +49,13 @@ Current provisional direction:
 - Starting a course creates/establishes learner progress for that course.
 - Home should then treat the learner as active and surface the current lesson.
 - Home's `Continuar` action may navigate directly to the current lesson instead of forcing the user through Courses -> Detail -> Roadmap.
-- Course cards in the Courses area normally open Course Detail.
+- Course-card navigation should depend on derived course state rather than always forcing Course Detail:
+  - not started / available -> Course Detail;
+  - in progress -> Roadmap;
+  - completed -> Roadmap;
+  - access-locked -> Course Detail with contextual restriction/unlock action;
+  - coming soon -> Course Detail in a clearly unavailable state.
+- Course Detail should use one core layout for Courses v1; a separate progress-heavy detail variant is not required merely because a course is already in progress.
 
 ### Course completion
 
