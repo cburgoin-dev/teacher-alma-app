@@ -23,7 +23,7 @@ export function CoursesScreen({ navigation }: NativeStackScreenProps<CoursesStac
           <View accessible={false} style={s.brandMark}><View style={s.capBase} /><View style={s.capTop} /><View style={s.tassel} /></View>
           <View><Text style={s.teacher}>La Teacher</Text><Text style={s.alma}>Alma</Text></View>
         </View>
-        <Text style={styles.title}>Explorar cursos</Text>
+        <Text style={[styles.title, { fontSize: 26, lineHeight: 31 }]}>Explorar cursos</Text>
         <Text style={s.subtitle}>Elige tu próximo paso y sigue aprendiendo inglés.</Text>
       </View>}
       ListEmptyComponent={<ResourceState loading={resource.loading} error={resource.error} retry={resource.error ? resource.retry : undefined} empty="Pronto encontrarás aquí nuevos cursos para aprender." />}
@@ -37,7 +37,7 @@ const s = StyleSheet.create({
   brand: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 13 },
   teacher: { color: colors.blue, fontWeight: '800', fontSize: 16, lineHeight: 18 },
   alma: { color: colors.red, fontWeight: '800', fontSize: 23, lineHeight: 25 },
-  subtitle: { color: colors.muted, fontSize: 14, lineHeight: 20 },
+  subtitle: { color: colors.muted, fontSize: 16, lineHeight: 22 },
   brandMark: { width: 33, height: 33 },
   capBase: { width: 22, height: 15, backgroundColor: colors.blue, borderRadius: 7, position: 'absolute', left: 7, top: 14, transform: [{ rotate: '-18deg' }] },
   capTop: { width: 29, height: 15, backgroundColor: colors.blue, position: 'absolute', left: 2, top: 4, transform: [{ rotate: '-25deg' }, { skewX: '-25deg' }] },

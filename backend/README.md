@@ -1,5 +1,7 @@
 # Backend de La Teacher Alma
 
+Tooling de desarrollo para evaluar Courses con PostgreSQL real: [datos demo V3 y reset](scripts/README.md). No requiere nuevas migraciones ni cambios de configuración.
+
 Scaffolding de Node.js, Express, TypeScript, Prisma y PostgreSQL. Los módulos de dominio son placeholders; el único endpoint es `GET /health`, que devuelve `{"status":"ok"}` y no consulta PostgreSQL.
 
 ## Desarrollo

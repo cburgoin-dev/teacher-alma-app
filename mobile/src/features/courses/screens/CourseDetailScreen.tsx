@@ -36,7 +36,7 @@ export function CourseDetailScreen({ route, navigation }: NativeStackScreenProps
     } catch (error) { if (!controller.signal.aborted) setStartError(error); }
     finally { if (request.current === controller) { request.current = null; setStarting(false); } }
   };
-  const labels = { START: 'Comenzar curso  →', ACCESS: 'Información de acceso', SOON: 'Próximamente', EMPTY: 'Contenido próximamente', ROUTE: course.progress?.status === 'COMPLETED' ? 'Repasar curso  →' : 'Continuar  →' };
+  const labels = { START: 'Comenzar curso', ACCESS: 'Información de acceso', SOON: 'Próximamente', EMPTY: 'Contenido próximamente', ROUTE: course.progress?.status === 'COMPLETED' ? 'Repasar curso' : 'Continuar' };
   return <View style={styles.page}>
     <ScrollView contentContainerStyle={styles.content}>
       <Cover uri={course.coverUrl} level={course.level} hero style={local.hero} />
@@ -73,7 +73,7 @@ export function CourseDetailScreen({ route, navigation }: NativeStackScreenProps
     </ScrollView>
     <View style={local.footer}>
       <View style={local.footerInner}>
-        <Button title={labels[action]} busy={starting} disabled={action === 'SOON' || action === 'EMPTY'} tone={action === 'ACCESS' ? 'gold' : action === 'SOON' || action === 'EMPTY' ? 'gray' : 'red'} onPress={action === 'ACCESS' ? showAccessInfo : action === 'ROUTE' ? () => navigation.navigate('Roadmap', { courseId }) : start} />
+        <Button arrow={action === 'START' || action === 'ROUTE'} title={labels[action]} busy={starting} disabled={action === 'SOON' || action === 'EMPTY'} tone={action === 'ACCESS' ? 'gold' : action === 'SOON' || action === 'EMPTY' ? 'gray' : 'red'} onPress={action === 'ACCESS' ? showAccessInfo : action === 'ROUTE' ? () => navigation.navigate('Roadmap', { courseId }) : start} />
       </View>
     </View>
   </View>;

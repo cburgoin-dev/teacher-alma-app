@@ -47,7 +47,7 @@ export function TopicPath({ lessons, startIndex, onLessonPress }: {
             <Text numberOfLines={2} maxFontSizeMultiplier={1.5} style={[s.title, { textAlign: stop.right ? 'right' : 'left' }]}>{startIndex + index + 1}. {lesson.title}</Text>
             <Text numberOfLines={2} maxFontSizeMultiplier={1.5} style={[s.meta, { textAlign: stop.right ? 'right' : 'left' }]}>{lessonLabels[state]}</Text>
             {locked && lesson.progressStatus === 'COMPLETED' ? <Text style={s.meta}>Completada</Text> : null}
-            {expanded[index] ? <View style={{ width: '100%', marginTop: 5 }}><Button compact title={paid ? 'Ver acceso' : 'Continuar →'} tone={paid ? 'gold' : 'red'} onPress={() => onLessonPress(lesson)} /></View> : null}
+            {expanded[index] ? <View style={{ width: '100%', marginTop: 5 }}><Button compact arrow={!paid} title={paid ? 'Ver acceso' : 'Continuar'} tone={paid ? 'gold' : 'red'} onPress={() => onLessonPress(lesson)} /></View> : null}
           </View>
         </View>;
       })}

@@ -1,18 +1,22 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '../../../services/api/client';
 import { colors, radius, type } from '../../../theme';
+import { CourseVisualIcon } from './CourseVisualIcon';
 export { colors } from '../../../theme';
 export { CourseCover as Cover } from './CourseCover';
 
 export type ButtonTone = 'red' | 'blue' | 'gold' | 'gray';
-export function Button({ title, onPress, disabled, busy, tone = 'red', compact = false }: {
-  title: string; onPress?: () => void; disabled?: boolean; busy?: boolean; tone?: ButtonTone; compact?: boolean;
+export function Button({ title, onPress, disabled, busy, tone = 'red', compact = false, arrow = false }: {
+  title: string; onPress?: () => void; disabled?: boolean; busy?: boolean; tone?: ButtonTone; compact?: boolean; arrow?: boolean;
 }) {
   return <Pressable accessibilityRole="button" accessibilityState={{ disabled: disabled || busy, busy }}
-    disabled={disabled || busy} onPress={onPress}
+    disabled={disabled || busy} onPress={onPress} accessibilityLabel={title}
     style={({ pressed }) => [styles.button, compact && styles.compactButton, buttonColors[tone], { opacity: pressed ? .78 : 1 }]}>
     {busy ? <ActivityIndicator color={tone === 'red' ? '#FFF' : colors.blue} /> :
-      <Text maxFontSizeMultiplier={1.5} style={[styles.buttonText, compact && { fontSize: 14, lineHeight: 19 }, { color: textColors[tone] }]}>{title}</Text>}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+        <Text maxFontSizeMultiplier={1.5} style={[styles.buttonText, { flexShrink: 1 }, compact && { fontSize: 14, lineHeight: 19 }, { color: textColors[tone] }]}>{title}</Text>
+        {arrow ? <CourseVisualIcon name="arrow" color={textColors[tone]} size={compact ? 22 : 25} /> : null}
+      </View>}
   </Pressable>;
 }
 const buttonColors = StyleSheet.create({

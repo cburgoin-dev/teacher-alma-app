@@ -59,6 +59,24 @@ Los mockups originales están en `../docs/mockups/courses/`, fuera del bundle. L
 
 ## Pruebas de Courses
 
+### Catálogo demo realista (V3)
+
+Para ver los cuatro cursos desde la app conectada al backend local, ejecutar desde `backend/`:
+
+```powershell
+node --import tsx scripts/seed-courses-demo.ts --apply
+```
+
+No cambia `.env`. Crea datos de desarrollo en PostgreSQL para el usuario ya configurado: A1 con 3/8 completadas (38% visible), A2 disponible con 4 temas/8 lecciones, B1 restringido con 3 temas/6 lecciones y C1 próximo. Las cuatro portadas locales se seleccionan por nivel; `coverUrl` tiene prioridad. Los fixtures técnicos originales se conservan como DRAFT para que no aparezcan en el catálogo.
+
+Para volver a probar **A2 → Detalle → Comenzar curso → Roadmap**, restablecer exclusivamente el progreso demo con `node --import tsx scripts/seed-courses-demo.ts --reset`. Consultar [la guía del seed](../backend/scripts/README.md) para alcance, escenarios, contenido completo y protecciones.
+
+La alternativa `node tests/preview-api.cjs` sigue disponible sin PostgreSQL y ahora utiliza los servicios reales del backend con los mismos datos demo en memoria. Necesita las dependencias ya instaladas de backend. Reiniciar resetea los datos; admite `--long-titles` y `--access-boundary`. Ninguno de esos scripts se importa en el bundle móvil.
+
+V3 añade badges decorativos Premium/Próximamente, flechas nativas más visibles y mayor jerarquía del subtítulo. Mantiene las cards uniformes, la navegación corregida y el mapa serpenteante. No fabrica conteos de catálogo, objetivos de aprendizaje, una etiqueta de dificultad, monedas ni rachas.
+
+Verificación V3 (22 de septiembre): TypeScript mobile y scripts backend sin errores; 9 tests mobile y 27 tests backend/demo aprobados; `expo install --check` correcto. Metro generó y cargó el bundle en Expo Go/Android API 34. Contra PostgreSQL local se recorrió A2 → detalle → comenzar → roadmap, se revisaron las cuatro portadas, niveles, descripciones y overlays, y A1 con tres nodos completados, actual a la derecha y bloqueo por prerrequisito. El escenario alternativo de acceso se comprobó por HTTP. Después se restauró A1 a 3/8 y A2 sin iniciar; reaplicar el seed conservó 4 cursos, 11 temas y 22 lecciones. El guard rechazó NODE_ENV=production. Las cuatro tarjetas requieren desplazamiento; iOS y navegación Android de tres botones siguen sin validación visual en esta iteración.
+
 ```sh
 node --test tests/courses.test.cjs
 npm run typecheck

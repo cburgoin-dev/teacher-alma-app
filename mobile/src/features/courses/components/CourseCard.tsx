@@ -4,6 +4,7 @@ import { NavigationIcon } from '../../../components/NavigationIcon';
 import { catalogLabel } from '../presentation';
 import type { CatalogCourse } from '../types';
 import { Cover, ProgressBar } from './ui';
+import { CourseVisualIcon } from './CourseVisualIcon';
 
 export function CourseCard({ course, onPress }: { course: CatalogCourse; onPress: () => void }) {
   const { fontScale } = useWindowDimensions();
@@ -20,7 +21,7 @@ export function CourseCard({ course, onPress }: { course: CatalogCourse; onPress
   return <Pressable accessibilityRole="button" accessibilityLabel={course.title + '. ' + catalogLabel(course)}
     onPress={onPress} style={({ pressed }) => [s.shadow, { opacity: pressed ? .82 : 1 }]}>
     <View style={[s.card, { height: 184 + 130 * (scale - 1) }, locked && s.locked]}>
-      <Cover uri={course.coverUrl} level={course.level} style={s.cover} />
+      <Cover uri={course.coverUrl} level={course.level} style={s.cover} badge={soon ? 'soon' : locked ? 'premium' : undefined} />
       <View style={s.body}>
         <View style={[s.titleRow, { height: 40 * scale }]}>
           <Text numberOfLines={2} ellipsizeMode="tail" maxFontSizeMultiplier={1.5} style={s.title}>{course.title}</Text>
@@ -34,7 +35,7 @@ export function CourseCard({ course, onPress }: { course: CatalogCourse; onPress
         <View style={s.progressSlot}>{course.progress ? <ProgressBar percentage={course.progress.percentage} red compact /> : null}</View>
         <View style={[s.cta, { backgroundColor: background }]}>
           <Text maxFontSizeMultiplier={1.5} numberOfLines={1} style={[s.ctaLabel, { color: tint }]}>{catalogLabel(course)}</Text>
-          {!soon ? <Text accessible={false} style={[s.arrow, { color: tint }]}>→</Text> : null}
+          {!soon ? <CourseVisualIcon name="arrow" color={tint} size={23} /> : null}
         </View>
       </View>
     </View>
@@ -47,7 +48,7 @@ const s = StyleSheet.create({
   cover: { width: '37%', height: '100%' },
   body: { flex: 1, padding: 10, justifyContent: 'space-between' },
   titleRow: { flexDirection: 'row', gap: 4, alignItems: 'flex-start' },
-  title: { flex: 1, fontSize: 17, lineHeight: 20, includeFontPadding: false, fontWeight: '800', letterSpacing: -.35, color: colors.ink },
+  title: { flex: 1, fontSize: 16, lineHeight: 20, includeFontPadding: false, fontWeight: '800', letterSpacing: -.25, color: colors.ink },
   chevron: { color: colors.muted, fontSize: 25, lineHeight: 25, marginTop: 3 },
   description: { fontSize: 13, lineHeight: 17, includeFontPadding: false, color: colors.muted },
   metadata: { flexDirection: 'row', alignItems: 'center', gap: 5 },
@@ -55,5 +56,4 @@ const s = StyleSheet.create({
   progressSlot: { height: 17, justifyContent: 'center' },
   cta: { borderRadius: 30, minHeight: 37, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingVertical: 7, paddingHorizontal: 8 },
   ctaLabel: { fontSize: 14, lineHeight: 20, fontWeight: '700', flexShrink: 1 },
-  arrow: { fontSize: 21, lineHeight: 23 },
 });

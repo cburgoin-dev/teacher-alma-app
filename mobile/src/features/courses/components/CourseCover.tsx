@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Image, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { colors } from '../../../theme';
+import { CourseVisualIcon } from './CourseVisualIcon';
 
 const covers = {
   A1: require('../../../../assets/courses/a1-london.png'),
@@ -12,8 +13,8 @@ const covers = {
 };
 const captions: Record<string, string> = { A1: 'Good things\nstart here', A2: 'Bigger conversations\nawait' };
 
-export function CourseCover({ uri, level, style, hero = false }: {
-  uri: string | null; level: string | null; style?: ViewStyle; hero?: boolean;
+export function CourseCover({ uri, level, style, hero = false, badge }: {
+  uri: string | null; level: string | null; style?: ViewStyle; hero?: boolean; badge?: 'premium' | 'soon' | undefined;
 }) {
   const [failedUri, setFailedUri] = useState<string | null>(null);
   const key = level?.trim().toUpperCase() ?? '';
@@ -23,8 +24,12 @@ export function CourseCover({ uri, level, style, hero = false }: {
     <View style={[s.cover, style]}>
       <Image source={source} resizeMode="cover" style={[s.image, hero && fallback && s.heroImage]}
         onError={() => setFailedUri(uri)} accessibilityIgnoresInvertColors accessible={false} />
-      {fallback && !hero && captions[key] ? <View pointerEvents="none" style={s.captionShade}>
+      {fallback && !hero && !badge && captions[key] ? <View pointerEvents="none" style={s.captionShade}>
         <Text maxFontSizeMultiplier={1.2} style={s.caption}>{captions[key]}</Text>
+      </View> : null}
+      {!hero && badge ? <View pointerEvents="none" style={[s.statusBadge, badge === 'soon' && s.soonBadge]}>
+        <CourseVisualIcon name={badge === 'soon' ? 'clock' : 'lock'} color={badge === 'soon' ? '#FFF' : colors.gold} size={15} />
+        <Text numberOfLines={1} maxFontSizeMultiplier={1.2} style={[s.statusText, badge === 'soon' && { color: '#FFF' }]}>{badge === 'soon' ? 'Próximamente' : 'Premium'}</Text>
       </View> : null}
       {level ? <View style={[s.badge, hero && s.heroBadge]}><Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={[s.level, hero && s.heroLevel]}>{level}</Text></View> : null}
     </View>
@@ -41,4 +46,7 @@ const s = StyleSheet.create({
   heroLevel: { fontSize: 25, lineHeight: 31 },
   captionShade: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#004BA9B8', padding: 9, paddingBottom: 12 },
   caption: { color: colors.white, fontSize: 14, lineHeight: 17, fontWeight: '700', fontStyle: 'italic' },
+  statusBadge: { position: 'absolute', bottom: 10, left: 7, right: 7, paddingHorizontal: 6, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, borderRadius: 10, backgroundColor: '#FFE9B5' },
+  soonBadge: { backgroundColor: '#172C49C9' },
+  statusText: { flexShrink: 1, fontSize: 11, lineHeight: 15, fontWeight: '700', color: colors.gold },
 });
