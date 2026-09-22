@@ -39,7 +39,7 @@ export function CourseDetailScreen({ route, navigation }: NativeStackScreenProps
   const labels = { START: 'Comenzar curso', ACCESS: 'Información de acceso', SOON: 'Próximamente', EMPTY: 'Contenido próximamente', ROUTE: course.progress?.status === 'COMPLETED' ? 'Repasar curso' : 'Continuar' };
   return <View style={styles.page}>
     <ScrollView contentContainerStyle={styles.content}>
-      <Cover uri={course.coverUrl} level={course.level} hero style={local.hero} />
+      <Cover uri={course.coverUrl} level={course.level} hero badge={action === 'ACCESS' ? 'premium' : action === 'SOON' ? 'soon' : undefined} style={local.hero} />
       <View style={local.intro}>
         <Text style={styles.title}>{course.title}</Text>
         {course.description ? <Text style={local.description}>{course.description}</Text> : null}

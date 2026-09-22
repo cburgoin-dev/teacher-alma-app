@@ -30,7 +30,7 @@ const textColors = { red: '#FFF', blue: colors.blue, gold: colors.gold, gray: co
 export function ProgressBar({ percentage, red = false, compact = false }: { percentage: number; red?: boolean; compact?: boolean }) {
   const value = Math.max(0, Math.min(100, percentage));
   return <View style={styles.progressRow} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: value }}>
-    <View style={[styles.track, compact && { height: 7 }]}><View style={[styles.fill, { width: `${value}%`, backgroundColor: red ? colors.red : colors.blue }]}><View style={styles.progressShine} /></View></View>
+    <View style={[styles.track, compact && { height: 9 }]}><View style={[styles.fill, { width: `${value}%`, backgroundColor: red ? colors.red : colors.blue }]}><View style={styles.progressShine} /></View></View>
     <Text maxFontSizeMultiplier={1.4} style={[styles.percent, compact && { fontSize: 12, lineHeight: 16 }]}>{Math.round(value)}%</Text>
   </View>;
 }

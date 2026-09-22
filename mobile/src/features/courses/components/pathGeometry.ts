@@ -1,6 +1,21 @@
 export type MapPoint = { x: number; y: number };
 export type MapStop = MapPoint & { top: number; height: number; size: number; right: boolean };
 
+// Section markers add room inside a single global coordinate system.
+// Neither ordering nor learning/access states are decided here.
+export function courseStops(width: number, expanded: boolean[], sectionStarts: boolean[], fontScale = 1): MapStop[] {
+  const scale = Math.max(1, Math.min(fontScale, 1.5));
+  let shift = 0;
+  return serpentineStops(width, expanded, 0, fontScale).map((stop, index) => {
+    const lead = sectionStarts[index] ? 64 * scale : 0;
+    const result = { ...stop, top: stop.top + shift, y: stop.y + shift + lead, height: stop.height + lead };
+    shift += lead;
+    // Leave room for the current card, but no full empty stop after the last lesson.
+    if (index === expanded.length - 1) result.height = result.y - result.top + (expanded[index] ? 100 * scale : 60 * scale);
+    return result;
+  });
+}
+
 // Only viewport/presentation inputs: no course rules, IDs, progress or access.
 export function serpentineStops(width: number, expanded: boolean[], startIndex = 0, fontScale = 1): MapStop[] {
   const scale = Math.max(1, Math.min(fontScale, 1.5));
@@ -16,7 +31,16 @@ export function serpentineStops(width: number, expanded: boolean[], startIndex =
 }
 
 // Sample a cubic curve, then place short dashes at approximately equal distances.
-export function curvedDashes(from: MapStop, to: MapStop) {
+export function curvedDashes(from: MapStop, to: MapStop, sectionTransition = false): (MapPoint & { angle: number })[] {
+  // Finish the lateral turn before the new section; descend beside its text.
+  if (sectionTransition) {
+    const approach = { ...to, y: to.top - 16, size: 0 };
+    const dots = curvedDashes(from, approach);
+    for (let y = approach.y + 7; y < to.y - to.size / 2 - 5; y += 13) {
+      dots.push({ x: to.x, y, angle: 90 });
+    }
+    return dots;
+  }
   const middle = (from.y + to.y) / 2;
   const result: (MapPoint & { angle: number })[] = [];
   let previous: MapPoint = from;

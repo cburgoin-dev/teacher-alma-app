@@ -16,6 +16,10 @@ export function PathScenery({ variant, right }: { variant: number; right: boolea
       <View style={[s.leaf, { left: 42, transform: [{ rotate: '30deg' }] }]} />
       <View style={s.ground} />
     </View> : null}
+    {variant === 3 ? <View style={s.calendar}>
+      <View style={s.calendarTop} />
+      <View style={s.days}>{[0, 1, 2, 3, 4, 5].map(day => <View key={day} style={s.day} />)}</View>
+    </View> : null}
   </View>;
 }
 const s = StyleSheet.create({
@@ -29,4 +33,8 @@ const s = StyleSheet.create({
   garden: { marginTop: 15 },
   leaf: { position: 'absolute', width: 27, height: 37, borderRadius: 18, backgroundColor: '#ADD5BB' },
   ground: { position: 'absolute', top: 28, left: -3, width: 78, height: 13, borderRadius: 10, backgroundColor: '#C8E4D5' },
+  calendar: { width: 39, height: 43, marginLeft: 16, backgroundColor: '#F7FBFF', borderWidth: 1, borderColor: '#D6E2EE', borderRadius: 5, transform: [{ rotate: '9deg' }], overflow: 'hidden' },
+  calendarTop: { height: 10, backgroundColor: '#EC8497' },
+  days: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, padding: 5 },
+  day: { width: 6, height: 7, backgroundColor: '#8DBBE2', borderRadius: 2 },
 });

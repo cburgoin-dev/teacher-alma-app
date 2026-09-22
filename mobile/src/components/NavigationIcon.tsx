@@ -27,5 +27,5 @@ const s = StyleSheet.create({
   shoulders: { width: 22, height: 11, borderTopLeftRadius: 12, borderTopRightRadius: 12, borderWidth: 2 },
   roof: { width: 16, height: 16, borderTopWidth: 2, borderLeftWidth: 2, transform: [{ rotate: '45deg' }], position: 'absolute', top: 2 },
   house: { width: 18, height: 15, borderWidth: 2, borderTopWidth: 0, borderBottomLeftRadius: 3, borderBottomRightRadius: 3, marginTop: 9 },
-  door: { position: 'absolute', bottom: 1, width: 7, height: 9, borderWidth: 2, borderBottomWidth: 0, borderTopLeftRadius: 3, borderTopRightRadius: 3, backgroundColor: '#FFF' },
+  door: { position: 'absolute', bottom: 0, width: 7, height: 10, borderWidth: 2, borderBottomWidth: 0, borderTopLeftRadius: 3, borderTopRightRadius: 3, backgroundColor: '#FFF' },
 });

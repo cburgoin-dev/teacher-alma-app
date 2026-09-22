@@ -15,7 +15,7 @@ export function RootNavigator() {
   const insets = useSafeAreaInsets();
   const { fontScale } = useWindowDimensions();
   const bottomPadding = Math.max(insets.bottom, 8);
-  const contentHeight = 62 + 18 * (Math.min(fontScale, 1.5) - 1);
+  const contentHeight = 56 + 18 * (Math.max(1, Math.min(fontScale, 1.5)) - 1);
   return (
     <NavigationContainer>
       <Tabs.Navigator screenOptions={({ route }) => ({
@@ -24,9 +24,9 @@ export function RootNavigator() {
         tabBarIcon: ({ color, focused }) => <NavigationIcon name={route.name} color={color} filled={focused} />,
         tabBarLabelPosition: 'below-icon',
         tabBarLabel: ({ color, children }) => <Text maxFontSizeMultiplier={1.5} style={{ color, fontSize: 12, lineHeight: 18, fontWeight: '600', includeFontPadding: false, textAlign: 'center' }}>{children}</Text>,
-        tabBarIconStyle: { width: 28, height: 28, marginBottom: 3 },
+        tabBarIconStyle: { width: 28, height: 28, marginBottom: 1 },
         tabBarItemStyle: { paddingVertical: 0 },
-        tabBarStyle: { height: contentHeight + bottomPadding, paddingTop: 7, paddingBottom: bottomPadding, borderTopColor: '#DEEAFA', backgroundColor: '#FFF' },
+        tabBarStyle: { height: contentHeight + bottomPadding, paddingTop: 4, paddingBottom: bottomPadding, borderTopColor: '#DEEAFA', backgroundColor: '#FFF' },
       })}>
         <Tabs.Screen name="Home" component={HomeScreen} options={{ title: 'Inicio' }} />
         <Tabs.Screen name="CoursesTab" component={CoursesNavigator} options={{ title: 'Cursos', headerShown: false }} />

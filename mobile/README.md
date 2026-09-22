@@ -87,6 +87,16 @@ Las pruebas cubren navegación, acceso a la primera lección, curso vacío, COMI
 
 Para reproducir estados visuales sin modificar PostgreSQL, ejecutar `node tests/preview-api.cjs` y apuntar el proceso de Expo al puerto local 3101. En un emulador Android conectado por ADB, `adb reverse tcp:3101 tcp:3101` permite usar `http://127.0.0.1:3101` como URL temporal. Los datos de ese servidor son **fixtures de prueba** en memoria, no datos de negocio ni un fallback de la app. Reiniciarlo devuelve A2 al estado no iniciado. No se distribuye con la aplicación.
 
+### Quinta iteración visual (V5)
+
+`CoursePath` sustituye a `TopicPath`: aplana las lecciones en el orden recibido, conserva `lessonState()` y calcula un único recorrido para el curso. `courseStops` reserva espacio para hitos de tema; los conectores giran antes del encabezado y descienden por el lado del nodo, sin reiniciar el camino. El último tramo se acorta y termina en «Fin de la ruta», sin premios ni acciones nuevas. Nubes, libros, vegetación y un calendario se distribuyen a ambos lados; se eliminaron los grandes fondos semicirculares.
+
+Catálogo: se eliminó el slot flexible de progreso y no se renderiza si no hay progreso; metadata de 13 px, barra compacta de 9 px y cards uniformes de 188 px con aumento por escala de fuente. Detail reutiliza la variante de badge según la acción existente (acceso/próximamente/normal). Tabs: contenido de 56 px más safe area y crecimiento por texto; puerta de Home sin línea inferior residual. API, reglas, inicio y dependencias permanecen intactos.
+
+Validación V5: TypeScript correcto, 10 tests móviles (incluyen continuidad entre temas y exclusión de conectores del área de encabezados en anchos 280/320/360/600 y escalas 1/1.3/1.5), 3 tests demo del backend y `expo install --check` correctos. El escenario `accessBoundary` se verificó con el servicio real y repositorio en memoria: la siguiente lección es actual/desbloqueada por progresión, sin acceso y con motivo ACCESS; no se cambió estado en frontend. La verificación visual del dorado y del nuevo recorrido requiere Android físico: no había dispositivo conectado y el equipo tenía unos 88 MiB libres, por lo que no se insistió con el emulador.
+
+La base local quedó restaurada con el seed existente: A1 3/8 (38% visual), A2 sin iniciar; 4 cursos, 11 temas, 22 lecciones, 1 course_progress y 3 lesson_progress demo. Para verificar sin tocar PostgreSQL: `node tests/preview-api.cjs --access-boundary`; reiniciar sin ese flag vuelve a la demo principal. En Android físico comprobar Catalog, Detail A2 («Puedes comenzar gratis» y «Comenzar curso»), Detail B1/C1, transición entre todos los temas, final, textos largos y tabs con fuente ampliada. iOS sigue pendiente; no se afirma validación visual completa.
+
 ### Cuarta iteración visual (V4)
 
 Refinamiento sobre V3: badges de nivel aproximadamente 25–30% menores, texto de catálogo más prominente y agrupado, flechas CTA reducidas, slogans inclinados e iconos nativos de Inicio/Cursos revisados. El detalle permite comenzar con copy positivo y mantiene la explicación explícita cuando el acceso está bloqueado.

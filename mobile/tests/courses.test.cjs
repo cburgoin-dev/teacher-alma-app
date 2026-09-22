@@ -10,7 +10,39 @@ require.extensions['.ts'] = (module, filename) => module._compile(ts.transpileMo
 const { catalogDestination, catalogLabel, detailAction, lessonState } = require('../src/features/courses/presentation.ts');
 const { coursesApi } = require('../src/features/courses/api/courses.ts');
 const { ApiError } = require('../src/services/api/client.ts');
-const { serpentineStops, curvedDashes } = require('../src/features/courses/components/pathGeometry.ts');
+const { serpentineStops, curvedDashes, courseStops } = require('../src/features/courses/components/pathGeometry.ts');
+
+test('one course path connects all topic boundaries, preserves order and trims only the final tail', () => {
+  const starts = [true, false, false, true, false, true, true, false];
+  for (const width of [280, 320, 360, 600]) {
+    for (const scale of [1, 1.3, 1.5]) {
+      for (const current of [3, 4, 7]) {
+        const expanded = starts.map((_, i) => i === current);
+        const stops = courseStops(width, expanded, starts, scale);
+        assert.equal(stops.length, 8);
+        stops.forEach((stop, i) => {
+          assert.equal(stop.right, i % 2 === 1);
+          assert.ok(stop.x - stop.size / 2 >= 0 && stop.x + stop.size / 2 <= width);
+          if (i) {
+            assert.ok(Math.abs(stop.top - stops[i - 1].top - stops[i - 1].height) < 1e-6);
+            const connector = curvedDashes(stops[i - 1], stop, starts[i]);
+            assert.ok(connector.length > 5);
+            if (starts[i]) {
+              assert.ok(connector.some(dot => dot.y < stop.top));
+              assert.ok(connector.some(dot => dot.y > stop.top));
+              const labelLeft = stop.right ? 4 : stop.x + stop.size / 2 + 12;
+              const labelRight = stop.right ? stop.x - stop.size / 2 - 12 : width - 4;
+              assert.ok(connector.every(dot => !(dot.y >= stop.top && dot.y <= stop.top + 54 * scale && dot.x >= labelLeft && dot.x <= labelRight)), 'connector must not pass through topic text');
+            }
+          }
+        });
+        const last = stops.at(-1);
+        assert.ok(last.top + last.height - last.y <= (expanded[7] ? 100 : 60) * scale + 1e-6);
+      }
+    }
+  }
+  assert.deepEqual(courseStops(320, [], [], 1), []);
+});
 
 const course = { id: '550e8400-e29b-41d4-a716-446655440000', status: 'PUBLISHED', progress: null, access: { hasFullAccess: false, hasFreeContent: true, source: 'NONE' } };
 const lesson = { progressStatus: 'NOT_STARTED', access: { type: 'FREE', hasAccess: true }, progression: { unlocked: true, isCurrent: false, lockReason: null } };
