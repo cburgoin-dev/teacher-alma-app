@@ -15,7 +15,7 @@ export function Button({ title, onPress, disabled, busy, tone = 'red', compact =
     {busy ? <ActivityIndicator color={tone === 'red' ? '#FFF' : colors.blue} /> :
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
         <Text maxFontSizeMultiplier={1.5} style={[styles.buttonText, { flexShrink: 1 }, compact && { fontSize: 14, lineHeight: 19 }, { color: textColors[tone] }]}>{title}</Text>
-        {arrow ? <CourseVisualIcon name="arrow" color={textColors[tone]} size={compact ? 22 : 25} /> : null}
+        {arrow ? <CourseVisualIcon name="arrow" color={textColors[tone]} size={compact ? 18 : 21} /> : null}
       </View>}
   </Pressable>;
 }

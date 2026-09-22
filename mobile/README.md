@@ -87,6 +87,14 @@ Las pruebas cubren navegación, acceso a la primera lección, curso vacío, COMI
 
 Para reproducir estados visuales sin modificar PostgreSQL, ejecutar `node tests/preview-api.cjs` y apuntar el proceso de Expo al puerto local 3101. En un emulador Android conectado por ADB, `adb reverse tcp:3101 tcp:3101` permite usar `http://127.0.0.1:3101` como URL temporal. Los datos de ese servidor son **fixtures de prueba** en memoria, no datos de negocio ni un fallback de la app. Reiniciarlo devuelve A2 al estado no iniciado. No se distribuye con la aplicación.
 
+### Cuarta iteración visual (V4)
+
+Refinamiento sobre V3: badges de nivel aproximadamente 25–30% menores, texto de catálogo más prominente y agrupado, flechas CTA reducidas, slogans inclinados e iconos nativos de Inicio/Cursos revisados. El detalle permite comenzar con copy positivo y mantiene la explicación explícita cuando el acceso está bloqueado.
+
+El roadmap conserva `pathGeometry` y las reglas de estados. COMPLETED usa verde/check nativo, CURRENT rojo, AVAILABLE azul, prerrequisitos gris y acceso dorado. `PathScenery` añade nubes, libros y vegetación decorativos, sin interacción ni información de dominio. La nueva referencia está en `docs/mockups/courses/roadmap-gamified-reference.png`; no se añadió la mascota.
+
+Validación automatizada: TypeScript sin errores, 9 tests móviles aprobados y `expo install --check` correcto. Metro generó el bundle Android (992 módulos). La revisión visual V4 sigue pendiente: Expo Go y System UI se bloquearon, y un nuevo arranque del emulador terminó cerrándose; el equipo tenía aproximadamente 214 MiB de RAM libre. No se considera validada todavía la ausencia de recortes/overlaps en Catalog, Detail A2 o Roadmap A1. Repetir en un dispositivo Android o con memoria suficiente, incluyendo el escenario de acceso del preview existente, sin modificar PostgreSQL.
+
 ### Segunda iteración visual (septiembre de 2026)
 
 - `src/theme.ts` centraliza colores, espaciado, tipografía, radios y sombras. `CourseCard`, `CourseCover`, `TopicPath` y `pathGeometry` separan composición visual y geometría de las reglas de presentación existentes.

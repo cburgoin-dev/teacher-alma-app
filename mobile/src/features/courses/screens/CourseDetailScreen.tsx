@@ -53,11 +53,12 @@ export function CourseDetailScreen({ route, navigation }: NativeStackScreenProps
       <View style={[local.info, action === 'ACCESS' && local.accessInfo]}>
         <View style={[local.infoIcon, action === 'ACCESS' && { backgroundColor: '#FBE4B6' }]}><NavigationIcon name="CoursesTab" color={action === 'ACCESS' ? colors.gold : colors.blue} size={25} /></View>
         <View style={{ flex: 1, gap: 5 }}>
-          <Text style={local.infoTitle}>{action === 'SOON' || action === 'EMPTY' ? 'Un nuevo curso está en camino' : 'Tu acceso al curso'}</Text>
+          <Text style={local.infoTitle}>{action === 'SOON' || action === 'EMPTY' ? 'Un nuevo curso está en camino' : action === 'START' && !course.access.hasFullAccess ? 'Puedes comenzar gratis' : 'Tu acceso al curso'}</Text>
           <Text style={local.infoText}>{action === 'SOON' || action === 'EMPTY'
             ? 'El contenido estará disponible próximamente.'
             : course.access.hasFullAccess ? 'Tienes acceso completo a todas las lecciones.'
-            : course.content.freeLessonCount > 0 ? `${course.content.freeLessonCount} lecciones gratuitas para explorar.${course.content.freeLessonCount < course.content.lessonCount ? ' El resto requiere acceso al curso o Premium.' : ''}`
+            : action === 'START' ? 'Explora las primeras lecciones y avanza a tu ritmo.'
+            : action !== 'ACCESS' && course.content.freeLessonCount > 0 ? 'Continúa explorando las lecciones de tu ruta.'
             : 'Este curso requiere acceso al curso o una membresía Premium.'}</Text>
         </View>
       </View>
@@ -83,8 +84,8 @@ const local = StyleSheet.create({
   intro: { gap: 7 }, description: { color: colors.muted, fontSize: 17, lineHeight: 24 },
   metrics: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 18, rowGap: 8, paddingVertical: 2 },
   metric: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  metricText: { fontSize: 13, lineHeight: 19, color: colors.muted, fontWeight: '600' },
-  documentIcon: { width: 15, height: 19, borderWidth: 1.8, borderColor: colors.muted, borderRadius: 2, padding: 3, gap: 3, justifyContent: 'center' },
+  metricText: { fontSize: 14, lineHeight: 21, color: colors.muted, fontWeight: '700' },
+  documentIcon: { width: 17, height: 21, borderWidth: 1.8, borderColor: colors.muted, borderRadius: 2, padding: 3, gap: 3, justifyContent: 'center' },
   documentLine: { height: 1.4, backgroundColor: colors.muted },
   info: { flexDirection: 'row', alignItems: 'flex-start', borderRadius: 18, padding: 14, gap: 11, backgroundColor: colors.pale, borderWidth: 1, borderColor: colors.border },
   accessInfo: { backgroundColor: '#FFFAF0', borderColor: '#F4E6CC' },

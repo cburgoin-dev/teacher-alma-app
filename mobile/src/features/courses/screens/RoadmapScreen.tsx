@@ -35,9 +35,7 @@ export function RoadmapScreen({ route }: NativeStackScreenProps<CoursesStackPara
       globalIndex += topic.lessons.length;
       return <View key={topic.id} style={local.map}>
         <View pointerEvents="none" accessible={false} style={local.scenery}>
-          <View style={[local.cloud, { top: 65, left: -110, backgroundColor: '#E8F4FF' }]} />
-          <View style={[local.cloud, { top: '42%', right: -135, backgroundColor: '#E1F1FF' }]} />
-          <View style={[local.cloud, { bottom: -130, left: -125, backgroundColor: '#E3F4F0' }]} />
+          <View style={[local.cloud, topicIndex % 2 === 0 ? { top: 80, left: -170 } : { bottom: 0, right: -175 }, { backgroundColor: topicIndex % 2 === 0 ? '#F0F8FF' : '#F0F8F3' }]} />
         </View>
         <View style={local.topicHeader}>
           <View style={local.topicBadge}><Text style={local.topicNumber}>{topicIndex + 1}</Text></View>
@@ -57,7 +55,7 @@ const local = StyleSheet.create({
   map: { paddingHorizontal: 18 },
   scenery: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, overflow: 'hidden' },
   cloud: { position: 'absolute', width: 210, height: 220, borderRadius: 110 },
-  topicHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18, paddingTop: 4, paddingHorizontal: 4 },
+  topicHeader: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 10, paddingTop: 4, paddingHorizontal: 4 },
   topicBadge: { width: 32, height: 32, borderRadius: 12, backgroundColor: '#EDF4FE', borderWidth: 1, borderColor: '#DBE8FA', alignItems: 'center', justifyContent: 'center' },
   topicNumber: { color: colors.blue, fontSize: 15, fontWeight: '700' },
   eyebrow: { color: colors.muted, fontSize: 9, lineHeight: 14, letterSpacing: 1.1, fontWeight: '700' },
