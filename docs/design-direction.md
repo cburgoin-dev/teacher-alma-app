@@ -106,6 +106,16 @@ Preferred qualities:
 
 ### Current mockup status
 
+A newer gamified roadmap reference is now the preferred **art-direction reference** for future Roadmap refinement and should be stored at:
+
+```text
+docs/mockups/courses/roadmap-gamified-reference.png
+```
+
+It should guide visual richness, stronger differentiation between lesson states, ambient illustration and emphasis of the current lesson. It is a visual reference rather than a rigid screen specification: existing business rules, progression/access semantics and responsive path geometry remain authoritative.
+
+The earlier roadmap mockup remains useful as historical context and should not be deleted solely because this newer direction is preferred.
+
 No single roadmap mockup should currently be treated as final.
 
 The latest exploration produced several useful directions. The more gamified alternatives are preferred for future refinement, but the final composition should be validated during frontend implementation with Alma.
