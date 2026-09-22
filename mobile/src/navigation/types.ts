@@ -1,10 +1,9 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
 
-// Placeholders do not select or fetch a real course yet.
 export type CoursesStackParamList = {
   Courses: undefined;
-  CourseDetail: undefined;
-  Roadmap: undefined;
+  CourseDetail: { courseId: string };
+  Roadmap: { courseId: string };
 };
 
 export type RootTabParamList = {

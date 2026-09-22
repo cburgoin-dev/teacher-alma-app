@@ -5,18 +5,21 @@ import { CoursesNavigator } from '../features/courses/navigation/CoursesNavigato
 import { ProgressScreen } from '../features/progress/screens/ProgressScreen';
 import { ProfileScreen } from '../features/profile/screens/ProfileScreen';
 import type { RootTabParamList } from './types';
+import { NavigationIcon } from '../components/NavigationIcon';
 
 const Tabs = createBottomTabNavigator<RootTabParamList>();
 
 export function RootNavigator() {
   return (
     <NavigationContainer>
-      <Tabs.Navigator screenOptions={{
-        tabBarActiveTintColor: '#183b70',
-        tabBarIcon: () => null,
-        tabBarIconStyle: { display: 'none' },
-        tabBarLabelStyle: { fontSize: 13 },
-      }}>
+      <Tabs.Navigator screenOptions={({ route }) => ({
+        tabBarActiveTintColor: '#0063EE',
+        tabBarInactiveTintColor: '#60759C',
+        tabBarIcon: ({ color }) => <NavigationIcon name={route.name} color={color} />,
+        tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
+        tabBarItemStyle: { paddingVertical: 4 },
+        tabBarStyle: { borderTopColor: '#DEEAFA', backgroundColor: '#FFF' },
+      })}>
         <Tabs.Screen name="Home" component={HomeScreen} options={{ title: 'Inicio' }} />
         <Tabs.Screen name="CoursesTab" component={CoursesNavigator} options={{ title: 'Cursos', headerShown: false }} />
         <Tabs.Screen name="Progress" component={ProgressScreen} options={{ title: 'Progreso' }} />
