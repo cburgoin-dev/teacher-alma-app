@@ -1,14 +1,14 @@
 import { useCallback } from 'react';
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { CoursesStackParamList } from '../../../navigation/types';
 import { coursesApi } from '../api/courses';
 import { useCourseResource } from '../hooks/useCourseResource';
-import { lessonLabels, lessonState } from '../presentation';
-import { Button, colors, ProgressBar, ResourceState, styles } from '../components/ui';
+import { lessonState } from '../presentation';
+import { colors, ProgressBar, ResourceState, styles } from '../components/ui';
 import { showAccessInfo } from '../components/accessInfo';
+import { TopicPath } from '../components/TopicPath';
 import type { Lesson } from '../types';
-import { NavigationIcon } from '../../../components/NavigationIcon';
 
 function openLesson(lesson: Lesson) {
   const state = lessonState(lesson);
@@ -21,45 +21,45 @@ export function RoadmapScreen({ route }: NativeStackScreenProps<CoursesStackPara
   if ((!resource.data && resource.loading) || resource.error || !resource.data) return <View style={styles.page}><ResourceState loading={resource.loading} error={resource.error} retry={resource.retry} /></View>;
   const roadmap = resource.data;
   let globalIndex = 0;
-  return <ScrollView style={styles.page} contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={resource.loading} onRefresh={resource.retry} tintColor={colors.blue} />}>
-    <View style={local.summary}><Text style={local.courseChip}>{roadmap.course.title}</Text><ProgressBar percentage={roadmap.progress.percentage} /><Text style={local.summaryText}>{roadmap.progress.completedLessons} de {roadmap.progress.totalLessons} lecciones completadas</Text></View>
-    {roadmap.progress.totalLessons > 0 && roadmap.progress.completedLessons === roadmap.progress.totalLessons ? <Text style={local.complete}>¡Curso completado! Tu ruta sigue aquí para repasar.</Text> : null}
-    {!roadmap.topics.length ? <ResourceState empty="La ruta de este curso estará disponible próximamente." /> : roadmap.topics.map((topic, topicIndex) => <View key={topic.id}>
-      <View style={local.topicHeader}><Text style={local.topicNumber}>TEMA {topicIndex + 1}</Text><Text style={styles.heading}>{topic.title}</Text></View>
-      {topic.lessons.map((lesson, lessonIndex) => {
-        const index = globalIndex++;
-        const state = lessonState(lesson);
-        const current = state === 'CURRENT';
-        const locked = state === 'LOCKED_ACCESS' || state === 'LOCKED_PREREQUISITE';
-        const tone = state === 'LOCKED_ACCESS' ? '#EAAF3C' : state === 'LOCKED_PREREQUISITE' ? colors.gray : current ? colors.red : colors.blue;
-        const offset = [0, 22, 10, 30][index % 4];
-        return <View key={lesson.id} style={[local.stop, { paddingLeft: offset }]}>
-          <View style={local.nodeColumn}>
-            {lessonIndex < topic.lessons.length - 1 ? <View pointerEvents="none" style={[local.connector, { transform: [{ rotate: index % 2 ? '12deg' : '-12deg' }] }]} /> : null}
-            <Pressable accessibilityRole="button" accessibilityLabel={lesson.title + '. ' + lessonLabels[state] + (lesson.progressStatus === 'COMPLETED' && locked ? '. Completada' : '')} onPress={() => openLesson(lesson)} style={({ pressed }) => [local.halo, { backgroundColor: current ? '#FFE4E8' : locked ? '#E9EFF6' : '#E1EFFF', opacity: pressed ? .7 : 1 }]}>
-              <View style={[local.node, { backgroundColor: tone }]}>{locked ? <View><View style={local.shackle} /><View style={local.lockBody}><View style={local.keyhole} /></View></View> : current ? <NavigationIcon name="CoursesTab" color="#FFF" size={32} /> : <Text style={local.symbol}>{state === 'COMPLETED' ? '✓' : '›'}</Text>}</View>
-            </Pressable>
-          </View>
-          <View style={[local.lessonText, current && local.currentCard]}><Text style={local.lessonTitle}>{index + 1}. {lesson.title}</Text><Text style={local.lessonMeta}>{lessonLabels[state]}</Text>
-            {locked && lesson.progressStatus === 'COMPLETED' ? <Text style={local.lessonMeta}>Completada</Text> : null}
-            {current ? <Button title="Continuar  →" onPress={() => openLesson(lesson)} /> : null}
-            {lesson.progression.isCurrent && state === 'LOCKED_ACCESS' ? <><Text style={local.lessonMeta}>Tu siguiente lección</Text><Button title="Ver acceso" tone="gold" onPress={showAccessInfo} /></> : null}
-          </View>
-        </View>;
-      })}
-    </View>)}
+  return <ScrollView style={styles.page} contentContainerStyle={local.content}
+    refreshControl={<RefreshControl refreshing={resource.loading} onRefresh={resource.retry} tintColor={colors.blue} />}>
+    <View style={local.summary}>
+      <Text style={local.courseChip}>{roadmap.course.title}</Text>
+      <ProgressBar percentage={roadmap.progress.percentage} />
+      <Text style={local.summaryText}>{roadmap.progress.completedLessons} de {roadmap.progress.totalLessons} lecciones completadas</Text>
+    </View>
+    {roadmap.progress.totalLessons > 0 && roadmap.progress.completedLessons === roadmap.progress.totalLessons
+      ? <Text style={local.complete}>¡Curso completado! Tu ruta sigue aquí para repasar.</Text> : null}
+    {!roadmap.topics.length ? <ResourceState empty="La ruta de este curso estará disponible próximamente." /> : roadmap.topics.map((topic, topicIndex) => {
+      const startIndex = globalIndex;
+      globalIndex += topic.lessons.length;
+      return <View key={topic.id} style={local.map}>
+        <View pointerEvents="none" accessible={false} style={local.scenery}>
+          <View style={[local.cloud, { top: 65, left: -110, backgroundColor: '#E8F4FF' }]} />
+          <View style={[local.cloud, { top: '42%', right: -135, backgroundColor: '#E1F1FF' }]} />
+          <View style={[local.cloud, { bottom: -130, left: -125, backgroundColor: '#E3F4F0' }]} />
+        </View>
+        <View style={local.topicHeader}>
+          <View style={local.topicBadge}><Text style={local.topicNumber}>{topicIndex + 1}</Text></View>
+          <View style={{ flex: 1 }}><Text style={local.eyebrow}>TEMA {topicIndex + 1}</Text><Text style={local.topicTitle}>{topic.title}</Text></View>
+        </View>
+        <TopicPath lessons={topic.lessons} startIndex={startIndex} onLessonPress={openLesson} />
+      </View>;
+    })}
   </ScrollView>;
 }
 const local = StyleSheet.create({
-  summary: { gap: 12 }, courseChip: { alignSelf: 'flex-start', paddingHorizontal: 13, paddingVertical: 7, borderRadius: 18, backgroundColor: '#E4F0FF', color: colors.blue, fontWeight: '700', fontSize: 15 },
-  summaryText: { color: colors.muted, fontSize: 13 }, complete: { color: colors.blue, backgroundColor: colors.pale, padding: 16, borderRadius: 18, fontSize: 16 },
-  topicHeader: { gap: 5, marginTop: 10, marginBottom: 22 }, topicNumber: { color: colors.muted, fontSize: 11, letterSpacing: 1.5, fontWeight: '700' },
-  stop: { flexDirection: 'row', alignItems: 'center', minHeight: 146, gap: 12, paddingBottom: 24 }, nodeColumn: { alignSelf: 'stretch', width: 84, justifyContent: 'center', alignItems: 'center' },
-  connector: { position: 'absolute', top: '50%', height: '150%', borderLeftWidth: 3, borderStyle: 'dashed', borderColor: '#A4B8D3' },
-  halo: { width: 84, height: 84, padding: 6, borderRadius: 42, elevation: 2, shadowColor: '#476B9F', shadowOffset: { width: 0, height: 3 }, shadowOpacity: .12, shadowRadius: 6 },
-  node: { flex: 1, borderRadius: 38, borderWidth: 2, borderColor: '#FFFFFF80', alignItems: 'center', justifyContent: 'center' },
-  symbol: { color: '#FFF', fontSize: 37, fontWeight: '800' }, lessonText: { flex: 1, gap: 6 }, lessonTitle: { color: colors.ink, fontSize: 17, lineHeight: 23, fontWeight: '700' }, lessonMeta: { fontSize: 13, lineHeight: 18, color: colors.muted },
-  currentCard: { borderRadius: 20, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#FFE0E7', padding: 12, gap: 10 },
-  shackle: { width: 16, height: 15, borderWidth: 3, borderColor: '#FFF', borderTopLeftRadius: 10, borderTopRightRadius: 10, alignSelf: 'center', marginBottom: -3 },
-  lockBody: { width: 25, height: 22, backgroundColor: '#FFF', borderRadius: 4, alignItems: 'center', justifyContent: 'center' }, keyhole: { width: 4, height: 8, borderRadius: 3, backgroundColor: colors.gray },
+  content: { paddingTop: 6, paddingBottom: 16, width: '100%', maxWidth: 640, alignSelf: 'center' },
+  summary: { paddingHorizontal: 20, gap: 9, paddingBottom: 14 },
+  courseChip: { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: '#E3F0FF', color: colors.blue, fontWeight: '700', fontSize: 13, lineHeight: 18 },
+  summaryText: { color: colors.muted, fontSize: 11, lineHeight: 16 },
+  complete: { color: colors.blue, backgroundColor: colors.pale, padding: 14, borderRadius: 18, fontSize: 15, marginHorizontal: 20, marginBottom: 14 },
+  map: { paddingHorizontal: 18 },
+  scenery: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, overflow: 'hidden' },
+  cloud: { position: 'absolute', width: 210, height: 220, borderRadius: 110 },
+  topicHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18, paddingTop: 4, paddingHorizontal: 4 },
+  topicBadge: { width: 32, height: 32, borderRadius: 12, backgroundColor: '#EDF4FE', borderWidth: 1, borderColor: '#DBE8FA', alignItems: 'center', justifyContent: 'center' },
+  topicNumber: { color: colors.blue, fontSize: 15, fontWeight: '700' },
+  eyebrow: { color: colors.muted, fontSize: 9, lineHeight: 14, letterSpacing: 1.1, fontWeight: '700' },
+  topicTitle: { color: colors.ink, fontSize: 15, lineHeight: 21, fontWeight: '700' },
 });

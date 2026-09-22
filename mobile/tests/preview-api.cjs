@@ -10,6 +10,12 @@ const courses = [
   { title: 'Inglés C1', level: 'C1', description: 'Exprésate con fluidez en contextos avanzados.', started: false, completed: 0, soon: true },
 ].map((course, index) => ({ ...course, id: uuid(index + 1), position: index + 1 }));
 const titles = ['Saludos', 'Presentaciones', 'Nice to meet you!', 'Rutinas diarias'];
+// Optional visual stress case. Only affects this in-memory test server.
+if (process.argv.includes('--long-titles')) {
+  courses[0].title = 'DEV TEST - PUBLISHED - Curso de inglés para conversaciones y situaciones cotidianas';
+  courses[1].title = 'Inglés A2: conversaciones, presentaciones y nuevas experiencias';
+  titles[1] = 'Presentaciones y conversaciones con personas que acabas de conocer';
+}
 function counts(course) { return { completedLessons: course.completed, totalLessons: course.soon ? 0 : 4, percentage: course.completed * 25 }; }
 function identity(course) { return { id: course.id, title: course.title, level: course.level }; }
 function describe(course) {

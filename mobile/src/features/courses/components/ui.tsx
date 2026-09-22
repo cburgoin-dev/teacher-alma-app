@@ -1,27 +1,33 @@
-import { useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '../../../services/api/client';
+import { colors, radius, type } from '../../../theme';
+export { colors } from '../../../theme';
+export { CourseCover as Cover } from './CourseCover';
 
-export const colors = { ink: '#101B4D', muted: '#60759C', blue: '#0063EE', pale: '#EFF6FF', border: '#DEEAFA', red: '#F52642', gold: '#8A590C', goldLight: '#FFF0CF', gray: '#7E91AC' };
-export function Button({ title, onPress, disabled, busy, tone = 'red' }: { title: string; onPress?: () => void; disabled?: boolean; busy?: boolean; tone?: 'red' | 'blue' | 'gold' | 'gray' }) {
-  const backgroundColor = tone === 'red' ? colors.red : tone === 'blue' ? '#DEEDFF' : tone === 'gold' ? colors.goldLight : '#E3EAF3';
-  const color = tone === 'red' ? '#FFF' : tone === 'blue' ? colors.blue : tone === 'gold' ? colors.gold : colors.muted;
-  return <Pressable accessibilityRole="button" accessibilityState={{ disabled: disabled || busy, busy }} disabled={disabled || busy} onPress={onPress} style={({ pressed }) => [styles.button, { backgroundColor, opacity: pressed ? .75 : 1 }]}>
-    {busy ? <ActivityIndicator color={color} /> : <Text style={[styles.buttonText, { color }]}>{title}</Text>}
+export type ButtonTone = 'red' | 'blue' | 'gold' | 'gray';
+export function Button({ title, onPress, disabled, busy, tone = 'red', compact = false }: {
+  title: string; onPress?: () => void; disabled?: boolean; busy?: boolean; tone?: ButtonTone; compact?: boolean;
+}) {
+  return <Pressable accessibilityRole="button" accessibilityState={{ disabled: disabled || busy, busy }}
+    disabled={disabled || busy} onPress={onPress}
+    style={({ pressed }) => [styles.button, compact && styles.compactButton, buttonColors[tone], { opacity: pressed ? .78 : 1 }]}>
+    {busy ? <ActivityIndicator color={tone === 'red' ? '#FFF' : colors.blue} /> :
+      <Text maxFontSizeMultiplier={1.5} style={[styles.buttonText, compact && { fontSize: 14, lineHeight: 19 }, { color: textColors[tone] }]}>{title}</Text>}
   </Pressable>;
 }
-export function ProgressBar({ percentage, red = false }: { percentage: number; red?: boolean }) {
+const buttonColors = StyleSheet.create({
+  red: { backgroundColor: colors.red, borderBottomColor: '#DE1A35' },
+  blue: { backgroundColor: '#DFEEFF', borderBottomColor: '#CADFFB' },
+  gold: { backgroundColor: colors.goldLight, borderBottomColor: '#F2DEB2' },
+  gray: { backgroundColor: '#E3EAF3', borderBottomColor: '#D8E0EC' },
+});
+const textColors = { red: '#FFF', blue: colors.blue, gold: colors.gold, gray: colors.muted };
+
+export function ProgressBar({ percentage, red = false, compact = false }: { percentage: number; red?: boolean; compact?: boolean }) {
   const value = Math.max(0, Math.min(100, percentage));
   return <View style={styles.progressRow} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: value }}>
-    <View style={styles.track}><View style={[styles.fill, { width: `${value}%`, backgroundColor: red ? colors.red : colors.blue }]} /></View>
-    <Text style={styles.percent}>{Math.round(value)}%</Text>
-  </View>;
-}
-export function Cover({ uri, level, style }: { uri: string | null; level: string | null; style?: ViewStyle }) {
-  const [failedUri, setFailedUri] = useState<string | null>(null);
-  return <View style={[styles.cover, style]}>
-    {uri && uri !== failedUri ? <Image source={{ uri }} resizeMode="cover" style={StyleSheet.absoluteFill} onError={() => setFailedUri(uri)} accessibilityIgnoresInvertColors /> : <View style={styles.coverFallback} accessible={false}><View style={styles.orbit} /><View style={styles.orbitSmall} /><Text style={styles.coverMark}>Aa</Text></View>}
-    {level ? <View style={styles.level}><Text style={styles.levelText}>{level}</Text></View> : null}
+    <View style={[styles.track, compact && { height: 7 }]}><View style={[styles.fill, { width: `${value}%`, backgroundColor: red ? colors.red : colors.blue }]}><View style={styles.progressShine} /></View></View>
+    <Text maxFontSizeMultiplier={1.4} style={[styles.percent, compact && { fontSize: 12, lineHeight: 16 }]}>{Math.round(value)}%</Text>
   </View>;
 }
 export function errorMessage(error: unknown): string {
@@ -46,18 +52,17 @@ export function ResourceState({ loading, error, retry, empty }: { loading?: bool
   </View>;
 }
 export const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: '#FFF' }, content: { padding: 20, paddingBottom: 32, gap: 18, width: '100%', maxWidth: 720, alignSelf: 'center' },
-  title: { fontSize: 29, fontWeight: '800', color: colors.ink, letterSpacing: -.7 }, heading: { fontSize: 21, fontWeight: '700', color: colors.ink },
-  body: { fontSize: 16, lineHeight: 23, color: colors.muted },
-  button: { minHeight: 48, paddingVertical: 12, paddingHorizontal: 18, borderRadius: 30, justifyContent: 'center', alignItems: 'center' },
-  buttonText: { fontSize: 17, fontWeight: '700', textAlign: 'center' },
-  progressRow: { flexDirection: 'row', alignItems: 'center', gap: 10 }, track: { height: 10, flex: 1, backgroundColor: '#DBE6F3', borderRadius: 10, overflow: 'hidden' },
-  fill: { height: '100%', borderRadius: 10 }, percent: { color: colors.muted, fontSize: 15, fontWeight: '700' },
-  cover: { backgroundColor: '#D9ECFF', overflow: 'hidden', minHeight: 165 }, coverFallback: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#D9ECFF' },
-  coverMark: { fontSize: 54, fontWeight: '800', color: '#669BDD', transform: [{ rotate: '-12deg' }] },
-  orbit: { width: 180, height: 180, borderRadius: 90, backgroundColor: '#BFDDFB', position: 'absolute', left: -60, bottom: -70 },
-  orbitSmall: { width: 130, height: 130, borderRadius: 65, borderWidth: 24, borderColor: '#EBF5FF', position: 'absolute', right: -45, top: -50 },
-  level: { position: 'absolute', left: 12, top: 12, borderRadius: 17, backgroundColor: colors.blue, paddingHorizontal: 14, paddingVertical: 9 },
-  levelText: { fontSize: 20, fontWeight: '800', color: '#FFF' }, state: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 30, gap: 18 },
+  page: { flex: 1, backgroundColor: '#FFF' },
+  content: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 24, gap: 16, width: '100%', maxWidth: 640, alignSelf: 'center' },
+  title: type.title, heading: type.heading, body: type.body,
+  button: { minHeight: 48, paddingVertical: 11, paddingHorizontal: 18, borderRadius: radius.pill, borderBottomWidth: 2, justifyContent: 'center', alignItems: 'center' },
+  compactButton: { minHeight: 40, paddingVertical: 8, paddingHorizontal: 10 },
+  buttonText: { fontSize: 17, lineHeight: 23, fontWeight: '700', textAlign: 'center' },
+  progressRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  track: { height: 12, flex: 1, backgroundColor: '#DDE7F3', borderRadius: 10, overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: 10, overflow: 'hidden' },
+  progressShine: { position: 'absolute', top: 2, left: 5, right: 5, height: 2, borderRadius: 2, backgroundColor: '#FFFFFF35' },
+  percent: { color: colors.muted, fontSize: 17, lineHeight: 22, fontWeight: '700' },
+  state: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 30, gap: 18 },
   stateTitle: { fontSize: 22, color: colors.ink, fontWeight: '700' },
 });

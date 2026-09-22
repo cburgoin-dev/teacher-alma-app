@@ -55,7 +55,7 @@ Las variables `EXPO_PUBLIC_*` son públicas y quedan incluidas en la aplicación
 
 Los assets y el aviso de licencia incluidos proceden de la plantilla oficial de Expo; no son la identidad visual definitiva de Teacher Alma. No se seleccionaron librerías de estado, caché, autenticación ni UI. Backend, Prisma y migraciones permanecen fuera de esta tarea.
 
-Los mockups originales están en `../docs/mockups/courses/`, fuera del bundle. Las portadas usan `coverUrl`, con un fondo gráfico neutro cuando no hay imagen o falla su carga. No se fabrican monedas, racha, notificaciones, objetivos de aprendizaje ni métricas no devueltas por la API. El roadmap agrupa nodos de **lecciones** por tema; los temas no se convierten en lecciones como podría sugerir el mockup. Los personajes, fotos y logo final requieren assets propios; la marca actual se presenta como texto.
+Los mockups originales están en `../docs/mockups/courses/`, fuera del bundle. Las portadas priorizan `coverUrl` y utilizan imágenes decorativas locales por nivel cuando no hay URL o falla su carga. Su procedencia, mapeo y prompts están en `assets/courses/README.md`. No se fabrican monedas, racha, notificaciones, objetivos de aprendizaje ni métricas no devueltas por la API. El roadmap agrupa nodos de **lecciones** por tema; los temas no se convierten en lecciones como podría sugerir el mockup. El personaje y el logo final siguen pendientes de assets oficiales; la marca actual usa texto y formas nativas.
 
 ## Pruebas de Courses
 
@@ -69,7 +69,22 @@ Las pruebas cubren navegación, acceso a la primera lección, curso vacío, COMI
 
 Para reproducir estados visuales sin modificar PostgreSQL, ejecutar `node tests/preview-api.cjs` y apuntar el proceso de Expo al puerto local 3101. En un emulador Android conectado por ADB, `adb reverse tcp:3101 tcp:3101` permite usar `http://127.0.0.1:3101` como URL temporal. Los datos de ese servidor son **fixtures de prueba** en memoria, no datos de negocio ni un fallback de la app. Reiniciarlo devuelve A2 al estado no iniciado. No se distribuye con la aplicación.
 
-### Resultado de esta implementación
+### Segunda iteración visual (septiembre de 2026)
+
+- `src/theme.ts` centraliza colores, espaciado, tipografía, radios y sombras. `CourseCard`, `CourseCover`, `TopicPath` y `pathGeometry` separan composición visual y geometría de las reglas de presentación existentes.
+- Catálogo: tarjetas de altura uniforme, portada izquierda, badges de nivel, dos líneas reservadas para título/descripción y CTA consistente. La altura acompaña la escala de fuente hasta 1.5. El nombre completo sigue disponible en la etiqueta accesible.
+- Detalle: hero panorámico, metadata compacta, filas de temas y CTA fijo sobre la navegación. Una misma estructura cubre inicio, acceso, progreso y próximo lanzamiento.
+- Roadmap: centros alternados al 20%/80% del ancho disponible, conectores Bézier punteados, cinco estados visuales y expansión solo del nodo actual. La geometría depende del viewport y escala de texto, sin definir reglas de acceso o progreso.
+- Tabs: altura de contenido explícita, inset inferior real, padding mínimo, separación icono/label y lineHeight definido. Las cuatro etiquetas se verificaron completas sobre la barra de gestos Android.
+- Sin cambios a dependencias, backend, contratos, modelo, API, hooks ni reglas de navegación. No se implementan lecciones ni compras.
+
+Verificación: TypeScript sin errores, nueve pruebas aprobadas (las ocho funcionales previas más geometría responsive), `expo install --check` correcto y Metro generando/cargando el bundle Android. La geometría se prueba con anchos 280/320/360/600 y escalas 1/1.3/1.5.
+
+En Expo Go/Android API 34 se revisaron catálogo y sus cuatro tarjetas, títulos largos sin desbordamiento, portadas/badges, detalle de inicio y acceso, detalle COMING_SOON con CTA deshabilitado, inicio de A2 y actualización del catálogo, y mapas con nodo actual en ambos lados, completado y bloqueo por prerrequisito. Se utilizaron fixtures HTTP en memoria, sin alterar PostgreSQL. Para repetir el caso de títulos largos: `node tests/preview-api.cjs --long-titles`.
+
+Limitaciones: iOS y navegación Android de tres botones requieren comprobación en dispositivo; el emulador utilizado tiene navegación por gestos. La validación de escalas de fuente/ancho del mapa es automatizada, no una matriz visual de dispositivos. El emulador mostró avisos de System UI sin respuesta durante el arranque, pero posteriormente permitió recorrer las pantallas. Las portadas generadas no sustituyen arte oficial; no se reproduce la mascota ni el decorado completo del mockup. La API determina el contenido y los estados, por lo que los cursos de desarrollo sin nivel o descripción conservan esas ausencias.
+
+### Resultado de la primera implementación
 
 - Ocho pruebas automatizadas aprobadas; TypeScript sin errores; dependencias compatibles con Expo.
 - Metro arrancó y generó el bundle Android.

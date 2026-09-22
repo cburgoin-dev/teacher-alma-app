@@ -10,10 +10,32 @@ require.extensions['.ts'] = (module, filename) => module._compile(ts.transpileMo
 const { catalogDestination, catalogLabel, detailAction, lessonState } = require('../src/features/courses/presentation.ts');
 const { coursesApi } = require('../src/features/courses/api/courses.ts');
 const { ApiError } = require('../src/services/api/client.ts');
+const { serpentineStops, curvedDashes } = require('../src/features/courses/components/pathGeometry.ts');
 
 const course = { id: '550e8400-e29b-41d4-a716-446655440000', status: 'PUBLISHED', progress: null, access: { hasFullAccess: false, hasFreeContent: true, source: 'NONE' } };
 const lesson = { progressStatus: 'NOT_STARTED', access: { type: 'FREE', hasAccess: true }, progression: { unlocked: true, isCurrent: false, lockReason: null } };
 const roadmap = { topics: [{ lessons: [lesson] }] };
+
+test('responsive path alternates sides with wide amplitude and keeps nodes inside the viewport', () => {
+  for (const width of [280, 320, 360, 600]) {
+    for (const scale of [1, 1.3, 1.5]) {
+      const stops = serpentineStops(width, [false, true, false, false], 0, scale);
+      stops.forEach((stop, index) => {
+        assert.ok(stop.x - stop.size / 2 >= 0);
+        assert.ok(stop.x + stop.size / 2 <= width);
+        if (index) {
+          assert.notEqual(stop.right, stops[index - 1].right);
+          assert.ok(Math.abs(stop.x - stops[index - 1].x) >= width * .59);
+          assert.ok(stop.y - stops[index - 1].y > (stop.size + stops[index - 1].size) / 2);
+        }
+      });
+      const dashes = curvedDashes(stops[0], stops[1]);
+      assert.ok(dashes.length > 5);
+      assert.ok(dashes.every(dot => dot.x > 0 && dot.x < width && Number.isFinite(dot.angle)));
+    }
+  }
+  assert.equal(serpentineStops(360, [false], 1)[0].right, true);
+});
 
 test('unstarted and locked courses navigate to detail', () => {
   assert.equal(catalogDestination(course), 'CourseDetail');
