@@ -287,6 +287,18 @@ Conceptual states:
 - `LOCKED_PREREQUISITE`: explain what must be completed first.
 - `LOCKED_ACCESS`: open contextual Premium/unlock information.
 
+### Initial roadmap positioning
+
+When opening an already-started course, the roadmap should not force the learner to manually scroll from the beginning every time.
+
+Preferred behavior:
+
+- On initial entry to an `IN_PROGRESS` roadmap, automatically position the viewport around the `CURRENT` lesson node.
+- For a completed course, position near the last relevant/final lesson segment rather than always at the top.
+- Keep the learner free to scroll anywhere immediately after that initial positioning.
+- Do not keep auto-scrolling while the learner is already browsing the roadmap.
+- This is a frontend usability behavior only; it must not alter progression/access rules or couple domain logic to a specific path geometry.
+
 ### Topics/modules
 
 For the roadmap-first direction, topics should function primarily as visual/structural separators for groups of lesson nodes rather than becoming large accordion/list cards.
@@ -377,14 +389,17 @@ A block is a content unit; a step is a presentation/navigation unit. Several blo
 
 A lesson should remain visually cleaner and more focused than Home or the Roadmap.
 
-Typical header/content hierarchy:
+Preferred compact hierarchy:
 
-- Back navigation.
-- Topic/unit name.
-- Lesson position (for example `Lección 2 de 8`).
-- Lesson progress bar.
+- A lightweight blue back chevron.
+- Topic/unit name as the main contextual title.
+- Lesson position (for example `4 de 8` or `Lección 4 de 8`) aligned compactly in the same header row when practical.
+- Lesson progress bar directly below that context.
+- Level chip only when it adds useful orientation.
 - Current step content.
-- Clear primary CTA (`Continuar`, `Comprobar`, `Finalizar lección`, etc.).
+- One dominant primary CTA (`Continuar`, `Comprobar`, `Finalizar lección`, etc.).
+
+Avoid spending a separate large row on duplicated topic/lesson metadata when the same information can live in the contextual header. Activity steps should not repeatedly render a large lesson title when the learner already has enough context from the header.
 
 The progress bar represents **lesson/content progression**, not academic correctness.
 
@@ -418,12 +433,27 @@ An activity can therefore be completed/submitted even when answered incorrectly.
 ### Navigation and resume
 
 - Entering a new lesson starts at the first required step.
-- Re-entering an `IN_PROGRESS` lesson resumes at the **start of the last meaningful pending/current step**.
-- Resume is step-level only for the MVP; exact scroll position and exact video timestamp do not need to be restored.
+- The current implemented/backend behavior for an `IN_PROGRESS` lesson is to resume at the **start of the last meaningful pending/current step**.
+- Resume is step-level only; exact scroll position and exact video timestamp do not need to be restored.
 - The learner may revisit previous content within the lesson.
 - Required future content should not be silently skipped when sequential progression applies.
-- Leaving the lesson before completion preserves completed-step progress and submitted activity attempts.
-- This behavior is intended mainly as resilience for interruptions; short lessons should still feel lightweight rather than like long resumable courses.
+- Leaving the lesson before completion currently preserves completed-step progress and submitted activity attempts.
+
+**Product decision still pending:** short language-learning lessons may ultimately restart from the beginning when abandoned, closer to the behavior of some language-learning apps. Do not simulate a restart only in the frontend while persisted attempts/progress/review still belong to the previous run. If restart semantics are adopted, define explicitly what happens to lesson progress, first-attempt scoring, attempts and Review before changing the implementation.
+
+For the current Lessons visual-refinement iteration, keep the existing resume semantics and treat restart behavior as a separate product/backend decision.
+
+### In-lesson navigation density
+
+The active learning flow should avoid presenting many competing exit/navigation actions at once.
+
+Preferred rule:
+
+- One primary action per state.
+- At most one secondary contextual action when it is genuinely useful.
+- The top back control should handle returning to the previous meaningful lesson step, and from the first step it may exit back to the Roadmap.
+- Avoid repeating permanent `Volver al contenido` and `Volver a la ruta` links below every activity when the same navigation is already available contextually.
+- Repeating a completed lesson should not introduce a separate `Continuar repaso` CTA; `Continuar` remains sufficient unless a real Review session is being run.
 
 ### Typical flow
 
@@ -438,9 +468,12 @@ Its purpose is pedagogical: remind the learner what was learned before formally 
 It may contain:
 
 - Key takeaways.
-- Important phrases/concepts.
-- Optional audio/replay actions.
+- Important phrases/concepts when those concepts are actually represented by available lesson data.
+- Optional audio/replay actions only when supported by real data/behavior.
+- A compact completion indicator such as the number of activities traversed when it can be derived reliably.
 - A `Finalizar lección` CTA.
+
+Avoid duplicating the heading `Resumen de la lección` as both the page title and an identical card title without a hierarchy reason. Prefer a richer but data-backed summary composition rather than inventing unsupported sections only to match a mockup.
 
 ### Current visual direction
 
@@ -507,26 +540,30 @@ Typical transition:
 
 The Result screen should normally include:
 
-- Clear lesson-completed state.
+- Clear lesson-completed state with a stronger visual hero than a plain isolated heading.
 - Lesson title/name.
-- Academic result, such as `8/10 respuestas correctas`.
-- Gamification reward, such as coins; streak may be surfaced when relevant.
+- Academic result based on the score contract.
 - Updated course progress.
-- Pending-review count when incorrect attempts exist.
+- Pending-review count when incorrect first attempts exist.
+- The next lesson/access state when available.
 - A clear next action.
 
-Academic score and gamification rewards remain separate concepts.
+For Lessons v1, the score is based on the **first submitted attempt** for each relevant activity. Result copy should make that understandable when needed (for example, `correctas al primer intento`) so a learner who later succeeds on a retry is not confused by the persisted score.
+
+Gamification rewards such as coins/streak should only appear after real reward data and behavior exist. Academic score and gamification rewards remain separate concepts.
 
 ### Actions
 
 Primary action:
 
 - `Siguiente lección` when another accessible lesson exists.
+- When the next lesson is commercially blocked, present it contextually as the **next step** with Premium/access-required state and an `Obtener acceso` / `Desbloquear` action rather than as an unrelated payment card.
 
-Secondary actions:
+Secondary action:
 
 - `Volver a la ruta`.
-- `Repasar errores` when review items exist.
+
+`Repasar errores` should become actionable when the real Review session flow exists. Until then, pending review may be shown informationally (for example, `2 ejercicios para reforzar`) without a dead CTA.
 
 If there is no next accessible lesson, the primary action should adapt instead of showing a dead-end `Siguiente lección` button.
 
