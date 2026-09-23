@@ -688,4 +688,630 @@ The first implementation should cover only these four contracts and the minimal 
 
 Do not invent additional public endpoints, payment behavior, lesson-start behavior, activity behavior or admin behavior as part of this slice.
 
-The next likely contracts after Courses v1 are lesson start/content and activity attempts, but they should be defined separately before implementation.
+The next likely contracts after Courses v1 are lesson start/content and activity attempts; those contracts are defined below for Lessons v1.
+
+---
+
+# Lessons v1 contracts
+
+Lessons v1 covers the focused learning loop from a roadmap lesson node through content, practice, summary and persisted lesson completion. It intentionally does not implement the full Review, Gamification, Payments or Admin vertical slices.
+
+## Lessons v1 scope and invariants
+
+Typical MVP lesson shape:
+
+```text
+CONTENT_STEP
+  -> ACTIVITY_STEP
+  -> optional ACTIVITY_STEP
+  -> SUMMARY_STEP
+  -> complete
+  -> Result
+```
+
+This is a common shape, not a fixed required count. Lessons are intended to remain concise, generally around 5–15 minutes.
+
+Stable rules:
+
+- Reading lesson content has no side effects.
+- Starting a lesson never silently starts its parent course.
+- The parent course must already be started/completed for the learner before a normal lesson can be started.
+- Learning progression and commercial access are both validated by the backend.
+- Completion and correctness are separate.
+- Incorrect practice answers do not block lesson completion.
+- Score uses the first submitted attempt for each relevant activity.
+- Retries are stored but do not rewrite the first-attempt lesson score.
+- Incorrect attempts create/update Review data; an immediate retry does not silently resolve that Review item.
+- Exact coin rewards, streak changes and purchase flows remain outside Lessons v1.
+
+## Step derivation
+
+The database persists ordered `lesson_blocks`; the API exposes presentation-oriented steps.
+
+Derivation for Lessons v1:
+
+1. Consecutive explanatory blocks `TEXT`, `VIDEO`, `IMAGE` and `EXAMPLE` are grouped into one `CONTENT_STEP`.
+2. Each `ACTIVITY` block becomes one `ACTIVITY_STEP`.
+3. Each `SUMMARY` block becomes one `SUMMARY_STEP`.
+4. Order is preserved.
+5. A step identifier must be deterministic for the current lesson structure. The implementation may use the first/source block UUID as the public `step.id`; clients must treat it as opaque.
+
+No `lesson_steps` persistence table is required for v1.
+
+## Public block payloads
+
+The following shapes define the minimum renderer-facing payloads. Optional fields may be omitted when unused.
+
+### TEXT
+
+```json
+{
+  "type": "TEXT",
+  "title": "El verbo to be",
+  "body": "..."
+}
+```
+
+### IMAGE
+
+```json
+{
+  "type": "IMAGE",
+  "url": "https://...",
+  "alt": "Descripción de la imagen",
+  "caption": "..."
+}
+```
+
+### VIDEO
+
+```json
+{
+  "type": "VIDEO",
+  "url": "https://...",
+  "title": "Explicación",
+  "posterUrl": "https://...",
+  "caption": "..."
+}
+```
+
+Lessons v1 does not require 100% playback or exact video-position persistence.
+
+### EXAMPLE
+
+```json
+{
+  "type": "EXAMPLE",
+  "title": "Ejemplo",
+  "primaryText": "I am a student.",
+  "secondaryText": "Soy estudiante.",
+  "note": "..."
+}
+```
+
+### SUMMARY
+
+```json
+{
+  "type": "SUMMARY",
+  "title": "Resumen de la lección",
+  "points": [
+    "Punto principal",
+    "Frase útil"
+  ]
+}
+```
+
+## Activity public configuration
+
+The backend may persist answer keys/accepted answers inside `activities.config`, but the lesson read contract must never expose private validation keys directly to the client.
+
+### MULTIPLE_CHOICE
+
+Public example:
+
+```json
+{
+  "id": "activity-uuid",
+  "type": "MULTIPLE_CHOICE",
+  "prompt": "¿Qué responderías?",
+  "options": [
+    { "id": "a", "text": "I'm fine, thanks." },
+    { "id": "b", "text": "Goodbye." }
+  ]
+}
+```
+
+Private configuration may additionally contain the correct option id.
+
+### FILL_BLANK_OPTIONS
+
+Public example:
+
+```json
+{
+  "id": "activity-uuid",
+  "type": "FILL_BLANK_OPTIONS",
+  "prompt": "_____! Nice to meet you.",
+  "options": [
+    { "id": "a", "text": "Hello" },
+    { "id": "b", "text": "Goodbye" }
+  ],
+  "hint": "..."
+}
+```
+
+### FILL_BLANK_TEXT
+
+Public example:
+
+```json
+{
+  "id": "activity-uuid",
+  "type": "FILL_BLANK_TEXT",
+  "prompt": "I _____ a student.",
+  "hint": "...",
+  "caseSensitive": false
+}
+```
+
+Accepted answers remain server-side.
+
+### MATCH_WORD_IMAGE
+
+Public example:
+
+```json
+{
+  "id": "activity-uuid",
+  "type": "MATCH_WORD_IMAGE",
+  "prompt": "Relaciona cada palabra con su imagen",
+  "interactionMode": "TAP",
+  "words": [
+    { "id": "w1", "text": "Hello" }
+  ],
+  "images": [
+    { "id": "i1", "url": "https://...", "alt": "Saludo" }
+  ]
+}
+```
+
+Supported presentation hints are `TAP` and `DRAG`. Both submit the same logical pair mapping. The backend validates pairs and is intentionally unaware of the gesture used.
+
+---
+
+## 5. GET /lessons/:lessonId
+
+### Purpose
+
+Return the authenticated learner-facing lesson structure and current persisted progress without starting or mutating the lesson.
+
+### Authentication
+
+Required.
+
+### Success response
+
+`200 OK`
+
+```json
+{
+  "lesson": {
+    "id": "lesson-uuid",
+    "title": "Nice to meet you!",
+    "description": "Presentaciones básicas",
+    "accessType": "FREE",
+    "topic": {
+      "id": "topic-uuid",
+      "title": "Saludos y presentaciones"
+    },
+    "course": {
+      "id": "course-uuid",
+      "title": "Inglés A1",
+      "level": "A1"
+    },
+    "position": {
+      "lesson": 2,
+      "totalLessons": 8
+    }
+  },
+  "state": {
+    "status": "NOT_STARTED",
+    "canStart": true,
+    "lockReason": null,
+    "currentStepId": null
+  },
+  "steps": [
+    {
+      "id": "step-opaque-id",
+      "type": "CONTENT_STEP",
+      "required": true,
+      "blocks": []
+    }
+  ]
+}
+```
+
+For an in-progress lesson, `currentStepId` identifies the step at whose beginning the client should resume.
+
+For a completed lesson, content remains readable/repeatable; reading it does not clear completion or create a new scored run.
+
+### Read-only behavior
+
+This endpoint must not create or update:
+
+- `course_progress`
+- `lesson_progress`
+- `lesson_block_progress`
+- `activity_attempts`
+- `review_items`
+- entitlements
+- gamification records
+
+### Relevant failures
+
+- `400 INVALID_LESSON_ID`
+- `401` unauthenticated
+- `403 LESSON_ACCESS_REQUIRED` when commercial access is the blocking reason
+- `404 LESSON_NOT_FOUND` for hidden/unpublished/non-existent content
+- `409 LESSON_PREREQUISITE_REQUIRED` when progression does not permit entry
+- `500` unexpected failure
+
+---
+
+## 6. POST /lessons/:lessonId/start
+
+### Purpose
+
+Explicitly start or resume an accessible lesson.
+
+### Preconditions
+
+The backend must verify:
+
+1. Valid/authenticated user.
+2. Visible/published lesson.
+3. Parent course already has learner progress or is completed.
+4. Sequential prerequisite is satisfied.
+5. Commercial access is satisfied.
+
+The endpoint must **not** create `course_progress` implicitly.
+
+### Success response
+
+`200 OK`
+
+```json
+{
+  "lessonId": "lesson-uuid",
+  "status": "IN_PROGRESS",
+  "currentStepId": "step-opaque-id",
+  "progress": {
+    "completedSteps": 0,
+    "totalSteps": 4,
+    "percentage": 0
+  }
+}
+```
+
+### Idempotency and resume
+
+- First successful start creates `lesson_progress`.
+- Repeating start for an `IN_PROGRESS` lesson returns its existing state and does not duplicate progress.
+- Resume occurs at the **start of the last meaningful pending/current step**.
+- Exact scroll offsets and video timestamps are intentionally not restored.
+- Starting a previously completed lesson for review must not erase the original completion or first-attempt score. A future explicit repeat-session model may be introduced if product needs require scored replays.
+
+### Relevant failures
+
+- `400 INVALID_LESSON_ID`
+- `401` unauthenticated
+- `403 LESSON_ACCESS_REQUIRED`
+- `404 LESSON_NOT_FOUND`
+- `409 COURSE_NOT_STARTED`
+- `409 LESSON_PREREQUISITE_REQUIRED`
+- `409 LESSON_HAS_NO_CONTENT`
+- `500` unexpected failure
+
+---
+
+## 7. POST /lessons/:lessonId/steps/:stepId/complete
+
+### Purpose
+
+Advance through a non-activity presentation step such as `CONTENT_STEP`. `SUMMARY_STEP` may also use this operation only to mark its content traversed; formal lesson completion still requires the dedicated lesson-complete operation.
+
+### Request body
+
+None.
+
+### Behavior
+
+The service:
+
+1. Resolves the current derived step structure.
+2. Validates that `stepId` belongs to the requested lesson.
+3. Rejects silent skipping of required future steps.
+4. Marks all blocks represented by that traversed step as completed where applicable.
+5. Advances the lesson's current step pointer to the next meaningful pending step.
+6. Returns updated lesson progress.
+
+For a video-containing content step, pressing Continue is sufficient for traversal in MVP v1; no full-playback requirement applies.
+
+### Success response
+
+`200 OK`
+
+```json
+{
+  "lessonId": "lesson-uuid",
+  "completedStepId": "step-opaque-id",
+  "currentStepId": "next-step-opaque-id",
+  "progress": {
+    "completedSteps": 1,
+    "totalSteps": 4,
+    "percentage": 25
+  }
+}
+```
+
+### Idempotency
+
+Repeating completion for an already completed step must not duplicate progress or other side effects.
+
+### Relevant failures
+
+- `400 INVALID_LESSON_ID` / `INVALID_STEP_ID`
+- `401` unauthenticated
+- `403 LESSON_ACCESS_REQUIRED`
+- `404 LESSON_NOT_FOUND` / `STEP_NOT_FOUND`
+- `409 LESSON_NOT_STARTED`
+- `409 STEP_NOT_AVAILABLE`
+- `409 ACTIVITY_REQUIRES_ATTEMPT` when an activity step is incorrectly sent to this endpoint
+- `500` unexpected failure
+
+---
+
+## 8. POST /lessons/:lessonId/steps/:stepId/attempt
+
+### Purpose
+
+Submit an answer for an `ACTIVITY_STEP`, persist the attempt, return immediate feedback, update block/lesson progression and create/update Review state when incorrect.
+
+### Request body
+
+The answer payload depends on activity type.
+
+Examples:
+
+```json
+{ "selectedOptionId": "a" }
+```
+
+```json
+{ "text": "am" }
+```
+
+```json
+{
+  "pairs": [
+    { "wordId": "w1", "imageId": "i1" }
+  ]
+}
+```
+
+The matching payload is identical for `TAP` and `DRAG`.
+
+### Atomic behavior
+
+A successful submission is one application operation:
+
+```text
+validate answer
+  -> create activity_attempt
+  -> derive attempt_number
+  -> mark ACTIVITY block traversed/completed
+  -> advance current step when appropriate
+  -> incorrect: create/update ACTIVE review_item
+  -> return feedback
+```
+
+These dependent writes should succeed/fail consistently.
+
+### Score and retries
+
+- The first submitted lesson-context attempt for an activity is its score-bearing result for that lesson.
+- Later retries are stored with higher `attemptNumber`.
+- A retry may return correct feedback but does not change the first-attempt lesson score.
+- Correct retry inside the lesson does not automatically resolve the active Review item created by the original error.
+
+### Success response
+
+`200 OK`
+
+```json
+{
+  "attempt": {
+    "id": "attempt-uuid",
+    "attemptNumber": 1,
+    "isCorrect": false,
+    "countsForLessonScore": true
+  },
+  "feedback": {
+    "message": "Casi. Con I usamos am.",
+    "correctAnswer": "am",
+    "explanation": "..."
+  },
+  "review": {
+    "pending": true
+  },
+  "progress": {
+    "currentStepId": "next-step-opaque-id",
+    "completedSteps": 2,
+    "totalSteps": 4,
+    "percentage": 50
+  }
+}
+```
+
+Correct-answer details are returned **after submission** as feedback when appropriate; they are not exposed by the lesson-read endpoint beforehand.
+
+### Relevant failures
+
+- `400 INVALID_LESSON_ID` / `INVALID_STEP_ID` / `INVALID_ANSWER`
+- `401` unauthenticated
+- `403 LESSON_ACCESS_REQUIRED`
+- `404 LESSON_NOT_FOUND` / `STEP_NOT_FOUND`
+- `409 LESSON_NOT_STARTED`
+- `409 STEP_NOT_AVAILABLE`
+- `409 STEP_IS_NOT_ACTIVITY`
+- `500` unexpected failure
+
+---
+
+## 9. POST /lessons/:lessonId/complete
+
+### Purpose
+
+Formally complete a lesson after all required traversal/submission conditions are satisfied and return the data required by Lesson Result.
+
+### Completion validation
+
+The backend must verify:
+
+- every required non-activity content block/step has been traversed;
+- every required activity has at least one submitted attempt;
+- the required Summary step has been traversed;
+- the lesson is started and accessible.
+
+Correctness is **not** a completion condition.
+
+### Success response
+
+`200 OK`
+
+```json
+{
+  "lesson": {
+    "id": "lesson-uuid",
+    "title": "Nice to meet you!"
+  },
+  "result": {
+    "correctAnswers": 1,
+    "totalActivities": 2,
+    "isPerfect": false,
+    "pendingReviewCount": 1
+  },
+  "courseProgress": {
+    "completedLessons": 4,
+    "totalLessons": 8,
+    "percentage": 50,
+    "status": "IN_PROGRESS"
+  },
+  "nextLesson": {
+    "id": "next-lesson-uuid",
+    "title": "Verb to be",
+    "accessible": true,
+    "lockReason": null
+  }
+}
+```
+
+For Lesson v1:
+
+- `correctAnswers` is derived from the **first submitted attempt** of each relevant activity.
+- `totalActivities` counts relevant score-bearing activities in the lesson.
+- `isPerfect` means every relevant activity was correct on its first submitted attempt.
+- `pendingReviewCount` is derived from active Review items originating from this lesson.
+- Exact coin reward and streak payloads are intentionally omitted until Gamification v1 defines their rules.
+
+If no next lesson exists, `nextLesson` is `null`.
+
+If the next lesson exists but is commercially locked, it may be returned with `accessible: false` and `lockReason: "ACCESS"` so Result can adapt its CTA without violating access rules.
+
+### Side effects
+
+Allowed on first successful completion:
+
+- mark `lesson_progress = COMPLETED`;
+- set `completed_at`;
+- update/derive parent `course_progress`, including course completion when the last required lesson is completed.
+
+Not part of Lessons v1 completion:
+
+- granting entitlements;
+- creating purchases;
+- hardcoded coin rewards;
+- hardcoded streak mutation.
+
+Review items should already have been created by incorrect attempt operations rather than being reconstructed only at completion.
+
+### Idempotency
+
+Repeated successful completion calls must return the existing completed result without:
+
+- duplicating lesson completion;
+- duplicating Review items;
+- duplicating course-completion effects;
+- awarding future rewards more than once when Gamification is later integrated.
+
+### Relevant failures
+
+- `400 INVALID_LESSON_ID`
+- `401` unauthenticated
+- `403 LESSON_ACCESS_REQUIRED`
+- `404 LESSON_NOT_FOUND`
+- `409 LESSON_NOT_STARTED`
+- `409 LESSON_REQUIREMENTS_INCOMPLETE`
+- `500` unexpected failure
+
+---
+
+## Authentication boundary for Lessons v1
+
+Reuse the existing replaceable application-level authentication boundary:
+
+```text
+request
+  -> auth middleware
+      -> req.auth.userId
+          -> controller
+              -> LessonService / Activity service
+```
+
+Lessons/Activities services receive the application user id and must not parse provider-specific tokens.
+
+## Service-layer responsibility for Lessons v1
+
+Controllers remain thin. Services own decisions such as:
+
+- lesson visibility and publication;
+- parent-course started state;
+- prerequisite eligibility;
+- commercial access;
+- step derivation/order;
+- resume/current-step selection;
+- activity validation;
+- attempt numbering;
+- Review-item creation/update;
+- completion eligibility;
+- next-lesson/course-progress derivation.
+
+Persistence remains isolated behind repositories/Prisma.
+
+## Implementation boundary for Lessons v1
+
+Implement only the minimum supporting logic required for these contracts.
+
+Do not expand this slice into:
+
+- full Review sessions/screens;
+- final coins/streak economy;
+- payments/paywall purchasing;
+- admin/CMS;
+- assessments;
+- diagnostic behavior;
+- notification behavior;
+- media-provider-specific playback analytics.
+
+Mobile may attempt both matching interaction modes, but `TAP` is the required reliable fallback and `DRAG` may be deferred if it requires disproportionate gesture/layout complexity. The REST contract must remain unchanged either way.
