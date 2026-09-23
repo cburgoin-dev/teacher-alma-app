@@ -2,7 +2,7 @@ import { HttpError } from '../../shared/http-error.js';
 import { entitlementSource } from '../courses/course.rules.js';
 import { progress as courseProgress } from '../courses/course.service.js';
 import { checkAnswer, publicActivity } from './lesson.activity.js';
-import { deriveSteps, requireStep, requireStepAvailable, stepCompleted } from './lesson.steps.js';
+import { deriveSteps, nextRequiredStep, requireStep, requireStepAvailable, stepCompleted } from './lesson.steps.js';
 import type { LessonBlockRecord, LessonRecord, LessonSession, PrismaLessonRepository } from './lesson.repository.js';
 
 function fail(status: number, code: string, message: string): never { throw new HttpError(status, code, message); }
@@ -14,9 +14,7 @@ function stepProgress(lesson: LessonRecord) {
   const completed = completedBlocks(lesson);
   const completedSteps = steps.filter(s => stepCompleted(s, completed)).length;
   const stored = lesson.lessonProgress[0];
-  const pointer = steps.find(s => s.blocks.some(b => b.id === stored?.currentBlockId));
-  const firstPending = steps.find(s => !stepCompleted(s, completed));
-  const pending = pointer && !stepCompleted(pointer, completed) ? pointer : firstPending;
+  const pending = nextRequiredStep(steps, completed);
   return { currentStepId: !stored || stored.status === 'COMPLETED' ? null : pending?.id ?? null,
     completedSteps, totalSteps: steps.length, percentage: steps.length ? completedSteps / steps.length * 100 : 0 };
 }
@@ -100,7 +98,7 @@ export class LessonService {
     if (missing.length) await session.completeBlocks(userId, missing, this.clock());
     missing.forEach(id => done.add(id));
     if (lesson.lessonProgress[0]!.status !== 'COMPLETED') {
-      const next = deriveSteps(lesson.lessonBlocks).find(s => !stepCompleted(s, done));
+      const next = nextRequiredStep(deriveSteps(lesson.lessonBlocks), done);
       const currentBlockId = next?.id ?? null;
       if (currentBlockId !== lesson.lessonProgress[0]!.currentBlockId) {
         await session.updateProgress(userId, lesson.id, { currentBlock: currentBlockId ? { connect: { id: currentBlockId } } : { disconnect: true } });

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { deriveSteps, requireStep, requireStepAvailable, stepCompleted } from './lesson.steps.js';
+import { deriveSteps, nextRequiredStep, requireStep, requireStepAvailable, stepCompleted } from './lesson.steps.js';
 import { HttpError } from '../../shared/http-error.js';
 
 const block = (position: number, type: string, required = true) => ({
@@ -45,4 +45,19 @@ test('required traversal prevents skipping but optional blocks do not block late
   assert.throws(() => requireStepAvailable(steps, block(4, '').id, completed));
   completed.add(block(3, '').id);
   assert.doesNotThrow(() => requireStepAvailable(steps, block(4, '').id, completed));
+});
+
+test('optional steps can be completed explicitly but never become the next required step', () => {
+  const steps = deriveSteps([block(1, 'TEXT'), block(2, 'SUMMARY', false), block(3, 'ACTIVITY'), block(4, 'SUMMARY')]);
+  assert.deepEqual(steps.map(step => [step.type, step.required]), [
+    ['CONTENT_STEP', true], ['SUMMARY_STEP', false], ['ACTIVITY_STEP', true], ['SUMMARY_STEP', true],
+  ]);
+  const completed = new Set([block(1, '').id]);
+  assert.equal(nextRequiredStep(steps, completed)!.id, block(3, '').id);
+  assert.doesNotThrow(() => requireStepAvailable(steps, block(2, '').id, completed));
+  completed.add(block(2, '').id);
+  assert.equal(nextRequiredStep(steps, completed)!.id, block(3, '').id);
+  completed.add(block(3, '').id);
+  assert.equal(nextRequiredStep(steps, completed)!.id, block(4, '').id);
+  assert.notEqual(nextRequiredStep(steps, completed)!.id, block(2, '').id);
 });

@@ -39,6 +39,11 @@ export function stepCompleted(step: LessonStep, completedBlockIds: ReadonlySet<s
   return step.blocks.every(block => completedBlockIds.has(block.id));
 }
 
+/** Optional steps may be visited explicitly, but never become the resume/current target. */
+export function nextRequiredStep(steps: LessonStep[], completedBlockIds: ReadonlySet<string>): LessonStep | undefined {
+  return steps.find(step => step.required && !stepCompleted(step, completedBlockIds));
+}
+
 export function requireStepAvailable(steps: LessonStep[], stepId: string, completedBlockIds: ReadonlySet<string>): void {
   const step = requireStep(steps, stepId);
   for (const previous of steps.slice(0, steps.indexOf(step))) {
