@@ -35,8 +35,8 @@ export function RoadmapScreen({ route }: NativeStackScreenProps<CoursesStackPara
 }
 const local = StyleSheet.create({
   content: { paddingTop: 6, paddingBottom: 16, width: '100%', maxWidth: 640, alignSelf: 'center' },
-  summary: { paddingHorizontal: 20, gap: 9, paddingBottom: 14 },
-  courseChip: { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: '#E3F0FF', color: colors.blue, fontWeight: '700', fontSize: 13, lineHeight: 18 },
+  summary: { paddingHorizontal: 20, gap: 5, paddingBottom: 8 },
+  courseChip: { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 3, borderRadius: 16, backgroundColor: '#E3F0FF', color: colors.blue, fontWeight: '700', fontSize: 13, lineHeight: 18 },
   summaryText: { color: colors.muted, fontSize: 11, lineHeight: 16 },
   complete: { color: colors.blue, backgroundColor: colors.pale, padding: 14, borderRadius: 18, fontSize: 15, marginHorizontal: 20, marginBottom: 14 },
   map: { paddingHorizontal: 18 },

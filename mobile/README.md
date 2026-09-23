@@ -151,3 +151,15 @@ Limitaciones: iOS y navegación Android de tres botones requieren comprobación 
 El emulador necesitó un arranque en frío tras avisos de Android de sistema sin respuesta. En este equipo `--localhost` vinculó Metro solo a IPv6; `--host lan` permitió conectar Expo Go usando el reenvío de puerto de ADB.
 
 La instalación reportó diez vulnerabilidades moderadas transitivas de Expo, sin altas ni críticas. No se aplicaron correcciones forzadas que cambiasen las versiones compatibles del SDK.
+
+## Courses visual V7
+
+Presentation-only iteration: thicker compact catalog progress; unchanged covers/cards and catalog metadata (the catalog contract has no topic/lesson counts for unstarted courses). Detail retains demo learning outcomes as a compact paragraph and displays human difficulty labels without changing API CEFR values.
+
+Roadmap keeps one continuous route and real state selection. Its current lesson now has a larger red node connected to a saturated blue action panel; access-boundary uses gold. Topics use numbered markers, spacing and lateral positions vary, and scenery has mixed scales plus a clock-tower motif. A checkered finish flag replaces the ambiguous arch.
+
+Validation: TypeScript, 12 mobile tests, Expo install --check and git diff --check. Local PostgreSQL service/repository checks verified catalog A1/A2/B1/C1, A2 unstarted with 4 topics/8 lessons, A1 3/8/current/prerequisite and the real accessBoundary (unlocked/current, no access, ACCESS). Restored the main demo after the boundary check. No backend/API/schema/dependency changes.
+
+Android visual acceptance remains pending on a physical phone: no connected device and approximately 656 MiB free RAM at verification. Check current card/connector, long topic names, scenery, gold access and route end at normal and enlarged text. This iteration does not claim pixel-level or clipping verification on Android.
+
+For the physical access check, from backend run node --import tsx scripts/seed-courses-demo.ts --reset --access-boundary, refresh A1, then restore with node --import tsx scripts/seed-courses-demo.ts --reset. Existing local-development guards apply.

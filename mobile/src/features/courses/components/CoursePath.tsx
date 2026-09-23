@@ -36,9 +36,10 @@ export function CoursePath({ topics, onLessonPress }: {
         const labelWidth = stop.right ? stop.x - radius - 16 : width - labelLeft - 4;
         const label = lesson.title + '. ' + lessonLabels[state] + (locked && lesson.progressStatus === 'COMPLETED' ? '. Completada' : '');
         return <View key={lesson.id} style={{ height: stop.height }}>
-          {!expanded[index] && index % 3 !== 1 && index < entries.length - 1 ? <PathScenery variant={[0, 2, 4, 3, 0, 1, 2][index % 7]} right={!stop.right} /> : null}
+          <View pointerEvents="none" accessible={false} style={[s.landscape, { left: stop.right ? width - 65 : -70, top: stop.height - 100, backgroundColor: index % 3 === 0 ? '#DCEEFF' : '#E3F2EB' }]} />
+          {!expanded[index] && index < entries.length - 1 ? <PathScenery variant={[0, 3, 4, 1, 2, 5, 0][index % 7]} right={!stop.right} /> : null}
           {sectionStart ? <View style={[s.section, { left: labelLeft, width: labelWidth }]}>
-            <View style={s.sectionTop}><View style={s.sectionMark} /><Text maxFontSizeMultiplier={1.5} style={s.eyebrow}>TEMA {topicIndex + 1}</Text></View>
+            <View style={s.sectionTop}><View style={s.sectionMark}><Text style={s.sectionNumber}>{topicIndex + 1}</Text></View><Text maxFontSizeMultiplier={1.5} style={s.eyebrow}>TEMA {topicIndex + 1}</Text></View>
             <Text numberOfLines={2} maxFontSizeMultiplier={1.5} style={s.sectionTitle}>{topic.title}</Text>
           </View> : null}
           <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={() => onLessonPress(lesson)}
@@ -51,27 +52,28 @@ export function CoursePath({ topics, onLessonPress }: {
             </View>
             {expanded[index] ? <View style={[s.currentDot, { backgroundColor: paid ? '#D79920' : colors.red }]} /> : null}
           </Pressable>
-          <View style={[s.label, { left: labelLeft, width: labelWidth, top: stop.y - stop.top - (expanded[index] ? 69 : 32) * Math.min(fontScale, 1.5), alignItems: stop.right ? 'flex-end' : 'flex-start' }, expanded[index] && s.currentCard, expanded[index] && paid && { borderColor: '#D9AA43', backgroundColor: '#FFF1D3' }]}>
-            <Text numberOfLines={2} maxFontSizeMultiplier={1.5} style={[s.title, { textAlign: stop.right ? 'right' : 'left' }]}>{index + 1}. {lesson.title}</Text>
-            <Text numberOfLines={2} maxFontSizeMultiplier={1.5} style={[s.meta, { textAlign: stop.right ? 'right' : 'left' }]}>{lessonLabels[state]}</Text>
+          <View style={[s.label, { left: labelLeft, width: labelWidth, top: stop.y - stop.top - (expanded[index] ? 82 : 32) * Math.min(fontScale, 1.5), alignItems: stop.right ? 'flex-end' : 'flex-start' }, expanded[index] && s.currentCard, expanded[index] && paid && { borderColor: '#D9AA43', backgroundColor: '#FFF1D3' }]}>
+            {expanded[index] ? <><View pointerEvents="none" style={[s.cardJoin, stop.right ? { right: -9 } : { left: -9 }, paid && { backgroundColor: '#FFF1D3' }]} /><Text maxFontSizeMultiplier={1.5} style={[s.cardEyebrow, paid && { color: colors.gold }]}>{paid ? 'ACCESO PREMIUM' : 'SIGUIENTE PASO'}</Text></> : null}
+            <Text numberOfLines={2} maxFontSizeMultiplier={1.5} style={[s.title, expanded[index] && !paid && { color: '#FFF', fontSize: 18, lineHeight: 23 }, { textAlign: stop.right ? 'right' : 'left' }]}>{index + 1}. {lesson.title}</Text>
+            <Text numberOfLines={2} maxFontSizeMultiplier={1.5} style={[s.meta, expanded[index] && !paid && { color: '#E4F2FF' }, { textAlign: stop.right ? 'right' : 'left' }]}>{lessonLabels[state]}</Text>
             {locked && lesson.progressStatus === 'COMPLETED' ? <Text style={s.meta}>Completada</Text> : null}
             {expanded[index] ? <View style={{ width: '100%', marginTop: 5 }}><Button compact arrow={!paid} title={paid ? 'Ver acceso' : 'Continuar'} tone={paid ? 'gold' : 'red'} onPress={() => onLessonPress(lesson)} /></View> : null}
           </View>
         </View>;
       })}
-      {entries.length ? <View style={s.finish}><View accessible={false} style={s.destination}><View style={s.destinationArch} /></View><Text style={s.finishText}>Fin de la ruta</Text></View> : null}
+      {entries.length ? <View style={s.finish}><View accessible={false} style={s.destination}><View style={s.flagPole} /><View style={s.finishFlag}><View style={s.flagSquare} /><View style={[s.flagSquare, { alignSelf: 'flex-end' }]} /></View></View><Text style={s.finishText}>Fin de la ruta</Text></View> : null}
     </> : null}
   </View>;
 }
 const s = StyleSheet.create({
-  section: { position: 'absolute', top: 3, gap: 4, padding: 7, borderRadius: 14, backgroundColor: '#DFEEFA', borderLeftWidth: 3, borderColor: '#8FC5EA' },
+  section: { position: 'absolute', top: 3, gap: 5, paddingVertical: 4, paddingHorizontal: 2 },
   sectionTop: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  sectionMark: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.blue },
+  sectionMark: { width: 25, height: 25, borderRadius: 13, backgroundColor: '#D4E9FC', borderWidth: 2, borderColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
+  sectionNumber: { color: colors.blue, fontSize: 12, fontWeight: '800' },
   eyebrow: { fontSize: 10, lineHeight: 14, fontWeight: '800', letterSpacing: 1, color: colors.blue },
-  sectionTitle: { fontSize: 14, lineHeight: 20, fontWeight: '700', color: colors.ink },
+  sectionTitle: { fontSize: 13, lineHeight: 18, fontWeight: '700', color: '#315B7C' },
   finish: { alignItems: 'center', gap: 7, paddingBottom: 22, paddingTop: 3 },
-  destination: { width: 42, height: 35, borderTopLeftRadius: 22, borderTopRightRadius: 22, borderWidth: 3, borderColor: '#78A9C9', backgroundColor: '#D9EDF9', alignItems: 'center', justifyContent: 'flex-end' },
-  destinationArch: { width: 17, height: 24, borderTopLeftRadius: 10, borderTopRightRadius: 10, backgroundColor: '#F1F8FD', borderWidth: 2, borderBottomWidth: 0, borderColor: '#78A9C9', marginBottom: -3 },
+  destination: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#DEECF8', borderWidth: 3, borderColor: '#FFF' },
   finishText: { fontSize: 14, lineHeight: 20, color: colors.muted, fontWeight: '700' },
   dash: { position: 'absolute', width: 9, height: 4.4, borderRadius: 3 },
   halo: { ...shadows.node, padding: 6, borderWidth: 1, borderColor: '#FFFFFFB0' },
@@ -82,7 +84,13 @@ const s = StyleSheet.create({
   label: { position: 'absolute', gap: 4 },
   title: { fontSize: 16, lineHeight: 21, fontWeight: '700', color: colors.ink },
   meta: { fontSize: 12, lineHeight: 17, color: colors.muted },
-  currentCard: { borderRadius: 20, borderWidth: 2, borderColor: '#91BCEC', backgroundColor: '#E4F0FF', padding: 11, ...shadows.card, shadowColor: '#3878B2', shadowOpacity: .2 },
+  currentCard: { borderRadius: 23, borderWidth: 1, borderColor: '#4898ED', backgroundColor: '#0966D7', padding: 12, ...shadows.card, shadowColor: '#005EC1', shadowOpacity: .26, shadowRadius: 15 },
+  cardJoin: { position: 'absolute', top: '42%', width: 18, height: 18, backgroundColor: '#0966D7', transform: [{ rotate: '45deg' }] },
+  cardEyebrow: { color: '#C5E6FF', fontSize: 9, lineHeight: 13, fontWeight: '800', letterSpacing: 1 },
+  landscape: { position: 'absolute', width: 120, height: 110, borderRadius: 65, opacity: .65 },
+  flagPole: { width: 3, height: 43, backgroundColor: '#4C729C', position: 'absolute', left: 13, top: 9 },
+  finishFlag: { width: 26, height: 22, backgroundColor: '#FFF', position: 'absolute', left: 16, top: 9, borderWidth: 1, borderColor: '#4C729C' },
+  flagSquare: { width: 12, height: 10, backgroundColor: '#4C729C' },
   check: { width: 27, height: 16, borderLeftWidth: 5, borderBottomWidth: 5, borderColor: '#FFF', borderRadius: 2, transform: [{ rotate: '-45deg' }], marginTop: -5 },
   shackle: { width: 16, height: 15, borderWidth: 3, borderColor: '#FFF', borderTopLeftRadius: 10, borderTopRightRadius: 10, alignSelf: 'center', marginBottom: -3 },
   lockBody: { width: 25, height: 22, backgroundColor: '#FFF', borderRadius: 4, alignItems: 'center', justifyContent: 'center' },

@@ -67,7 +67,7 @@ test('responsive path alternates sides with wide amplitude and keeps nodes insid
         assert.ok(stop.x + stop.size / 2 <= width);
         if (index) {
           assert.notEqual(stop.right, stops[index - 1].right);
-          assert.ok(Math.abs(stop.x - stops[index - 1].x) >= width * .59);
+          assert.ok(Math.abs(stop.x - stops[index - 1].x) >= width * .51);
           assert.ok(stop.y - stops[index - 1].y > (stop.size + stops[index - 1].size) / 2);
         }
       });
@@ -130,4 +130,10 @@ test('HTTP integration: four routes, explicit POST, cancellation and contract er
       await assert.rejects(coursesApi.start(course.id), error => error instanceof ApiError && error.status === status && error.code === code);
     }
   } finally { global.fetch = originalFetch; if (originalUrl === undefined) delete process.env.EXPO_PUBLIC_API_URL; else process.env.EXPO_PUBLIC_API_URL = originalUrl; }
+});
+
+test('human difficulty labels preserve unknown API levels without inventing a category', () => {
+  const { difficultyLabel } = require('../src/features/courses/difficultyLabel.ts');
+  assert.deepEqual(['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map(difficultyLabel), ['Principiante', 'Básico', 'Intermedio', 'Intermedio alto', 'Avanzado', 'Dominio']);
+  assert.equal(difficultyLabel('CUSTOM'), 'CUSTOM');
 });

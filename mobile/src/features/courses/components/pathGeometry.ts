@@ -22,9 +22,9 @@ export function serpentineStops(width: number, expanded: boolean[], startIndex =
   let top = 0;
   return expanded.map((large, index) => {
     const right = (startIndex + index) % 2 === 1;
-    const size = large ? 96 : 80;
-    const height = (large ? 198 : 144) * scale;
-    const point = { x: width * (right ? .8 : .2), y: top + (large ? 82 : 53) * scale, top, height, size, right };
+    const size = large ? 104 : 82;
+    const height = (large ? 222 : [176, 188, 172][index % 3]) * scale;
+    const point = { x: width * (right ? [0.78, 0.8, 0.76][index % 3] : [0.2, 0.24, 0.22][index % 3]), y: top + (large ? 96 : 55) * scale, top, height, size, right };
     top += height;
     return point;
   });
@@ -40,8 +40,8 @@ export function curvedDashes(from: MapStop, to: MapStop, sectionTransition = fal
     const direction = to.right ? 1 : -1;
     for (let y = approach.y + 7; y < end; y += 13) {
       const t = (y - approach.y) / (end - approach.y);
-      const dx = direction * 10 * Math.PI * Math.cos(Math.PI * t) / (end - approach.y);
-      dots.push({ x: to.x + direction * 10 * Math.sin(Math.PI * t), y, angle: Math.atan2(1, dx) * 180 / Math.PI });
+      const dx = direction * 14 * Math.PI * Math.cos(Math.PI * t) / (end - approach.y);
+      dots.push({ x: to.x + direction * 14 * Math.sin(Math.PI * t), y, angle: Math.atan2(1, dx) * 180 / Math.PI });
     }
     return dots;
   }

@@ -9,6 +9,7 @@ import { detailAction } from '../presentation';
 import { showAccessInfo } from '../components/accessInfo';
 import { Button, colors, Cover, errorMessage, ProgressBar, ResourceState, styles } from '../components/ui';
 import { NavigationIcon } from '../../../components/NavigationIcon';
+import { difficultyLabel } from '../difficultyLabel';
 import { demoLearningOutcomes } from '../demoLearningOutcomes';
 
 export function CourseDetailScreen({ route, navigation }: NativeStackScreenProps<CoursesStackParamList, 'CourseDetail'>) {
@@ -49,14 +50,14 @@ export function CourseDetailScreen({ route, navigation }: NativeStackScreenProps
       {course.content.lessonCount > 0 ? <View style={local.metrics}>
         <View style={local.metric}><NavigationIcon name="CoursesTab" color={colors.muted} size={20} /><Text style={local.metricText}>{course.content.topicCount} {course.content.topicCount === 1 ? 'tema' : 'temas'}</Text></View>
         <View style={local.metric}><View style={local.documentIcon}><View style={local.documentLine} /><View style={local.documentLine} /></View><Text style={local.metricText}>{course.content.lessonCount} lecciones</Text></View>
-        {course.level ? <View style={local.metric}><NavigationIcon name="Progress" color={colors.muted} size={19} /><Text style={local.metricText}>{course.level}</Text></View> : null}
+        {course.level ? <View style={local.metric}><NavigationIcon name="Progress" color={colors.muted} size={19} /><Text style={local.metricText}>{difficultyLabel(course.level)}</Text></View> : null}
       </View> : null}
       {course.progress ? <ProgressBar percentage={course.progress.percentage} /> : null}
       {outcomes ? <View style={local.info}>
         <View style={local.infoIcon}><View style={local.targetIcon}><View style={local.targetCenter} /></View></View>
-        <View style={{ flex: 1, gap: 8 }}>
-          <Text style={local.infoTitle}>Qué aprenderás</Text>
-          {outcomes.map(outcome => <View key={outcome} style={local.outcomeRow}><View style={local.bullet} /><Text style={[local.infoText, { flex: 1 }]}>{outcome}</Text></View>)}
+        <View style={{ flex: 1, gap: 4 }}>
+          <Text style={local.infoTitle}>¿Qué aprenderás?</Text>
+          <Text style={local.infoText}>{outcomes.join(' ')}</Text>
         </View>
       </View> : <View style={[local.info, action === 'ACCESS' && local.accessInfo]}>
         <View style={[local.infoIcon, action === 'ACCESS' && { backgroundColor: '#FBE4B6' }]}><NavigationIcon name="CoursesTab" color={action === 'ACCESS' ? colors.gold : colors.blue} size={25} /></View>
@@ -100,8 +101,6 @@ const local = StyleSheet.create({
   infoIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#D9EAFF', justifyContent: 'center', alignItems: 'center' },
   infoTitle: { fontSize: 16, lineHeight: 21, color: colors.ink, fontWeight: '700' },
   infoText: { fontSize: 13, lineHeight: 19, color: colors.muted },
-  outcomeRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 7 },
-  bullet: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.blue, marginTop: 7 },
   targetIcon: { width: 25, height: 25, borderRadius: 15, borderWidth: 2, borderColor: colors.blue, alignItems: 'center', justifyContent: 'center' },
   targetCenter: { width: 13, height: 13, borderRadius: 8, borderWidth: 3, borderColor: colors.blue },
   topics: { gap: 10 },
