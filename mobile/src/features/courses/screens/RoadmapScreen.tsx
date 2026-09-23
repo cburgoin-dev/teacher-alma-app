@@ -21,7 +21,7 @@ export function RoadmapScreen({ route }: NativeStackScreenProps<CoursesStackPara
   if ((!resource.data && resource.loading) || resource.error || !resource.data) return <View style={styles.page}><ResourceState loading={resource.loading} error={resource.error} retry={resource.retry} /></View>;
   const roadmap = resource.data;
 
-  return <ScrollView style={styles.page} contentContainerStyle={local.content}
+  return <ScrollView style={[styles.page, { backgroundColor: '#F1F8FD' }]} contentContainerStyle={local.content}
     refreshControl={<RefreshControl refreshing={resource.loading} onRefresh={resource.retry} tintColor={colors.blue} />}>
     <View style={local.summary}>
       <Text style={local.courseChip}>{roadmap.course.title}</Text>

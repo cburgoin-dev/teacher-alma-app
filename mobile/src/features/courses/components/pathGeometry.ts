@@ -7,7 +7,7 @@ export function courseStops(width: number, expanded: boolean[], sectionStarts: b
   const scale = Math.max(1, Math.min(fontScale, 1.5));
   let shift = 0;
   return serpentineStops(width, expanded, 0, fontScale).map((stop, index) => {
-    const lead = sectionStarts[index] ? 64 * scale : 0;
+    const lead = sectionStarts[index] ? 84 * scale : 0;
     const result = { ...stop, top: stop.top + shift, y: stop.y + shift + lead, height: stop.height + lead };
     shift += lead;
     // Leave room for the current card, but no full empty stop after the last lesson.
@@ -23,7 +23,7 @@ export function serpentineStops(width: number, expanded: boolean[], startIndex =
   return expanded.map((large, index) => {
     const right = (startIndex + index) % 2 === 1;
     const size = large ? 96 : 80;
-    const height = (large ? 208 : 154) * scale;
+    const height = (large ? 198 : 144) * scale;
     const point = { x: width * (right ? .8 : .2), y: top + (large ? 82 : 53) * scale, top, height, size, right };
     top += height;
     return point;
@@ -36,8 +36,12 @@ export function curvedDashes(from: MapStop, to: MapStop, sectionTransition = fal
   if (sectionTransition) {
     const approach = { ...to, y: to.top - 16, size: 0 };
     const dots = curvedDashes(from, approach);
-    for (let y = approach.y + 7; y < to.y - to.size / 2 - 5; y += 13) {
-      dots.push({ x: to.x, y, angle: 90 });
+    const end = to.y - to.size / 2 - 5;
+    const direction = to.right ? 1 : -1;
+    for (let y = approach.y + 7; y < end; y += 13) {
+      const t = (y - approach.y) / (end - approach.y);
+      const dx = direction * 10 * Math.PI * Math.cos(Math.PI * t) / (end - approach.y);
+      dots.push({ x: to.x + direction * 10 * Math.sin(Math.PI * t), y, angle: Math.atan2(1, dx) * 180 / Math.PI });
     }
     return dots;
   }

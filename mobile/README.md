@@ -87,6 +87,18 @@ Las pruebas cubren navegación, acceso a la primera lección, curso vacío, COMI
 
 Para reproducir estados visuales sin modificar PostgreSQL, ejecutar `node tests/preview-api.cjs` y apuntar el proceso de Expo al puerto local 3101. En un emulador Android conectado por ADB, `adb reverse tcp:3101 tcp:3101` permite usar `http://127.0.0.1:3101` como URL temporal. Los datos de ese servidor son **fixtures de prueba** en memoria, no datos de negocio ni un fallback de la app. Reiniciarlo devuelve A2 al estado no iniciado. No se distribuye con la aplicación.
 
+### Sexta iteración visual (V6)
+
+Catalog usa altura mínima por presencia de progreso y crecimiento natural del contenido, alineación superior, badges pill y slogans compuestos en líneas con remate gráfico. No se alteran covers ni sus fuentes. Detail distribuye temas/lecciones/CEFR en bloques equilibrados, con wrapping para texto ampliado; conserva CEFR en vez de introducir una etiqueta de dificultad ambigua.
+
+`demoLearningOutcomes.ts` contiene únicamente los textos editoriales A1/A2 autorizados, identificados por los slugs demo exactos. Se muestran en «Qué aprenderás» cuando la acción existente es START. Otros cursos conservan el fallback, y ACCESS/SOON/ROUTE mantienen su propósito. Este mapping temporal no es una regla de acceso y no debe extenderse a cursos reales por compartir nivel; se recomienda sustituirlo por contenido editorial administrable en API cuando se acuerde su contrato.
+
+Roadmap mantiene una única ruta global. Se añadieron fondo azul suave, hitos con banda y mayor jerarquía, conectores más visibles con entrada curva a las secciones, card azul del nodo rojo actual, card dorada en la frontera de acceso y cierre con un pequeño arco decorativo. La ambientación incorpora un globo y evita los espacios de la card actual. Los demás nodos siguen sin convertirse en cards; no hay mascota ni recompensas.
+
+Validación: TypeScript, 11 tests móviles, `expo install --check` y `git diff --check` correctos. Las pruebas cubren continuidad y separación de los hitos en varios anchos/escalas, y aislamiento del contenido editorial demo. `accessBoundary` se activó en PostgreSQL local y se consultó con PrismaCourseRepository/CourseService: quinta lección actual, desbloqueada por progresión, sin acceso y lockReason=ACCESS. Después se restauró el seed principal: 4 cursos, 11 temas, 22 lecciones, A1 3/8 y A2 sin iniciar. Sin cambios en backend, schema, contratos, dependencias o `.env`.
+
+La apariencia V6 necesita revisión en Android físico: no había dispositivo conectado y quedaban unos 492 MiB de RAM libre, por lo que no se insistió con el emulador. No se afirma validación visual completa. Revisar especialmente slogans en pantallas estrechas, metadata con texto ampliado, hitos, nodo actual y frontera dorada. El escenario alternativo se prepara/restaura con los comandos ya documentados en `backend/scripts/README.md`.
+
 ### Quinta iteración visual (V5)
 
 `CoursePath` sustituye a `TopicPath`: aplana las lecciones en el orden recibido, conserva `lessonState()` y calcula un único recorrido para el curso. `courseStops` reserva espacio para hitos de tema; los conectores giran antes del encabezado y descienden por el lado del nodo, sin reiniciar el camino. El último tramo se acorta y termina en «Fin de la ruta», sin premios ni acciones nuevas. Nubes, libros, vegetación y un calendario se distribuyen a ambos lados; se eliminaron los grandes fondos semicirculares.

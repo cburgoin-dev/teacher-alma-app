@@ -11,6 +11,15 @@ const { catalogDestination, catalogLabel, detailAction, lessonState } = require(
 const { coursesApi } = require('../src/features/courses/api/courses.ts');
 const { ApiError } = require('../src/services/api/client.ts');
 const { serpentineStops, curvedDashes, courseStops } = require('../src/features/courses/components/pathGeometry.ts');
+const { demoLearningOutcomes } = require('../src/features/courses/demoLearningOutcomes.ts');
+
+test('editorial learning outcomes belong only to the named demo courses', () => {
+  assert.equal(demoLearningOutcomes('courses-demo-v3-a2')?.length, 3);
+  assert.equal(demoLearningOutcomes('courses-demo-v3-a1')?.length, 3);
+  for (const slug of ['another-a2-course', 'courses-demo-v3-b1', 'courses-demo-v3-c1', 'constructor', '__proto__']) {
+    assert.equal(demoLearningOutcomes(slug), undefined);
+  }
+});
 
 test('one course path connects all topic boundaries, preserves order and trims only the final tail', () => {
   const starts = [true, false, false, true, false, true, true, false];
@@ -32,7 +41,8 @@ test('one course path connects all topic boundaries, preserves order and trims o
               assert.ok(connector.some(dot => dot.y > stop.top));
               const labelLeft = stop.right ? 4 : stop.x + stop.size / 2 + 12;
               const labelRight = stop.right ? stop.x - stop.size / 2 - 12 : width - 4;
-              assert.ok(connector.every(dot => !(dot.y >= stop.top && dot.y <= stop.top + 54 * scale && dot.x >= labelLeft && dot.x <= labelRight)), 'connector must not pass through topic text');
+              assert.ok(connector.every(dot => !(dot.y >= stop.top && dot.y <= stop.top + 78 * scale && dot.x >= labelLeft && dot.x <= labelRight)), 'connector must not pass through topic milestone');
+              assert.ok(connector.every(dot => dot.x >= 0 && dot.x <= width));
             }
           }
         });

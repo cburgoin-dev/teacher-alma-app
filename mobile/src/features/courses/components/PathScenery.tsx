@@ -20,10 +20,13 @@ export function PathScenery({ variant, right }: { variant: number; right: boolea
       <View style={s.calendarTop} />
       <View style={s.days}>{[0, 1, 2, 3, 4, 5].map(day => <View key={day} style={s.day} />)}</View>
     </View> : null}
+    {variant === 4 ? <View style={s.globeStand}><View style={s.globe}>
+      <View style={s.meridian} /><View style={s.equator} /><View style={s.land} />
+    </View><View style={s.stem} /><View style={s.base} /></View> : null}
   </View>;
 }
 const s = StyleSheet.create({
-  scene: { position: 'absolute', bottom: 5, width: 76, height: 53, opacity: .85 },
+  scene: { position: 'absolute', bottom: -4, width: 76, height: 53, transform: [{ scale: .7 }] },
   cloud: { position: 'absolute', bottom: 8, width: 72, height: 23, borderRadius: 16, backgroundColor: '#DDEFFA' },
   cloudTop: { position: 'absolute', bottom: 8, left: 19, width: 34, height: 34, borderRadius: 20, backgroundColor: '#DDEFFA' },
   cloudSmall: { position: 'absolute', bottom: 6, left: 6, width: 24, height: 25, borderRadius: 15, backgroundColor: '#DDEFFA' },
@@ -37,4 +40,11 @@ const s = StyleSheet.create({
   calendarTop: { height: 10, backgroundColor: '#EC8497' },
   days: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, padding: 5 },
   day: { width: 6, height: 7, backgroundColor: '#8DBBE2', borderRadius: 2 },
+  globeStand: { alignItems: 'center', transform: [{ rotate: '-8deg' }] },
+  globe: { width: 38, height: 38, borderRadius: 21, backgroundColor: '#6DB5E5', borderWidth: 2, borderColor: '#438ABB', overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  meridian: { position: 'absolute', width: 18, height: 37, borderRadius: 18, borderWidth: 1, borderColor: '#C2E8FC' },
+  equator: { position: 'absolute', width: 37, height: 12, borderRadius: 18, borderWidth: 1, borderColor: '#C2E8FC' },
+  land: { position: 'absolute', width: 12, height: 19, top: 3, left: 4, borderRadius: 7, backgroundColor: '#A5D1A5', transform: [{ rotate: '-24deg' }] },
+  stem: { width: 4, height: 5, backgroundColor: '#438ABB' },
+  base: { width: 26, height: 5, borderRadius: 4, backgroundColor: '#438ABB' },
 });

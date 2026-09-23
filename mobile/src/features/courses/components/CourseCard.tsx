@@ -20,7 +20,7 @@ export function CourseCard({ course, onPress }: { course: CatalogCourse; onPress
 
   return <Pressable accessibilityRole="button" accessibilityLabel={course.title + '. ' + catalogLabel(course)}
     onPress={onPress} style={({ pressed }) => [s.shadow, { opacity: pressed ? .82 : 1 }]}>
-    <View style={[s.card, { height: 188 + 130 * (scale - 1) }, locked && s.locked]}>
+    <View style={[s.card, { minHeight: (course.progress ? 170 : 148) + 70 * (scale - 1) }, locked && s.locked]}>
       <Cover uri={course.coverUrl} level={course.level} style={s.cover} badge={soon ? 'soon' : locked ? 'premium' : undefined} />
       <View style={s.body}>
         <View style={s.titleRow}>
@@ -46,7 +46,7 @@ const s = StyleSheet.create({
   card: { flexDirection: 'row', borderRadius: radius.card, borderWidth: 1, borderColor: colors.border, overflow: 'hidden', backgroundColor: '#F6FAFF' },
   locked: { backgroundColor: '#FFFBF5', borderColor: '#F5E6CF' },
   cover: { width: '37%', alignSelf: 'stretch' },
-  body: { flex: 1, padding: 9, gap: 4, justifyContent: 'center' },
+  body: { flex: 1, padding: 10, gap: 6, justifyContent: 'flex-start' },
   titleRow: { flexDirection: 'row', gap: 4, alignItems: 'flex-start' },
   title: { flex: 1, fontSize: 18, lineHeight: 22, includeFontPadding: false, fontWeight: '800', letterSpacing: -.25, color: colors.ink },
   chevron: { color: colors.muted, fontSize: 25, lineHeight: 25, marginTop: 3 },

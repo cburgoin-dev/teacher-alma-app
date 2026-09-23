@@ -9,6 +9,7 @@ import { detailAction } from '../presentation';
 import { showAccessInfo } from '../components/accessInfo';
 import { Button, colors, Cover, errorMessage, ProgressBar, ResourceState, styles } from '../components/ui';
 import { NavigationIcon } from '../../../components/NavigationIcon';
+import { demoLearningOutcomes } from '../demoLearningOutcomes';
 
 export function CourseDetailScreen({ route, navigation }: NativeStackScreenProps<CoursesStackParamList, 'CourseDetail'>) {
   const { courseId } = route.params;
@@ -26,6 +27,7 @@ export function CourseDetailScreen({ route, navigation }: NativeStackScreenProps
   if (resource.loading || resource.error || !resource.data) return <View style={styles.page}><ResourceState loading={resource.loading} error={resource.error} retry={resource.retry} /></View>;
   const { course, roadmap } = resource.data;
   const action = detailAction(course, roadmap);
+  const outcomes = action === 'START' ? demoLearningOutcomes(course.slug) : undefined;
   const start = async () => {
     if (request.current || action !== 'START') return;
     const controller = new AbortController(); request.current = controller;
@@ -50,7 +52,13 @@ export function CourseDetailScreen({ route, navigation }: NativeStackScreenProps
         {course.level ? <View style={local.metric}><NavigationIcon name="Progress" color={colors.muted} size={19} /><Text style={local.metricText}>{course.level}</Text></View> : null}
       </View> : null}
       {course.progress ? <ProgressBar percentage={course.progress.percentage} /> : null}
-      <View style={[local.info, action === 'ACCESS' && local.accessInfo]}>
+      {outcomes ? <View style={local.info}>
+        <View style={local.infoIcon}><View style={local.targetIcon}><View style={local.targetCenter} /></View></View>
+        <View style={{ flex: 1, gap: 8 }}>
+          <Text style={local.infoTitle}>Qué aprenderás</Text>
+          {outcomes.map(outcome => <View key={outcome} style={local.outcomeRow}><View style={local.bullet} /><Text style={[local.infoText, { flex: 1 }]}>{outcome}</Text></View>)}
+        </View>
+      </View> : <View style={[local.info, action === 'ACCESS' && local.accessInfo]}>
         <View style={[local.infoIcon, action === 'ACCESS' && { backgroundColor: '#FBE4B6' }]}><NavigationIcon name="CoursesTab" color={action === 'ACCESS' ? colors.gold : colors.blue} size={25} /></View>
         <View style={{ flex: 1, gap: 5 }}>
           <Text style={local.infoTitle}>{action === 'SOON' || action === 'EMPTY' ? 'Un nuevo curso está en camino' : action === 'START' && !course.access.hasFullAccess ? 'Puedes comenzar gratis' : 'Tu acceso al curso'}</Text>
@@ -61,7 +69,7 @@ export function CourseDetailScreen({ route, navigation }: NativeStackScreenProps
             : action !== 'ACCESS' && course.content.freeLessonCount > 0 ? 'Continúa explorando las lecciones de tu ruta.'
             : 'Este curso requiere acceso al curso o una membresía Premium.'}</Text>
         </View>
-      </View>
+      </View>}
       <View style={local.topics}>
         <Text style={styles.heading}>Temas del curso</Text>
         {roadmap.topics.length ? roadmap.topics.map((topic, index) => <View key={topic.id} style={local.topic}>
@@ -82,8 +90,8 @@ export function CourseDetailScreen({ route, navigation }: NativeStackScreenProps
 const local = StyleSheet.create({
   hero: { width: '100%', aspectRatio: 2, maxHeight: 270, borderRadius: 19 },
   intro: { gap: 7 }, description: { color: colors.muted, fontSize: 17, lineHeight: 24 },
-  metrics: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 18, rowGap: 8, paddingVertical: 2 },
-  metric: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  metrics: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 8, rowGap: 8, paddingVertical: 4 },
+  metric: { flex: 1, minWidth: 80, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 6 },
   metricText: { fontSize: 14, lineHeight: 21, color: colors.muted, fontWeight: '700' },
   documentIcon: { width: 17, height: 21, borderWidth: 1.8, borderColor: colors.muted, borderRadius: 2, padding: 3, gap: 3, justifyContent: 'center' },
   documentLine: { height: 1.4, backgroundColor: colors.muted },
@@ -92,6 +100,10 @@ const local = StyleSheet.create({
   infoIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#D9EAFF', justifyContent: 'center', alignItems: 'center' },
   infoTitle: { fontSize: 16, lineHeight: 21, color: colors.ink, fontWeight: '700' },
   infoText: { fontSize: 13, lineHeight: 19, color: colors.muted },
+  outcomeRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 7 },
+  bullet: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.blue, marginTop: 7 },
+  targetIcon: { width: 25, height: 25, borderRadius: 15, borderWidth: 2, borderColor: colors.blue, alignItems: 'center', justifyContent: 'center' },
+  targetCenter: { width: 13, height: 13, borderRadius: 8, borderWidth: 3, borderColor: colors.blue },
   topics: { gap: 10 },
   topic: { flexDirection: 'row', alignItems: 'center', gap: 11, borderWidth: 1, borderColor: colors.border, borderRadius: 18, paddingVertical: 11, paddingHorizontal: 12, backgroundColor: '#FCFDFF' },
   number: { width: 28, height: 28, borderRadius: 14, borderWidth: 1.5, borderColor: '#9CACCA', alignItems: 'center', justifyContent: 'center' },
