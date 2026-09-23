@@ -8,9 +8,9 @@ const outcomes: Record<string, readonly string[]> = {
     'Describir lugares y actividades cotidianas.',
   ],
   'courses-demo-v3-a2': [
-    'Presentarte y mantener conversaciones sencillas.',
-    'Hablar sobre familia, hábitos y planes.',
-    'Desenvolverte en situaciones cotidianas.',
+    'Presentarte y conversar.',
+    'Hablar de familia, hábitos y planes.',
+    'Resolver situaciones cotidianas.',
   ],
 };
 export function demoLearningOutcomes(slug: string): readonly string[] | undefined {

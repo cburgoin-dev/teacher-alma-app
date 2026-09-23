@@ -26,6 +26,6 @@ const s = StyleSheet.create({
   head: { width: 11, height: 11, borderRadius: 6, borderWidth: 2, marginBottom: 3 },
   shoulders: { width: 22, height: 11, borderTopLeftRadius: 12, borderTopRightRadius: 12, borderWidth: 2 },
   roof: { width: 16, height: 16, borderTopWidth: 2, borderLeftWidth: 2, transform: [{ rotate: '45deg' }], position: 'absolute', top: 2 },
-  house: { width: 18, height: 15, borderWidth: 2, borderTopWidth: 0, borderBottomLeftRadius: 3, borderBottomRightRadius: 3, marginTop: 9 },
-  door: { position: 'absolute', bottom: 0, width: 7, height: 10, borderWidth: 2, borderBottomWidth: 0, borderTopLeftRadius: 3, borderTopRightRadius: 3, backgroundColor: '#FFF' },
+  house: { width: 18, height: 15, borderWidth: 2, borderTopWidth: 0, borderBottomLeftRadius: 3, borderBottomRightRadius: 3, position: 'absolute', bottom: 2 },
+  door: { position: 'absolute', bottom: 2, width: 7, height: 8, borderWidth: 2, borderBottomWidth: 0, borderTopLeftRadius: 3, borderTopRightRadius: 3, backgroundColor: '#FFF' },
 });

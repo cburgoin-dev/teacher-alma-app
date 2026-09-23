@@ -163,3 +163,16 @@ Validation: TypeScript, 12 mobile tests, Expo install --check and git diff --che
 Android visual acceptance remains pending on a physical phone: no connected device and approximately 656 MiB free RAM at verification. Check current card/connector, long topic names, scenery, gold access and route end at normal and enlarged text. This iteration does not claim pixel-level or clipping verification on Android.
 
 For the physical access check, from backend run node --import tsx scripts/seed-courses-demo.ts --reset --access-boundary, refresh A1, then restore with node --import tsx scripts/seed-courses-demo.ts --reset. Existing local-development guards apply.
+
+## Cierre de polish V8
+
+CURRENT muestra «Lección X de Y» usando el índice global y las lecciones recibidas en el roadmap, sin duplicar porcentaje. Se conservan composición, hitos, scenery y bandera V7. El copy demo A2 se compacta sin reducir fuente. Inicio alinea la base de puerta y paredes a 2 unidades del borde del canvas; no cambia tamaño ni stroke. Catalog no cambia: el contrato no entrega counts de temas/lecciones para cursos no iniciados.
+
+### Ver Premium en Android físico
+
+1. Desde backend: node --import tsx scripts/seed-courses-demo.ts --reset --access-boundary.
+2. Con la app conectada al backend local existente y el mismo usuario de desarrollo, abrir Cursos → Inglés A1. Deslizar hacia abajo para refrescar el roadmap y avanzar hasta «5. Mi familia».
+3. Deben aparecer cuatro completadas verdes; la quinta dorada con candado blanco, halo crema, card «ACCESO PREMIUM» y CTA «Ver acceso». Las lecciones 6–8 siguen grises por prerrequisito. El CTA solo muestra información, no compra ni inicia una lección.
+4. Restaurar desde backend: node --import tsx scripts/seed-courses-demo.ts --reset. Refrescar roadmap/catálogo: A1 3/8, cuarta actual roja; A2 sin iniciar.
+
+Se comprobó el escenario contra PostgreSQL y el clasificador real lessonState del móvil, incluidos current=true, unlocked=true, hasAccess=false y lockReason=ACCESS. Se restauró el dataset principal al terminar. No había Android conectado: la aceptación visual final del dorado, icono y copy requiere teléfono físico; las capturas aportadas corresponden a V7.
