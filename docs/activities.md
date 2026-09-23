@@ -16,6 +16,7 @@ Shared rules:
 - Incorrect answers do not trap the learner until they answer correctly.
 - Explanations may be shown when pedagogically useful.
 - Activity completion and answer correctness remain separate concepts.
+- For Lesson v1 score, the **first submitted attempt** for each relevant activity is the score-bearing attempt. Retries remain persisted for learning/history but do not overwrite that first-attempt result.
 
 ## 1. Multiple choice
 
@@ -108,7 +109,16 @@ Conceptual type: `MATCH_WORD_IMAGE`.
 
 The learner pairs words with corresponding images.
 
-Preferred mobile interaction:
+Supported presentation modes:
+
+- `TAP`: tap a word, then tap its corresponding image.
+- `DRAG`: drag a word/item to its corresponding image/target.
+
+The activity configuration may include an `interactionMode` presentation hint. Both modes submit the same logical pair mapping; validation must not depend on whether the learner tapped or dragged.
+
+`TAP` is required for the MVP. `DRAG` should also be implemented in the initial mobile version when it is stable with the current Expo/React Native stack; otherwise it can be deferred without changing persisted activity data or API semantics.
+
+Typical `TAP` interaction:
 
 1. Tap a word.
 2. Tap the corresponding image.
@@ -125,7 +135,7 @@ Conceptual states:
 
 Rules:
 
-- Prefer tap-to-match over mandatory drag-and-drop.
+- Always provide a reliable tap-to-match path even if a drag presentation is available, unless usability testing later justifies a different accessibility strategy.
 - Do not show a permanent hint panel by default; the interaction should be self-explanatory and screen space is more valuable for matching items.
 - First-use guidance may be shown briefly if usability testing indicates it is necessary.
 - After checking, clearly distinguish correct and incorrect pairs.
