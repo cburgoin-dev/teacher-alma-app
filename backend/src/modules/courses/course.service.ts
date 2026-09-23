@@ -11,6 +11,7 @@ function relevantTopics(course: CourseRecord) {
 }
 
 function completion(lessons: LessonRecord[]) {
+  lessons = lessons.filter(lesson => lesson.status === 'PUBLISHED' && lesson.isRequired);
   const completedLessons = lessons.filter(isCompleted).length;
   const totalLessons = lessons.length;
   return { completedLessons, totalLessons, percentage: totalLessons === 0 ? 0 : completedLessons / totalLessons * 100 };
@@ -20,7 +21,7 @@ function isCompleted(lesson: LessonRecord) {
   return lesson.lessonProgress[0]?.status === 'COMPLETED';
 }
 
-function progress(lessons: LessonRecord[]) {
+export function progress(lessons: LessonRecord[]) {
   const counts = completion(lessons);
   return { status: counts.totalLessons > 0 && counts.completedLessons === counts.totalLessons
     ? 'COMPLETED' as const : 'IN_PROGRESS' as const, ...counts };
@@ -74,7 +75,7 @@ export class CourseService {
     const topics = relevantTopics(course);
     const lessons = topics.flatMap(topic => topic.lessons);
     const source = entitlementSource(courseId, await this.repository.findEntitlements(userId), this.clock());
-    const next = lessons.find(lesson => !isCompleted(lesson));
+    const next = lessons.find(lesson => lesson.isRequired && !isCompleted(lesson));
     let precedingCompleted = true;
     return { course: identity(course), progress: completion(lessons), topics: topics.map(topic => ({
       id: topic.id, title: topic.title, position: topic.position,
@@ -82,7 +83,7 @@ export class CourseService {
         const completed = isCompleted(lesson);
         const unlocked = completed || precedingCompleted;
         const hasAccess = hasLessonAccess(lesson, source);
-        precedingCompleted = precedingCompleted && completed;
+        if (lesson.isRequired) precedingCompleted = precedingCompleted && completed;
         return { id: lesson.id, title: lesson.title, position: lesson.position,
           progressStatus: lesson.lessonProgress[0]?.status ?? 'NOT_STARTED',
           access: { type: lesson.accessType, hasAccess },
@@ -97,14 +98,14 @@ export class CourseService {
     const course = requireVisible(await this.repository.findCourse(courseId, userId));
     requireStartableStatus(course);
     const lessons = relevantTopics(course).flatMap(topic => topic.lessons);
-    const first = lessons[0];
+    const first = lessons.find(lesson => lesson.isRequired) ?? lessons[0];
     if (!first) throw new HttpError(409, 'COURSE_HAS_NO_CONTENT', 'Course has no available content');
     const source = entitlementSource(courseId, await this.repository.findEntitlements(userId), this.clock());
     if (!hasLessonAccess(first, source)) {
       throw new HttpError(403, 'COURSE_ACCESS_REQUIRED', 'Access to this course is required');
     }
     if (!course.courseProgress.length) await this.repository.createProgressOnce(courseId, userId);
-    const next = lessons.find(lesson => !isCompleted(lesson));
+    const next = lessons.find(lesson => lesson.isRequired && !isCompleted(lesson));
     return { course: identity(course), progress: progress(lessons),
       nextLesson: next ? { id: next.id, title: next.title } : null };
   }

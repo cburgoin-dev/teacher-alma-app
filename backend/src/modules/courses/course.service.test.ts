@@ -18,7 +18,7 @@ test('catalog is ordered, hides drafts/archives, and reads never start learning'
   assert.equal(repo.writes, 0);
 });
 
-test('published lessons alone count, including optional lessons; topics and lessons are globally ordered', async () => {
+test('published content includes optional lessons; progress counts required lessons only', async () => {
   const repo = new MemoryCourses([course({ topics: [
     { id: 'later', title: 'Later', position: 2, lessons: [lesson(4)] },
     { id: 'empty', title: 'Empty', position: 3, lessons: [lesson(5, { status: 'ARCHIVED' })] },
@@ -32,7 +32,7 @@ test('published lessons alone count, including optional lessons; topics and less
   assert.deepEqual(path.map(l => l.title), ['Lesson 1', 'Lesson 2', 'Lesson 4']);
   assert.deepEqual(path[0]?.progression, { unlocked: true, isCurrent: false, lockReason: null });
   assert.deepEqual(path[1]?.progression, { unlocked: false, isCurrent: false, lockReason: 'PREREQUISITE' });
-  assert.equal(roadmap.progress.totalLessons, 3);
+  assert.equal(roadmap.progress.totalLessons, 2);
   assert.equal(repo.writes, 0);
 });
 
@@ -66,14 +66,14 @@ test('completion unlocks across topic boundaries; access never overrides prerequ
   const service = new CourseService(repo, () => now);
   let path = (await service.roadmap(courseId, userId)).topics.flatMap(t => t.lessons);
   assert.equal(path[0]?.progression.unlocked, true);
-  assert.deepEqual(path[1]?.progression, { unlocked: true, isCurrent: true, lockReason: 'ACCESS' });
+  assert.deepEqual(path[1]?.progression, { unlocked: true, isCurrent: false, lockReason: 'ACCESS' });
   assert.deepEqual(path[1]?.access, { type: 'PAID', hasAccess: false });
-  assert.deepEqual(path[2]?.progression, { unlocked: false, isCurrent: false, lockReason: 'PREREQUISITE' });
+  assert.deepEqual(path[2]?.progression, { unlocked: true, isCurrent: true, lockReason: null });
   repo.grants = [{ scope: 'ALL_COURSES', courseId: null, status: 'ACTIVE', startsAt: now, expiresAt: null }];
   path = (await service.roadmap(courseId, userId)).topics.flatMap(t => t.lessons);
   assert.equal(path[1]?.access.hasAccess, true);
   assert.equal(path[1]?.progression.lockReason, null);
-  assert.equal(path[2]?.progression.unlocked, false);
+  assert.equal(path[2]?.progression.unlocked, true);
   assert.equal(repo.writes, 0);
 });
 
@@ -107,7 +107,7 @@ test('all published lessons completed produces 100%, COMPLETED and null next wit
   const service = new CourseService(repo);
   const result = await service.start(courseId, userId);
   assert.equal(result.nextLesson, null);
-  assert.deepEqual(result.progress, { status: 'COMPLETED', completedLessons: 2, totalLessons: 2, percentage: 100 });
+  assert.deepEqual(result.progress, { status: 'COMPLETED', completedLessons: 1, totalLessons: 1, percentage: 100 });
   assert.deepEqual((await service.detail(courseId, userId)).progress, result.progress);
   assert.equal((await service.roadmap(courseId, userId)).topics[0]?.lessons.some(l => l.progression.isCurrent), false);
   assert.equal(repo.writes, 0);
@@ -149,4 +149,13 @@ test('a repeated start still validates initial access and never treats progress 
   ] })]);
   await assert.rejects(new CourseService(repo).start(courseId, userId), { code: 'COURSE_ACCESS_REQUIRED' });
   assert.equal(repo.writes, 0);
+});
+
+for (const requiredComplete of [true, false]) test('required progress independent of optional completion: ' + requiredComplete, async () => {
+ const lessons = [lesson(1, { lessonProgress: requiredComplete ? [{status:'COMPLETED'}] : [] }), lesson(2, {isRequired:false, lessonProgress: requiredComplete ? [] : [{status:'COMPLETED'}]})];
+ const repo = new MemoryCourses([course({courseProgress:[{status:'IN_PROGRESS'}],topics:[{id:'t',title:'T',position:1,lessons}]})]);
+ const service=new CourseService(repo); const detail=await service.detail(courseId,userId);
+ assert.equal(detail.content.lessonCount,2); assert.equal(detail.progress?.totalLessons,1);
+ assert.equal(detail.progress?.completedLessons,requiredComplete?1:0); assert.equal(detail.progress?.status,requiredComplete?'COMPLETED':'IN_PROGRESS');
+ assert.equal((await service.roadmap(courseId,userId)).topics[0]?.lessons.length,2);
 });

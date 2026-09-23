@@ -68,10 +68,10 @@ then lesson.position ASC
 Clarifications for Courses v1:
 
 - `DRAFT` and `ARCHIVED` lessons are excluded from roadmap, progress totals, prerequisites and next-lesson selection.
-- All `PUBLISHED` lessons count toward `totalLessons` and appear in the active roadmap, regardless of `is_required`.
-- Sequential progression for this slice follows all `PUBLISHED` lessons in the ordered path. `is_required` does not cause a displayed published lesson to be silently skipped.
-- `completedLessons` counts relevant lessons whose `lesson_progress.status = 'COMPLETED'` for the authenticated user.
-- `is_required` may later participate in course-completion or optional-content rules, but it does not change the Courses v1 roadmap sequence.
+- All `PUBLISHED` lessons appear in the active roadmap and content counts, regardless of `is_required`.
+- Course progress `totalLessons`, `completedLessons`, percentage and completion use only `PUBLISHED` lessons with `is_required = true`. Completed counts additionally require the authenticated user's `lesson_progress.status = 'COMPLETED'`.
+- Main progression/current/next selection follows required published lessons in the ordered path. Optional published lessons remain visible and can be accessed/completed, but never block the next required lesson or course completion.
+- `content.lessonCount` remains the total published content count, not the required-progress denominator.
 
 Commercial access does not come from `course_progress`. Starting a course never creates a purchase or entitlement.
 
@@ -144,7 +144,7 @@ NONE
 - Sort by configured `position`.
 - Progress is specific to the authenticated user.
 - Access is specific to the authenticated user.
-- `percentage` is derived from completed relevant lessons and total relevant lessons; it is not a separately persisted UI value.
+- `percentage` is derived from completed required published lessons and total required published lessons; it is not a separately persisted UI value.
 - This endpoint is read-only and must not create `course_progress`.
 
 ### Relevant failures
@@ -367,15 +367,15 @@ Examples:
 
 ### Progression rules
 
-Initial MVP progression is sequential within the ordered course path of relevant (`PUBLISHED`) lessons:
+Initial MVP progression is sequential within the ordered course path of required `PUBLISHED` lessons:
 
-- The first relevant lesson is initially progression-unlocked.
-- Completing lesson `N` unlocks the next relevant lesson in global `topic.position`, then `lesson.position`, order.
+- A lesson is progression-unlocked when all preceding required published lessons are completed.
+- Completing a required lesson unlocks the next required lesson in global `topic.position`, then `lesson.position`, order; intervening optional lessons do not block it.
 - A completed lesson remains accessible for repetition.
 - Correctness and completion are separate concepts.
 - Wrong answers do not by themselves prevent progression.
 - Lesson completion follows the lesson completion rules defined elsewhere; this endpoint only reports the resulting state.
-- `is_required = false` does not remove a published lesson from the Courses v1 sequence.
+- `is_required = false` does not remove a published lesson from the roadmap; it only excludes it from required progress and prerequisites for later lessons.
 
 A lesson may be progression-unlocked but still commercially inaccessible. In that case `unlocked` may be `true` while `access.hasAccess` is `false`; `lockReason = "ACCESS"` represents that effective block for entering the lesson.
 
@@ -385,9 +385,9 @@ A lesson may be progression-unlocked but still commercially inaccessible. In tha
 
 Before a course has been explicitly started, the first lesson may be progression-unlocked while `isCurrent` remains `false`.
 
-After the course is started, the next relevant pending lesson becomes `isCurrent = true`.
+After the course is started, the next required published pending lesson becomes `isCurrent = true`.
 
-If all relevant lessons are completed, no lesson is current.
+If all required published lessons are completed, no lesson is current.
 
 ### Business rules
 
@@ -454,7 +454,7 @@ None.
 
 If the course was already started, the same endpoint returns the current existing progress and the current next relevant lesson. It does not create duplicates.
 
-When every relevant lesson is completed, `nextLesson` is `null` and the derived progress response is:
+When every required published lesson is completed, `nextLesson` is `null` and the derived progress response is:
 
 ```json
 {
@@ -516,7 +516,7 @@ The start operation must not create `course_progress` in this case.
 
 Starting a course never creates or modifies `purchase` or `entitlement` records.
 
-The service may allow a user without full commercial access to start a course when the first relevant lesson is accessible free content.
+The service may allow a user without full commercial access to start a course when its first required published lesson (or first published lesson if none is required) is accessible free content.
 
 Conceptually:
 
@@ -530,7 +530,7 @@ First relevant lesson is PAID
   -> otherwise -> denied
 ```
 
-If the user has no access to the first relevant lesson with which to begin the course, return `403 Forbidden`:
+If the user has no access to that initial lesson with which to begin the course, return `403 Forbidden`:
 
 ```json
 {
@@ -589,7 +589,7 @@ Conceptually, the service/controller flow should enforce:
 3. Resolve visible course.
 4. Reject COMING_SOON for start.
 5. Resolve relevant lessons and reject an empty published course.
-6. Determine whether the user can access the first relevant lesson.
+6. Determine whether the user can access the first required published lesson (falling back to the first published lesson when none is required).
 7. Reuse existing course_progress or create it once.
 8. Derive current progress and next lesson.
 9. Return response.
