@@ -17,6 +17,10 @@ Shared rules:
 - Explanations may be shown when pedagogically useful.
 - Activity completion and answer correctness remain separate concepts.
 - For Lesson v1 score, the **first submitted attempt** for each relevant activity is the score-bearing attempt. Retries remain persisted for learning/history but do not overwrite that first-attempt result.
+- Keep action density low: normally one dominant CTA plus, at most, one useful secondary action.
+- After a retry is answered correctly, do not continue showing `Intentar de nuevo`; the natural next action is `Continuar`.
+- If a learner first answered incorrectly and then succeeds on retry, feedback copy should avoid implying that the original score/review history was erased. Prefer language such as `¡Ahora sí!` when useful.
+- Do not expose technical navigation/implementation labels to the learner when a simpler visual state communicates the same thing.
 
 ## 1. Multiple choice
 
@@ -54,10 +58,12 @@ Conceptual states:
 
 Typical UI:
 
-- Sentence with a visible blank.
+- Sentence with a visible blank as the main visual focus.
 - Small bank of predefined options.
-- Optional `Pista` action.
+- Optional `Pista` action **only when a real hint is configured**.
 - `Comprobar` / `Verificar` CTA.
+
+If a future activity contract includes a contextual image, place it above the sentence/prompt in this activity family. Do not fabricate an image in the current frontend when the activity payload does not provide one.
 
 The presence of predefined options is part of the activity configuration, not a user preference.
 
@@ -78,10 +84,12 @@ Conceptual states:
 
 Typical UI:
 
-- Sentence with a blank.
+- Sentence with a blank as the main visual focus.
 - Text input such as `Escribe tu respuesta`.
-- Optional `Pista` action.
+- Optional `Pista` action **only when a real hint is configured**.
 - `Comprobar` / `Verificar` CTA.
+
+If a future activity contract includes a contextual image, place it above the sentence/prompt. Do not fabricate an image in the current frontend when the activity payload does not provide one.
 
 Answer comparison rules:
 
@@ -125,6 +133,15 @@ Typical `TAP` interaction:
 3. The pair becomes visually connected/selected.
 4. The learner may modify pairs before checking.
 5. Tap `Comprobar`.
+
+Preferred visual treatment for TAP should stay close to the matching mockup even without drag-and-drop:
+
+- Center the learning content inside its cards rather than emphasizing technical numbering.
+- Use small connector nodes/anchors on the relevant card edges.
+- Show paired word/image items with the same blue selected state.
+- When practical, use a soft curved/organic connector rather than a rigid straight technical line, echoing the visual language of the Roadmap.
+- Avoid learner-facing labels such as `Par 1`, `Par 2` or `Sin emparejar` when selection/connection state already communicates the relationship.
+- TAP reliability is more important than implementing DRAG in the current refinement pass.
 
 Conceptual states:
 
