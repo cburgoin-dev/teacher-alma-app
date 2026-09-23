@@ -133,6 +133,14 @@ Current principles:
 - Hybrid lesson consumption: grouped explanatory content plus focused activities.
 - Strong feedback and progress visibility.
 - Visual polish matters more here than in low-frequency utility screens.
+- Keep the contextual header compact: blue back chevron, topic/unit context and lesson position should consume less vertical space than the learning content.
+- Prefer one dominant action per state and avoid stacking several navigation/learning CTAs below the same activity.
+- Content blocks should have stronger visual identity instead of rendering every pedagogical element as the same generic card: summaries, examples, video and activities may use specialized compositions while staying inside the same visual system.
+- Example/dialogue content may prepare for optional audio controls, but dead/nonfunctional audio controls should not be rendered before real audio data/behavior exists.
+- At least one demo lesson should exercise a VIDEO block/placeholder so layout is validated against a more realistic lesson composition.
+- Matching should preserve reliable TAP behavior while moving visually toward the connector/node language of the mockup; DRAG can remain deferred until it is stable and worth the complexity.
+- Summary and Result should move closer to the existing mockups using only data that is actually available. Do not fabricate rewards, audio, Review actions or other unsupported features for visual parity.
+- Result should feel like a deliberate completion moment, not a stack of administrative cards. Premium/access state should be framed as the next lesson/next step being blocked.
 
 ## Implementation principle
 
