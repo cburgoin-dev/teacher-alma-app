@@ -333,12 +333,14 @@ The current provisional direction is **hybrid consumption**:
 - Related explanatory content can be grouped into one scrollable content step.
 - Interactive activities are shown as focused steps.
 - The lesson should avoid both a giant continuous scroll and excessive fragmentation where every paragraph requires `Continuar`.
+- MVP lessons are intended to be concise, generally around **5–15 minutes**.
+- A normal first-version lesson can be only **one content step + one or two activity steps + one summary step**. More steps are allowed when pedagogically justified; they are not a target by themselves.
 
 A conceptual lesson may contain blocks such as:
 
 `TEXT -> EXAMPLE -> VIDEO -> ACTIVITY -> TEXT -> ACTIVITY -> SUMMARY`
 
-These blocks may be grouped visually into fewer steps.
+These blocks may be grouped visually into fewer steps. Consecutive explanatory blocks are expected to collapse into the same `CONTENT_STEP` where they form one coherent explanation.
 
 ### Content block types
 
@@ -416,10 +418,12 @@ An activity can therefore be completed/submitted even when answered incorrectly.
 ### Navigation and resume
 
 - Entering a new lesson starts at the first required step.
-- Re-entering an `IN_PROGRESS` lesson resumes at the last meaningful pending/current step.
+- Re-entering an `IN_PROGRESS` lesson resumes at the **start of the last meaningful pending/current step**.
+- Resume is step-level only for the MVP; exact scroll position and exact video timestamp do not need to be restored.
 - The learner may revisit previous content within the lesson.
 - Required future content should not be silently skipped when sequential progression applies.
-- Leaving the lesson before completion preserves progress and submitted activity attempts.
+- Leaving the lesson before completion preserves completed-step progress and submitted activity attempts.
+- This behavior is intended mainly as resilience for interruptions; short lessons should still feel lightweight rather than like long resumable courses.
 
 ### Typical flow
 
@@ -475,7 +479,12 @@ For practice activities:
 
 ### Matching interaction
 
-For mobile, the preferred initial interaction is tap-to-select / tap-to-match instead of requiring drag and drop.
+For mobile, `MATCH_WORD_IMAGE` supports two presentation modes:
+
+- reliable tap-to-select / tap-to-match;
+- drag-and-drop when the current mobile implementation can support it cleanly.
+
+Both produce the same submitted pair mapping. Tap remains the required fallback and backend validation must be independent from the gesture mode.
 
 ---
 
