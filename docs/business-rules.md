@@ -75,6 +75,8 @@ Current provisional direction:
 Current provisional direction:
 
 - Lessons use a **hybrid consumption model**: related explanatory blocks can be grouped into a scrollable content step, while interactive activities are presented as focused steps.
+- The expected MVP lesson is intentionally short and focused, generally targeting about **5–15 minutes** rather than a long study session.
+- A typical first-version lesson may be as small as **one explanatory content step + one or two activity steps + one summary step**. Additional content/activity steps are allowed when the material genuinely needs them, but should not be added merely to make a lesson feel larger.
 - A lesson should not require one screen per content block, and should also avoid becoming one very long undifferentiated page.
 - Conceptual content blocks can include text, video, image, example, activity and summary.
 - Blocks have an order and may be required or optional.
@@ -85,8 +87,11 @@ Current provisional direction:
 ### Lesson states and resume
 
 - Conceptual lesson states are `NOT_STARTED`, `IN_PROGRESS`, `COMPLETED` and `LOCKED`.
-- Leaving an unfinished lesson preserves meaningful progression and submitted attempts.
-- Re-entering an `IN_PROGRESS` lesson resumes at the last meaningful current/pending step rather than restarting from the beginning.
+- `IN_PROGRESS` does **not** imply that lessons are expected to be long. It simply represents a lesson that was started but has not yet satisfied its completion conditions.
+- Leaving an unfinished lesson preserves already-submitted attempts and meaningful completed-step progress.
+- Re-entering an `IN_PROGRESS` lesson resumes at the **start of the last meaningful pending/current step**. The MVP does not need to restore an exact scroll offset, text position or video timestamp.
+- Because first-version lessons are intended to be short, resume is primarily a resilience/quality-of-life behavior for app closes, interruptions or connectivity changes rather than a design assumption that lessons are lengthy.
+- Do not introduce destructive automatic reset of attempts/progress merely because the learner leaves an unfinished lesson; a future explicit `Reiniciar lección` action can be designed separately if product validation shows it is useful.
 
 ### Completion rule
 
@@ -195,7 +200,10 @@ Shared rules:
 
 ### Matching
 
-- Initial mobile interaction should prefer tap-to-match over mandatory drag-and-drop.
+- `MATCH_WORD_IMAGE` should support a renderer/configuration hint for both `TAP` and `DRAG` interaction modes without changing answer semantics in the backend.
+- Tap-to-match is the required reliable MVP interaction.
+- Drag-and-drop is desirable for the initial mobile version when it can be implemented cleanly with the existing React Native/Expo stack; it may be deferred without changing the backend contract if it introduces disproportionate gesture/layout complexity.
+- The backend validates the submitted pairs, not the gesture used to create them.
 
 ## Review / error practice
 
@@ -209,6 +217,10 @@ Shared rules:
 - Example distinction:
   - Score: 8/10 correct answers.
   - Gamification: coins, streak and achievements.
+- For normal Lesson v1 scoring, each relevant activity contributes **one score result based on the learner's first submitted attempt for that activity in the lesson**.
+- Retries are learning support: later attempts are stored and may produce immediate feedback, but they do not rewrite the lesson's first-attempt score.
+- An incorrect first attempt may therefore remain represented in Review even if the learner succeeds on an immediate retry. Review resolution belongs to the Review flow rather than silently erasing the original learning signal inside the lesson.
+- This scoring rule does not affect completion: an incorrect submitted attempt can still satisfy the activity-completion requirement.
 - Exact coin values are not yet fixed and should be configurable/balanceable.
 - Lesson completion may award a base coin reward. A better/perfect result may optionally award a modest bonus, but weaker performance should not punish or block learning.
 - Avoid life/heart penalties in the initial MVP unless later validated with the client.
