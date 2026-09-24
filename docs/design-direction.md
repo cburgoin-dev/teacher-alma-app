@@ -228,3 +228,25 @@ The frontend decides whether those facts are rendered as:
 - another validated layout.
 
 This separation should allow Alma-driven visual changes without forcing major backend rewrites.
+
+
+## Lessons high-fidelity implementation direction
+
+Mobile Lessons V3 validated the interaction architecture but also confirmed that visual fidelity is now constrained by content semantics more than by basic component styling.
+
+Before another broad visual-only pass:
+
+1. implement/sanitize the richer content structures in `docs/lesson-content-contract-v2.md`;
+2. seed representative dialogue/context/summary/media metadata;
+3. verify public payloads;
+4. then perform the next mobile high-fidelity pass.
+
+Visual targets for that pass:
+
+- reproduce approved mockup icon treatments closely instead of substituting generic placeholder-like glyphs when a custom/vector asset is justified;
+- use structured dialogue rows, speaker labels and optional audio only from real payload data;
+- use colorful/representative matching imagery rather than monochrome development assets;
+- keep the shared activity family coherent across Multiple Choice, Fill Blank and Matching;
+- make Summary and Result deliberate product moments, not generic data cards.
+
+A small reusable contextual-header component should be preferred over duplicating Lesson-specific back-chevron code across nested screens.
