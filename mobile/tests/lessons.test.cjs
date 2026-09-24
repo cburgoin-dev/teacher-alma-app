@@ -187,3 +187,78 @@ test('roadmap targets current including ACCESS, completed last segment, and clam
   assert.equal(initialRoadmapOffset(1200, 100, 700, 2500), 1048);
   assert.equal(initialRoadmapOffset(2400, 100, 700, 2500), 1800);
 });
+
+test('v2 emphasis and Summary use explicit fields; v1 fallback never infers key phrases', () => {
+  const { textRuns, summaryTakeaways } = require('../src/features/lessons/contentPresentation.ts');
+  const segments = [{ text: 'Use ' }, { text: 'Hello', emphasis: 'KEY' }];
+  assert.deepEqual(textRuns('legacy text', segments), segments);
+  assert.deepEqual(textRuns('Hello Hello'), [{ text: 'Hello Hello' }]);
+  assert.deepEqual(textRuns(), []);
+  assert.deepEqual(summaryTakeaways({ points: ['legacy'] }), [{ text: 'legacy' }]);
+  assert.deepEqual(summaryTakeaways({ points: ['legacy'], takeaways: [{ text: 'Use Hello', segments }] }), [{ text: 'Use Hello', segments }]);
+  assert.deepEqual(summaryTakeaways({}), []);
+});
+
+test('dialogue MC context replaces legacy situation without parsing; other prompts and instructions survive', () => {
+  const { activityPresentation, mediaUrl } = require('../src/features/lessons/contentPresentation.ts');
+  const base = { type: 'MULTIPLE_CHOICE', prompt: 'An arbitrary speaker and situation', instruction: 'Configured instruction' };
+  assert.equal(activityPresentation(base).showPrompt, true);
+  assert.equal(activityPresentation({ ...base, context: { type: 'DIALOGUE', text: 'Any dialogue' } }).showPrompt, false);
+  assert.equal(activityPresentation({ ...base, context: { type: 'TEXT', text: 'Background' } }).showPrompt, true);
+  assert.equal(activityPresentation({ ...base, type: 'FILL_BLANK_TEXT', context: { type: 'DIALOGUE', text: 'Background' } }).showPrompt, true);
+  assert.equal(activityPresentation(base).instruction, 'Configured instruction');
+  for (const value of [undefined, '', 'javascript:alert(1)', 'file:///audio.mp3', 'https://user:pass@example.org/a.mp3']) assert.equal(mediaUrl(value), undefined);
+  assert.equal(mediaUrl('https://example.org/a.mp3'), 'https://example.org/a.mp3');
+});
+
+test('fresh activity count is optional metadata: slow GET cannot delay feedback or one-tap Continue', async () => {
+  let release;
+  let reads = 0;
+  const { flow } = fixture({ read: async () => ++reads === 1 ? { ...data, activityProgress: { completed: 0, total: 2 } } : new Promise(resolve => release = resolve) });
+  await flow.load(); await flow.continueContent(); await flow.submit({ text: 'am' });
+  assert.equal(flow.snapshot().busy, false);
+  assert.ok(flow.snapshot().feedback);
+  assert.equal(flow.snapshot().data.activityProgress, undefined, 'never display the stale initial count');
+  flow.continueFeedback(); assert.equal(flow.snapshot().stepId, '2');
+  release({ ...data, activityProgress: { completed: 1, total: 2 } });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(flow.snapshot().data.activityProgress, { completed: 1, total: 2 });
+  assert.equal(flow.snapshot().stepId, '2', 'metadata cannot move the pointer');
+});
+
+test('older activity count cannot overwrite a retry read; failed metadata read does not fail the attempt', async () => {
+  let reads = 0;
+  let releaseOld;
+  const { flow } = fixture({ read: async () => {
+    reads++;
+    if (reads === 1) return data;
+    if (reads === 2) return new Promise(resolve => releaseOld = resolve);
+    return { ...data, activityProgress: { completed: 1, total: 3 } };
+  } });
+  await flow.load(); await flow.continueContent(); await flow.submit({ text: 'wrong' });
+  flow.retryAnswer(); await flow.submit({ text: 'correct' });
+  await new Promise(resolve => setImmediate(resolve));
+  releaseOld({ ...data, activityProgress: { completed: 0, total: 3 } });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(flow.snapshot().data.activityProgress, { completed: 1, total: 3 }, 'retry does not fabricate a second completed activity');
+  const failed = fixture({ read: async () => { if (++reads > 4) throw new Error('offline metadata'); return data; } });
+  await failed.flow.load(); await failed.flow.continueContent(); await failed.flow.submit({ text: 'answer' });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(failed.flow.snapshot().error, null);
+  assert.ok(failed.flow.snapshot().feedback);
+  failed.flow.continueFeedback(); assert.equal(failed.flow.snapshot().stepId, '2');
+});
+
+test('resume preserves server activity traversal count including pending optional blocks; disposed reads cannot publish', async () => {
+  const resumed = fixture({ read: async () => ({ ...data, activityProgress: { completed: 1, total: 3 } }), start: async () => ({ status: 'IN_PROGRESS', currentStepId: '2', progress }) });
+  await resumed.flow.load();
+  assert.deepEqual(resumed.flow.snapshot().data.activityProgress, { completed: 1, total: 3 });
+  assert.equal(resumed.flow.snapshot().stepId, '2');
+  let reads = 0, release;
+  const { flow } = fixture({ read: async () => ++reads === 1 ? data : new Promise(resolve => release = resolve) });
+  await flow.load(); await flow.continueContent(); await flow.submit({ text: 'answer' });
+  flow.dispose(); const snapshot = flow.snapshot();
+  release({ ...data, activityProgress: { completed: 1, total: 1 } });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(flow.snapshot(), snapshot);
+});

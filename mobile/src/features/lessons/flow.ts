@@ -13,6 +13,7 @@ export class LessonFlow {
   private feedbackByStep = new Map<string, AttemptResponse>();
   private answersByStep = new Map<string, Answer>();
   private browsingPrevious = false;
+  private activityReadVersion = 0;
   constructor(private id: string, private api = lessonsApi) {}
   snapshot = () => this.state;
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
@@ -26,6 +27,7 @@ export class LessonFlow {
     finally { this.set({ ...completed, busy: false, loading: false }); }
   }
   load = () => this.run(async () => {
+    ++this.activityReadVersion;
     this.set({ loading: true });
     const data = await this.api.read(this.id, this.controller.signal);
     if (this.disposed) return;
@@ -74,16 +76,35 @@ export class LessonFlow {
     this.set({ progress: response.progress });
     this.showStep(response.currentStepId);
   });
-  submit = (answer: Answer) => this.run(async () => {
-    if (!this.state.stepId || this.state.feedback) return;
-    const response = await this.api.attempt(this.id, this.state.stepId, answer);
-    this.frontier = response.progress.currentStepId;
-    this.feedbackByStep.set(this.state.stepId, response);
-    this.answersByStep.set(this.state.stepId, answer);
-    // Publish feedback atomically with run's busy release. The first visible
-    // feedback is ready for Continue; no intermediate disabled CTA snapshot.
-    return { feedback: response, answer, progress: response.progress };
-  });
+  private async refreshActivityProgress(version: number) {
+    try {
+      const fresh = await this.api.read(this.id, this.controller.signal);
+      if (!this.disposed && version === this.activityReadVersion && this.state.data) {
+        this.set({ data: { ...this.state.data, activityProgress: fresh.activityProgress } });
+      }
+    } catch {
+      // Optional display metadata: omit it if unavailable. Never retry an attempt
+      // or block Continue because this independent read failed.
+    }
+  }
+  submit = async (answer: Answer) => {
+    let refreshVersion: number | undefined;
+    await this.run(async () => {
+      if (!this.state.stepId || this.state.feedback) return;
+      // Invalidate a previous metadata read before starting a new attempt.
+      const version = ++this.activityReadVersion;
+      const response = await this.api.attempt(this.id, this.state.stepId, answer);
+      this.frontier = response.progress.currentStepId;
+      this.feedbackByStep.set(this.state.stepId, response);
+      this.answersByStep.set(this.state.stepId, answer);
+      // Publish feedback atomically with run's busy release. The first visible
+      // feedback is ready for Continue; no intermediate disabled CTA snapshot.
+      refreshVersion = version;
+      return { feedback: response, answer, progress: response.progress,
+        data: this.state.data ? { ...this.state.data, activityProgress: undefined } : null };
+    });
+    if (refreshVersion !== undefined && !this.disposed) void this.refreshActivityProgress(refreshVersion);
+  };
   retryAnswer = () => { if (!this.state.busy) this.set({ feedback: null, error: null }); };
   continueFeedback = () => {
     if (this.state.busy || !this.state.feedback) return;

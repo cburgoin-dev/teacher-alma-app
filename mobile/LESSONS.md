@@ -152,3 +152,87 @@ node --import tsx scripts/seed-courses-demo.ts --reset
 - Deuda visual intencional: fidelidad final de Summary/Result, medios reales y DRAG quedan fuera de V3.
 - Android export final: PASS, 1009 módulos y bundle Hermes de 2,2 MB en `mobile/dist/lessons-v3-check` (salida ignorada por Git). Imports públicos por icono evitan recorrer toda la biblioteca Lucide.
 - `git diff --check`: PASS. Sin commit, push ni merge.
+
+# Lessons Mobile V4 — High Fidelity
+
+Esta sección sustituye las observaciones visuales V2/V3 anteriores. V4 usa el Content Contract v2 ya versionado, sin cambios de backend, API, schema, dataset ni dependencias.
+
+## Implementación
+
+- `ContextualHeader`: mismo chevron azul, touch target de 44 × 48, título flexible y safe area para Lesson, Roadmap y Course Detail. Lesson añade posición y progreso. Se conservan los handlers de navegación y la lógica de posicionamiento de Roadmap.
+- `LearningIcon`: discos saturados con halo suave, concept blanco y diálogo sólido vectorial; pencil, hint, video y check comparten la familia. Sin nuevos paquetes.
+- Content: heading con nivel, título y descripción; TEXT usa exclusivamente segments/KEY, fallback body. Concepto con icono lateral y columna de texto. EXAMPLE DIALOGUE renderiza cada turn con su speakerLabel y traducción, separado de los demás. Se conserva el título configurado («Una conversación sencilla» en el dataset actual); no se cambia por «Ejemplos» mediante heurísticas. EXAMPLE v1 mantiene sus textos/nota sin inventar interlocutores.
+- Video: preview 57% / metadata restante cuando hay espacio; apilado en ancho menor de 360 o fontScale mayor de 1.25. Preview neutral sin URL, sin texto técnico ni botón muerto. Una URL real abre externamente; no hay reproductor integrado.
+- Activities: título de 27/33, instruction real con fallback, contexto opcional y respuestas siguiendo un orden natural sin centrado vertical expansivo. MC DIALOGUE usa la pregunta de la familia «¿Qué responderías?» y el contexto estructurado, omitiendo el prompt situacional legacy para no repetirlo. TEXT/IMAGE context conservan también el prompt. Fill siempre conserva la frase completa en navy, sin regex ni imágenes inventadas. Opciones/radios grandes; hint y CTA se apilan en pantallas estrechas/fuente grande.
+- Feedback: icono, geometría y jerarquía refinados; conserva incorrect → Continue/retry, retry correcto → ¡Ahora sí! y Continue. Button sigue mostrando busy real y bloqueando doble submit.
+- Matching: utiliza sin transformar las tres imágenes coloridas que entrega el backend. TAP y unicidad de pares se conservan. Curvas/nodos usan los bordes y centros medidos de cada card y la posición real de la columna derecha, incluso cuando crece el texto. Estados azul, verde y rojo con texto de feedback.
+- Summary: título/subtitle real, takeaways con KEY, círculos y divisores; keyPhrases en sección rosa con texto/traducción; fallback points sin frases inferidas. Contador informativo de actividades completadas, sin ratio ni barra que penalice optional pendiente.
+- Result: hero SVG de 150 px con halo/check/confeti, celebración perfecta, identidad real de lesson/course/level, score al primer intento, progreso y Review informativo. Próxima accesible/Premium según backend. Siempre la misma acción secundaria azul «Volver a la ruta», incluso sin siguiente lección. No hay monedas, rachas, Review CTA ni Ver mi progreso.
+- AudioButton: solo aparece con URL HTTP(S) válida sin credenciales; abre audio externo con mensaje de error si falla. No simula playback ni fabrica audio. Los fixtures actuales no contienen audio, por lo que no muestran controles.
+
+## Contador de Summary y Continue
+
+GET es la fuente del contador de actividades. Tras un attempt exitoso se invalida el contador anterior y se solicita una lectura independiente, sin bloquear feedback ni Continue. Se publica solo activityProgress de esa lectura: nunca su pointer/status. Mientras llega, o si falla, se omite el contador. No se inventa a partir de score, índices o progreso requerido. Una versión de lectura descarta respuestas anteriores tras otro attempt/reload; dispose cancela/ignora pendientes. Resume usa el contador de su GET inicial.
+
+La primera publicación de feedback sigue ocurriendo atómicamente con busy=false. La lectura de metadata no cambia attempts, first-attempt score, Review, required progression ni completion.
+
+## Prueba física Android V4 — preparación exacta
+
+No se ha reseteado la base de datos durante esta iteración. Estos comandos preparan deliberadamente el escenario demo para aceptación. Reutilizar backend/Metro existentes si ya ocupan los puertos.
+
+Terminal backend, con la configuración local de desarrollo existente:
+
+```powershell
+Set-Location C:\software-development\projects\teacher-alma-app\backend
+node --import tsx scripts/seed-courses-demo.ts --reset --lessons
+node --import tsx scripts/seed-courses-demo.ts --check
+& 'C:\Program Files\nodejs\npm.cmd' run dev
+```
+
+El reset guardado afecta al aprendizaje demo del usuario de desarrollo configurado, deja A1 2/8 y A2 sin iniciar y aplica el contenido v2 de las lecciones 3/4. PostgreSQL local teacher_alma_dev debe estar disponible. No usar otro dataset ni entorno.
+
+Terminal mobile:
+
+```powershell
+Set-Location C:\software-development\projects\teacher-alma-app\mobile
+$lessonLan = Get-NetIPConfiguration | Where-Object { $_.IPv4DefaultGateway -and $_.NetAdapter.Status -eq 'Up' } | Select-Object -First 1
+$env:EXPO_PUBLIC_API_URL = 'http://' + $lessonLan.IPv4Address.IPAddress + ':3000'
+node node_modules/expo/bin/cli start --host lan --port 8081 --clear
+```
+
+PC y Android en la misma LAN; revisar la interfaz elegida si hay VPN. Backend debe escuchar en puerto 3000 y ser accesible desde el teléfono. Escanear QR con Expo Go compatible con SDK 57 o usar el development build existente con react-native-svg. Esta iteración no requiere nuevas dependencias nativas. Los comandos de Expo usan el CLI local para evitar el npx global roto de esta máquina.
+
+## Recorrido Android V4
+
+1. Cursos → Inglés A1 → Roadmap. Debe posicionarse cerca de **3. Nice to meet you!** una vez. Revisar header azul; desplazarse/arrastrar y refrescar sin que persiga de nuevo el nodo. Course Detail conserva su contenido y comparte el mismo back treatment.
+2. Abrir lección 3. Header con topic largo, **3 de 8** y progreso real. Content: nivel, título y descripción; frases KEY azules; concepto con glyph blanco/disco azul; turnos **A/B** en burbujas separadas y traducciones. No hay botones de audio porque no hay URLs en el dataset. Video neutral ancho, título/caption, sin aviso de no disponibilidad. Continuar.
+3. MC: título grande/instruction, **D** con burbuja «Hi, I’m Daniel.» y traducción; no repetir «Alguien dice…». Ver estado sin selección, seleccionar **Goodbye!** y comprobar radio centrado/azul. Comprobar → incorrecto. Tocar Continuar una vez debe avanzar; para recorrer retry, usar primero **Intentar de nuevo → Nice to meet you! → Comprobar**. Debe mostrar **¡Ahora sí!**, conservar Review y ocultar retry. Continuar una vez.
+4. Fill options: frase **_____, I’m Sofía.** con blank navy, sin una imagen ficticia ni grandes huecos. Pista/Ocultar pista; elegir **Hello** desde el primer intento → Verificar → Continuar.
+5. Summary v2: subtitle, takeaways con separadores/KEY, sección **Frases clave de la lección** con dos frases/traducciones, sin audio ficticio. Debe mostrar **2 actividades completadas** cuando llega GET; si hay red lenta el contador aparece después, sin bloquear Finalizar. Finalizar lección.
+6. Result no perfecto de este recorrido: **1/2 correctas al primer intento**, **1 ejercicio para reforzar**, A1 **3/8 (38%)**, curso/nivel y próxima **Verb to be** accesible. Revisar hero/confeti, tarjetas y acción secundaria azul. Siguiente lección.
+7. Lección 4: Content v1 sigue legible sin labels ni key phrases inferidos. Fill text muestra contexto «Preséntate como estudiante.», frase **I _____ a student.**, input y pista. Escribir **om** → Verificar → incorrecto; retry con **am** → ¡Ahora sí! → Continuar. Probar que el teclado no tape la acción y que un tap con teclado abierto se procese.
+8. Matching: **Book/Cup/Ball** y dibujos coloridos (libro, taza, pelota). Conectar Book→taza, Cup→libro, Ball→pelota. Cambiar un par antes de enviar no duplica imagen. Comprobar: dos errores y uno correcto, curvas/nodos unidos. Retry: Book→libro, Cup→taza, Ball→pelota → Comprobar → pares verdes y ¡Ahora sí! → Continuar una vez.
+9. Summary v1 de lección 4 usa points; no añade subtitle/keyPhrases inexistentes. Contador **2 actividades completadas**, aunque hubo retries. Finalizar. Result **0/2**, dos ejercicios para reforzar, A1 **4/8 (50%)**, próxima **Mi familia** con Premium/Obtener acceso. Obtener acceso solo muestra información existente; Volver a la ruta lleva al nodo ACCESS, sin alterar acceso.
+10. Pasada perfecta: repetir reset --lessons, recargar la app y acertar desde el primer intento: **Nice to meet you!**, **Hello**, luego **am** y los tres pares correctos. Result de cada lección: **2/2**, ¡Excelente trabajo!, sin errores para repasar; accesible tras lección 3 y Premium tras lección 4. Misma acción secundaria en ambos casos.
+11. Back: chevron y back físico recorren pasos previos, mantienen respuesta/feedback local y vuelven al frontier sin reenviar attempts. Con teclado abierto, back físico puede cerrarlo primero. Desde el primer paso sale a Roadmap. Cerrar/reabrir después de enviar reanuda el siguiente required del backend; no reinicia ni cambia score.
+12. Red/doble tap: durante envío, botón con spinner y estado deshabilitado real. Dos taps rápidos generan un attempt. Cuando aparece feedback, el primer tap de Continue avanza. Una lectura lenta/fallida de activityProgress no deja Continue deshabilitado ni reenvía el attempt.
+13. Repetir a ancho normal y estrecho (aprox. 320–360 dp), fuente aumentada (1.3–1.5), portrait/landscape cuando esté habilitado, títulos largos y scroll. Verificar safe areas, radios, burbujas, video apilado, conectores después de layout, Summary largo y Result desplazable. Revisar TalkBack en back/opciones/audio si se dispone de contenido con URL real.
+
+Para restaurar el escenario habitual Courses A1 3/8 + A2 sin iniciar:
+
+```powershell
+Set-Location C:\software-development\projects\teacher-alma-app\backend
+node --import tsx scripts/seed-courses-demo.ts --reset
+```
+
+## Validación V4 y límites
+
+- TypeScript mobile: PASS.
+- Tests mobile: 30/30 PASS (25 existentes + 5 de v2/metadata/races). Incluyen first-feedback ready, doble submit, lectura lenta/fallida, respuesta fuera de orden, dispose, resume y optional traversal counts.
+- Android export: PASS, 1013 módulos, bundle Hermes de 2,2 MB en `mobile/dist/lessons-v4-check` (ignorado por Git).
+- Expo install --check: salida 1 por el desfase preexistente expo 57.0.24 vs ~57.0.25. No se cambian dependencias. El primer intento sandbox no pudo consultar red; la ejecución con acceso sí devolvió la comparación de versiones.
+- git diff --check: PASS. Las advertencias de conversión LF/CRLF corresponden a la configuración Git de Windows.
+- ADB no detectó dispositivos. No se acredita todavía aceptación visual física, teclado, TalkBack ni una cifra de fidelidad del 90–95%. Layout revisado en código y bundle, no mediante capturas nuevas del dispositivo.
+- No se repiten tests backend: no se modificó backend. No se ejecutó seed/reset ni se cambió el aprendizaje actual durante la implementación.
+- Deuda: fotografías/video/audio reales dependen del contenido; audio/video abren externamente, sin reproductor integrado; celebración estática, sin animación adicional; títulos legacy siguen siendo contenido configurado. Result sin next/course y campos v2 ausentes conservan fallback, pero sus estados visuales requieren datos reales para aceptación física. DRAG, Review real, rewards y Progress quedan fuera.
+- Sin commit, push ni merge. Revisión y aceptación Android pendientes antes del checkpoint.
