@@ -83,3 +83,72 @@ No hay lint configurado. Check demo valida HTTP/PostgreSQL, VIDEO dentro de CONT
 Pendiente: aceptación visual física V2, DRAG, video real/reproducción integrada, audio y Review real. No se muestra contador global de actividades completadas en Summary: GET no distingue completitud individual de todos los optional tras resume. No se altera contrato para inventarlo. Solo dos lecciones tienen contenido demo. Result sigue desplazable cuando pantalla, fuente o texto requieren más altura.
 
 Los tests/build no sustituyen probar el dispositivo. No hay cambios en reglas backend/API/schema/dependencias ni commit/push de esta iteración.
+
+## Lessons Mobile V3 — Visual Fidelity & Motion
+
+V3 conserva el flujo de V2. Usa Lucide React Native 1.47.0 (imports de siete iconos, licencia ISC) y react-native-svg 15.15.4, versión incluida en la matriz local de Expo SDK 57. SVG se comparte entre iconos y conectores; no hay motor de gestos adicional. Las dependencias y el lockfile mobile cambiaron, sin cambios de dependencias backend.
+
+- Roadmap: scroll nativo animado tras medir y recibir el reload de foco; una vez por entrada. Tocar o arrastrar cancela el posicionamiento pendiente. No se vuelve a posicionar al refrescar durante esa visita.
+- Loading: spinner pequeño y texto secundario sin CTA. Los errores conservan Reintentar/Volver a la ruta.
+- Header: chevron Lucide azul, área de toque 44 × 48, topic flexible y posición compacta; títulos largos pueden ocupar varias líneas sin truncarse.
+- Content: description real cuando existe, concepto con icono y borde suave, EXAMPLE con separación entre textos sin asignar hablantes A/B, video horizontal compacto. En pantalla estrecha/fuente grande se apila con preview de 120 px, sin playback simulado.
+- Activities: composición que aprovecha la altura disponible, radios de 25 px, opciones de al menos 72 px, frase Fill Blank destacada, input de 68 px y pista con Lightbulb. Acciones se apilan en pantallas estrechas/fuentes grandes.
+- Matching: paths cúbicos y nodos SVG en las mismas coordenadas derivadas del layout. La capa visual no recibe toques; permanece TAP. Demo Book/Cup/Ball con PNG local original.
+- Result solo reutiliza Check; Summary mantiene su composición. Score, retry, Review, acceso y progresión no cambian.
+
+La fixture agrega descripciones en las dos lecciones demo y una pelota en Matching; conserva IDs, guards, apply idempotente y reset. El caption de video se acorta. No se modifica ningún contrato ni regla backend.
+
+### Preparación Android V3
+
+Terminal backend (reutilizar el servidor si ya está levantado):
+
+```powershell
+Set-Location C:\software-development\projects\teacher-alma-app\backend
+node --import tsx scripts/seed-courses-demo.ts --reset --lessons
+node --import tsx scripts/seed-courses-demo.ts --check
+& 'C:\Program Files\nodejs\npm.cmd' run dev
+```
+
+Terminal mobile (PC y teléfono en la misma LAN):
+
+```powershell
+Set-Location C:\software-development\projects\teacher-alma-app\mobile
+$lan = Get-NetIPConfiguration | Where-Object { $_.IPv4DefaultGateway -and $_.NetAdapter.Status -eq 'Up' } | Select-Object -First 1
+$env:EXPO_PUBLIC_API_URL = 'http://' + $lan.IPv4Address.IPAddress + ':3000'
+node node_modules/expo/bin/cli start --host lan --port 8081 --clear
+```
+
+Estos comandos usan las dependencias locales y evitan el npx global roto detectado en esta máquina. Escanear el QR con Expo Go compatible con SDK 57. Si se usa development build propio en vez de Expo Go, reconstruirlo para incorporar react-native-svg. No duplicar Metro si el puerto 8081 está ocupado: detener la sesión anterior o reutilizarla.
+
+### Recorrido físico V3
+
+1. Cursos → A1: observar desplazamiento animado hacia Nice to meet you! Tocar/arrastrar durante la entrada y comprobar que toma el control. Desplazarse lejos y refrescar: no debe perseguir ni recolocar durante esa visita. Salir y reentrar debe posicionar una vez.
+2. Abrir lección 3: carga breve sin botón Volver a la ruta; errores de red sí ofrecen acciones. No se añade un retraso artificial para hacer visible el loader.
+3. Revisar chevron azul, topic largo y 3 de 8, alineación de progreso y safe area. Confirmar título y descripción debajo.
+4. Concepto: foco Lucide y heading azul alineados, cuerpo legible. EXAMPLE: textos diferenciados sin etiquetas A/B inventadas. Video: preview a la izquierda y metadata a la derecha, aviso de no disponibilidad sin botón muerto.
+5. Multiple Choice: revisar estado sin selección y radio grande. Goodbye! → Comprobar → incorrecto; Intentar de nuevo → Nice to meet you! → ¡Ahora sí!, solo Continuar. Se conserva la explicación de primer intento/Review.
+6. Fill options: revisar frase y blank azul, Pista/Ocultar pista y selección. Para el recorrido con Result 1/2, elegir Hello desde el primer intento. En una segunda pasada, elegir Please primero y luego Hello para comprobar incorrecto/retry.
+7. Finalizar Summary: Result 1/2, un ejercicio pendiente, curso 3/8. Siguiente lección → Verb to be.
+8. Fill text: Pista; escribir om → incorrecto; retry con am → ¡Ahora sí! Revisar teclado, input y Verificar, fuente ampliada y ancho estrecho. Con teclado abierto, back físico primero debe cerrarlo.
+9. Matching tiene Book, Cup y Ball. Conectar Book→taza, Cup→libro, Ball→pelota. Verificar que curvas cruzadas llegan exactamente al centro de los nodos. Comprobar: dos pares incorrectos y uno correcto, con texto y color.
+10. Retry: Book→libro, Cup→taza, Ball→pelota. Comprobar: verde y ¡Ahora sí!, solo Continuar. Antes de enviar, cambiar un par no debe duplicar imagen. Probar también ancho estrecho/fuente grande: textos crecen y conectores siguen sus nodos tras layout.
+11. Chevron desde Matching vuelve a Fill Blank con estado de sesión, luego a Content. Continuar vuelve a recorrer los pasos ya visitados sin reenviar attempts. Probar también back físico con teclado cerrado.
+12. Finalizar lección 4: Result 0/2 al primer intento y dos ejercicios pendientes, curso 4/8. Premium es el siguiente paso; Volver a la ruta anima hacia Mi familia. Desplazarse libremente y comprobar que no hace otro auto-scroll en esa visita.
+
+Para restaurar el escenario habitual A1 3/8 + A2 sin iniciar:
+
+```powershell
+Set-Location C:\software-development\projects\teacher-alma-app\backend
+node --import tsx scripts/seed-courses-demo.ts --reset
+```
+
+### Validación V3
+
+- Mobile TypeScript y 24 tests: PASS.
+- Scripts demo TypeScript y 4 tests: PASS. El primer intento bajo sandbox falló por uv_os_get_passwd ENOMEM; el mismo comando fuera del sandbox pasó sin cambios para el entorno.
+- HTTP/PostgreSQL: PASS; cuatro actividades, tres pares, retry/score/Review, PERFECT, ACCESS, apply/reset idempotentes. Termina A1 2/8, A2 sin iniciar.
+- Expo install --check: detecta únicamente Expo 57.0.24 frente al parche recomendado ~57.0.25. SVG/Lucide no producen incompatibilidades; no se amplía la actualización de Expo en V3.
+- La aceptación visual Android sigue pendiente: ADB no encontró dispositivos. Bundle/tests no acreditan por sí solos calidad visual, fluidez real, TalkBack o comportamiento del teclado.
+- Deuda visual intencional: fidelidad final de Summary/Result, medios reales y DRAG quedan fuera de V3.
+- Android export final: PASS, 1009 módulos y bundle Hermes de 2,2 MB en `mobile/dist/lessons-v3-check` (salida ignorada por Git). Imports públicos por icono evitan recorrer toda la biblioteca Lucide.
+- `git diff --check`: PASS. Sin commit, push ni merge.

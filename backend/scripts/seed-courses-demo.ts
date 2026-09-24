@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { demoCourses } from './courses-demo-data.js';
+import { demoCourses, demoId } from './courses-demo-data.js';
 import { isUuid } from '../src/shared/auth.js';
 import { lessonsDemoData } from './lessons-demo-data.js';
 
@@ -71,6 +71,8 @@ async function main() {
             const existingLesson = await tx.lesson.findUnique({ where: { id: lesson.id }, select: { topicId: true } });
             if (existingLesson && existingLesson.topicId !== topic.id) throw new DemoGuard('Demo lesson identifier collision.');
             const lessonData = { topicId: topic.id, title: lesson.title, position: lesson.position,
+              ...(lesson.id === demoId(1003) ? { description: 'Aprende a presentarte y responder cuando conoces a alguien.' }
+                : lesson.id === demoId(1004) ? { description: 'Practica cómo presentarte y nombrar objetos con el verbo to be.' } : {}),
               status: lesson.status, accessType: lesson.accessType, isRequired: lesson.isRequired };
             await tx.lesson.upsert({ where: { id: lesson.id }, create: { id: lesson.id, ...lessonData }, update: lessonData });
           }

@@ -44,7 +44,7 @@ async function main() {
       await request(root + '/start');
       await request(`${root}/steps/${data.steps[0]!.id}/complete`);
       const answers = n === 1003 ? [{ selectedOptionId: 'bye' }, { selectedOptionId: 'hello' }]
-        : [{ text: ' AM ' }, { pairs: [{ wordId: 'book', imageId: 'book-image' }, { wordId: 'cup', imageId: 'cup-image' }] }];
+        : [{ text: ' AM ' }, { pairs: [{ wordId: 'book', imageId: 'book-image' }, { wordId: 'cup', imageId: 'cup-image' }, { wordId: 'ball', imageId: 'ball-image' }] }];
       for (let i = 0; i < answers.length; i++) {
         const result = await request<Awaited<ReturnType<LessonService['attempt']>>>(`${root}/steps/${data.steps[i + 1]!.id}/attempt`, answers[i]);
         assert.equal(result.attempt.isCorrect, !(n === 1003 && i === 0));

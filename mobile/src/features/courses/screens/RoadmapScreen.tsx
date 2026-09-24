@@ -42,7 +42,7 @@ export function RoadmapScreen({ route, navigation }: NativeStackScreenProps<Cour
     const frame = requestAnimationFrame(() => {
       if (positioned.current) return;
       positioned.current = true;
-      scroll.current?.scrollTo({ y: initialRoadmapOffset(anchor.y, mapY, viewport, contentHeight), animated: false });
+      scroll.current?.scrollTo({ y: initialRoadmapOffset(anchor.y, mapY, viewport, contentHeight), animated: true });
     });
     return () => cancelAnimationFrame(frame);
   }, [focused, resource.loading, resource.error, resource.data, target, anchor, mapY, viewport, contentHeight]);
@@ -50,6 +50,7 @@ export function RoadmapScreen({ route, navigation }: NativeStackScreenProps<Cour
   const roadmap = resource.data;
 
   return <ScrollView ref={scroll} onLayout={e => setViewport(e.nativeEvent.layout.height)} onContentSizeChange={(_, height) => setContentHeight(height)}
+    onTouchStart={() => { positioned.current = true; }}
     onScrollBeginDrag={() => { positioned.current = true; }} style={[styles.page, { backgroundColor: '#F1F8FD' }]} contentContainerStyle={local.content}
     refreshControl={<RefreshControl refreshing={resource.loading} onRefresh={resource.retry} tintColor={colors.blue} />}>
     <View style={local.summary}>

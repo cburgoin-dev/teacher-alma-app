@@ -18,11 +18,12 @@ export class LessonFlow {
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
   private set(update: Partial<State>) { if (!this.disposed) { this.state = { ...this.state, ...update }; this.listeners.forEach(fn => fn()); } }
   dispose() { this.disposed = true; this.controller.abort(); }
-  private async run(work: () => Promise<void>) {
+  private async run(work: () => Promise<void | Partial<State>>) {
     if (this.state.busy || this.disposed) return;
     this.set({ busy: true, error: null });
-    try { await work(); } catch (error) { this.set({ error }); }
-    finally { this.set({ busy: false, loading: false }); }
+    let completed: void | Partial<State> = undefined;
+    try { completed = await work(); } catch (error) { this.set({ error }); }
+    finally { this.set({ ...completed, busy: false, loading: false }); }
   }
   load = () => this.run(async () => {
     this.set({ loading: true });
@@ -79,8 +80,9 @@ export class LessonFlow {
     this.frontier = response.progress.currentStepId;
     this.feedbackByStep.set(this.state.stepId, response);
     this.answersByStep.set(this.state.stepId, answer);
-    // Remain on this activity until the learner explicitly continues.
-    this.set({ feedback: response, answer, progress: response.progress });
+    // Publish feedback atomically with run's busy release. The first visible
+    // feedback is ready for Continue; no intermediate disabled CTA snapshot.
+    return { feedback: response, answer, progress: response.progress };
   });
   retryAnswer = () => { if (!this.state.busy) this.set({ feedback: null, error: null }); };
   continueFeedback = () => {

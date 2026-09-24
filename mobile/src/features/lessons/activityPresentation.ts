@@ -7,12 +7,8 @@ export function pairFeedback(pair: Pair | undefined, feedback: AttemptResponse |
 export function feedbackTitle(feedback: AttemptResponse) {
   return !feedback.attempt.isCorrect ? 'Vamos a repasarlo' : feedback.attempt.attemptNumber > 1 && feedback.review.pending ? '¡Ahora sí!' : '¡Correcto!';
 }
-// Native rounded segments approximate a cubic curve; no SVG dependency or gesture layer.
-export function connectionSegments(x1: number, y1: number, x2: number, y2: number) {
-  const point = (t: number) => ({ x: (1-t)**3*x1 + 3*(1-t)**2*t*(x1+(x2-x1)*.5) + 3*(1-t)*t*t*(x2-(x2-x1)*.5) + t**3*x2,
-    y: (1-t)**3*y1 + 3*(1-t)**2*t*y1 + 3*(1-t)*t*t*y2 + t**3*y2 });
-  return Array.from({ length: 32 }, (_, i) => {
-    const a = point(i / 32), b = point((i + 1) / 32);
-    return { x: (a.x+b.x)/2, y: (a.y+b.y)/2, length: Math.hypot(b.x-a.x,b.y-a.y)+1, angle: Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI };
-  });
+// Both SVG anchors and paths use the same measured card-edge coordinates.
+export function connectionPath(x1: number, y1: number, x2: number, y2: number) {
+  const middle = (x1 + x2) / 2;
+  return `M ${x1} ${y1} C ${middle} ${y1}, ${middle} ${y2}, ${x2} ${y2}`;
 }

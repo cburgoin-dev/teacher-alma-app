@@ -49,6 +49,36 @@ test('double taps are gated before rendering updates; failed submit is never aut
   await failed.flow.load(); await failed.flow.submit({ text: 'am' });
   assert.ok(failed.flow.snapshot().error); assert.equal(failed.flow.snapshot().feedback, null);
 });
+
+test('first published feedback is ready for one Continue; pending attempts cannot advance or double submit', async () => {
+  let release;
+  let submissions = 0;
+  const { flow } = fixture({ attempt: () => { submissions++; return new Promise(resolve => release = resolve); } });
+  await flow.load(); await flow.continueContent();
+  const observed = [];
+  const unsubscribe = flow.subscribe(() => {
+    const state = flow.snapshot();
+    if (!state.feedback) return;
+    observed.push({ busy: state.busy, stepId: state.stepId });
+    // Simulate a tap as soon as the external store publishes the feedback.
+    if (observed.length === 1) flow.continueFeedback();
+  });
+  const pending = flow.submit({ text: 'am' });
+  flow.continueFeedback();
+  await flow.submit({ text: 'am' });
+  assert.equal(flow.snapshot().stepId, '1');
+  assert.equal(flow.snapshot().feedback, null);
+  assert.equal(flow.snapshot().busy, true);
+  assert.equal(submissions, 1);
+  release(feedback);
+  await pending;
+  unsubscribe();
+  assert.deepEqual(observed, [{ busy: false, stepId: '1' }]);
+  assert.equal(flow.snapshot().stepId, '2');
+  assert.equal(flow.snapshot().feedback, null);
+  flow.continueFeedback();
+  assert.equal(flow.snapshot().stepId, '2', 'a repeated Continue does not skip the next step');
+});
 test('resume uses backend pointer; completed opens for reading without start/reset', async () => {
   const resumed = fixture({ start: async () => ({ status: 'IN_PROGRESS', currentStepId: '2', progress }) });
   await resumed.flow.load(); assert.equal(resumed.flow.snapshot().stepId, '2');
@@ -136,14 +166,14 @@ test('normal activity continue preserves next-required server pointer across opt
 });
 
 test('feedback and matching use only returned feedback, including successful retry with pending Review', () => {
-  const { feedbackTitle, pairFeedback, connectionSegments } = require('../src/features/lessons/activityPresentation.ts');
+  const { feedbackTitle, pairFeedback, connectionPath } = require('../src/features/lessons/activityPresentation.ts');
   assert.equal(feedbackTitle({ ...feedback, attempt: { isCorrect: true, attemptNumber: 2 } }), '¡Ahora sí!');
   assert.equal(feedbackTitle({ ...feedback, attempt: { isCorrect: true, attemptNumber: 1 }, review: { pending: false } }), '¡Correcto!');
   const pair = { wordId: 'book', imageId: 'cup' };
   assert.equal(pairFeedback(pair, null), null);
   assert.equal(pairFeedback(pair, { ...feedback, feedback: { correctAnswer: [{ wordId: 'book', imageId: 'book' }] } }), false);
   assert.equal(pairFeedback(pair, { ...feedback, feedback: { correctAnswer: [pair] } }), true);
-  for (const y of [0, 160, -160]) assert.ok(connectionSegments(120, 60, 180, 60 + y).every(s => Number.isFinite(s.angle) && s.length > 0));
+  for (const y of [0, 160, -160]) assert.equal(connectionPath(120, 60, 180, 60 + y), `M 120 60 C 150 60, 150 ${60 + y}, 180 ${60 + y}`);
 });
 
 test('roadmap targets current including ACCESS, completed last segment, and clamps layout-based positioning', () => {

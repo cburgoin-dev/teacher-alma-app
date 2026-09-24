@@ -23,7 +23,12 @@ test('two existing free A1 lessons contain four safe activity types in short rea
     const dto = publicActivity({ ...activity, status: 'ACTIVE', createdAt: new Date(), updatedAt: new Date() } as Activity);
     assert.ok(!JSON.stringify(dto).includes('correctOptionId'));
     assert.ok(!JSON.stringify(dto).includes('acceptedAnswers'));
-    if ('images' in dto) assert.ok(dto.images.every(i => i.url.startsWith('data:image/png;base64,')));
+    if ('images' in dto) {
+      assert.equal(dto.words.length, 3);
+      assert.equal(dto.images.length, 3);
+      assert.equal(new Set(dto.images.map(i => i.id)).size, 3);
+      assert.ok(dto.images.every(i => i.url.startsWith('data:image/png;base64,')));
+    }
   }
   assert.deepEqual(lessonsDemoData(), { blocks, activities });
 });

@@ -12,10 +12,10 @@ export function lessonsDemoData() {
       config: { options: [{ id: 'please', text: 'Please' }, { id: 'hello', text: 'Hello' }, { id: 'bye', text: 'Goodbye' }], correctOptionId: 'hello', hint: 'Empieza con un saludo.' } },
     { id: demoId(30003), type: 'FILL_BLANK_TEXT', prompt: 'I _____ a student.', explanation: 'Con I usamos am: I am a student.',
       config: { acceptedAnswers: ['am'], caseSensitive: false, hint: 'Usa la forma de to be que acompaña a I.' } },
-    { id: demoId(30004), type: 'MATCH_WORD_IMAGE', prompt: 'Relaciona cada palabra con su imagen.', explanation: 'Book significa libro y cup significa taza.',
-      config: { interactionMode: 'TAP', words: [{ id: 'book', text: 'Book' }, { id: 'cup', text: 'Cup' }],
-        images: [{ id: 'cup-image', url: image('cup'), alt: 'Una taza' }, { id: 'book-image', url: image('book'), alt: 'Un libro' }],
-        pairs: [{ wordId: 'book', imageId: 'book-image' }, { wordId: 'cup', imageId: 'cup-image' }] } },
+    { id: demoId(30004), type: 'MATCH_WORD_IMAGE', prompt: 'Relaciona cada palabra con su imagen.', explanation: 'Book significa libro, cup significa taza y ball significa pelota.',
+      config: { interactionMode: 'TAP', words: [{ id: 'book', text: 'Book' }, { id: 'cup', text: 'Cup' }, { id: 'ball', text: 'Ball' }],
+        images: [{ id: 'cup-image', url: image('cup'), alt: 'Una taza' }, { id: 'book-image', url: image('book'), alt: 'Un libro' }, { id: 'ball-image', url: image('ball'), alt: 'Una pelota' }],
+        pairs: [{ wordId: 'book', imageId: 'book-image' }, { wordId: 'cup', imageId: 'cup-image' }, { wordId: 'ball', imageId: 'ball-image' }] } },
   ];
   const blocks: Prisma.LessonBlockCreateManyInput[] = [
     { id: demoId(31001), lessonId: demoId(1003), position: 1, type: 'TEXT', content: { title: 'En resumen', body: 'Usa “Nice to meet you!” cuando conoces a alguien. Puedes responder “Nice to meet you too!”.' } },
@@ -29,6 +29,6 @@ export function lessonsDemoData() {
     { id: demoId(31009), lessonId: demoId(1004), position: 4, type: 'ACTIVITY', activityId: demoId(30004) },
     { id: demoId(31010), lessonId: demoId(1004), position: 5, type: 'SUMMARY', content: { title: 'Resumen de la lección', points: ['I am: yo soy / estoy.', 'Book: libro. Cup: taza.', 'It is introduce un objeto.'] } },
   ];
-  blocks.push({ id: demoId(31011), lessonId: demoId(1003), position: 3, type: 'VIDEO', required: false, content: { title: 'Presentarte en inglés', caption: 'Espacio de prueba para una explicación en video. El contenido audiovisual se añadirá más adelante.' } });
+  blocks.push({ id: demoId(31011), lessonId: demoId(1003), position: 3, type: 'VIDEO', required: false, content: { title: 'Presentarte en inglés', caption: 'Una explicación para practicar cómo presentarte.' } });
   return { activities, blocks };
 }

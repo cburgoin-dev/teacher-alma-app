@@ -5,6 +5,7 @@ import type { CoursesStackParamList } from '../../../navigation/types';
 import { Button, ProgressBar } from '../../courses/components/ui';
 import { showAccessInfo } from '../../courses/components/accessInfo';
 import { lessonStyles as s } from '../components/lessonStyles';
+import { LearningIcon } from '../components/LearningIcon';
 
 export function LessonResultScreen({ route, navigation }: NativeStackScreenProps<CoursesStackParamList, 'LessonResult'>) {
   const { courseId, result: response } = route.params;
@@ -15,7 +16,7 @@ export function LessonResultScreen({ route, navigation }: NativeStackScreenProps
   const accessible = nextLesson?.accessible && !access;
   return <ScrollView style={s.page} contentContainerStyle={[s.content, local.content, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 }]}>
     <View style={local.hero}>
-      <View accessible={false} style={[local.halo, result.isPerfect && { backgroundColor: '#FFF0D0' }]}><View style={local.disc}><View style={local.check} /></View></View>
+      <View accessible={false} style={[local.halo, result.isPerfect && { backgroundColor: '#FFF0D0' }]}><View style={local.disc}><LearningIcon kind="completion" plain size={40} color="#FFF" /></View></View>
       <Text style={[s.title, local.center]}>¡Lección completada!</Text>
       <Text style={[s.heading, local.center, { color: '#61759D' }]}>{response.lesson.title}</Text>
     </View>
@@ -45,7 +46,6 @@ const local = StyleSheet.create({
   hero: { alignItems: 'center', gap: 6 },
   halo: { width: 82, height: 82, borderRadius: 41, backgroundColor: '#DCF3E8', padding: 9, marginBottom: 5 },
   disc: { flex: 1, borderRadius: 40, backgroundColor: '#14995B', alignItems: 'center', justifyContent: 'center' },
-  check: { width: 29, height: 17, borderLeftWidth: 5, borderBottomWidth: 5, borderColor: '#FFF', transform: [{ rotate: '-45deg' }], marginTop: -5 },
   score: { alignItems: 'center', paddingVertical: 12, borderRadius: 18, backgroundColor: '#EFF6FF' },
   scoreNumber: { fontSize: 46, lineHeight: 54, fontWeight: '800', color: '#0062E9' },
   success: { color: '#13874C', textAlign: 'center', fontWeight: '600' },

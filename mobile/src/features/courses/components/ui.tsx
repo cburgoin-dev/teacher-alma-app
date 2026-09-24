@@ -11,7 +11,7 @@ export function Button({ title, onPress, disabled, busy, tone = 'red', compact =
 }) {
   return <Pressable accessibilityRole="button" accessibilityState={{ disabled: disabled || busy, busy }}
     disabled={disabled || busy} onPress={onPress} accessibilityLabel={title}
-    style={({ pressed }) => [styles.button, compact && styles.compactButton, buttonColors[tone], { opacity: pressed ? .78 : 1 }]}>
+    style={({ pressed }) => [styles.button, compact && styles.compactButton, buttonColors[tone], { opacity: disabled || busy ? .55 : pressed ? .78 : 1 }]}>
     {busy ? <ActivityIndicator color={tone === 'red' ? '#FFF' : colors.blue} /> :
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
         <Text maxFontSizeMultiplier={1.5} style={[styles.buttonText, { flexShrink: 1 }, compact && { fontSize: 14, lineHeight: 19 }, { color: textColors[tone] }]}>{title}</Text>
