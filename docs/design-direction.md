@@ -142,6 +142,69 @@ Current principles:
 - Summary and Result should move closer to the existing mockups using only data that is actually available. Do not fabricate rewards, audio, Review actions or other unsupported features for visual parity.
 - Result should feel like a deliberate completion moment, not a stack of administrative cards. Premium/access state should be framed as the next lesson/next step being blocked.
 
+## Lessons V3 visual acceptance direction
+
+Physical Android review of Lessons Mobile V2 confirmed the functional flow but also showed that the learning screens still need another dedicated visual-fidelity pass before the vertical is considered visually mature.
+
+The next visual iteration should prioritize fidelity and composition rather than new domain behavior.
+
+### Motion and transitions
+
+- Roadmap initial positioning should preserve the current one-time positioning behavior but avoid a visually abrupt teleport. Prefer a short animated scroll after layout measurement so the learner perceives movement toward the current lesson.
+- The lesson loading state should remain lightweight. Avoid showing a prominent `Volver a la ruta` action during a very short loading state.
+- A richer branded lesson-entry transition may be explored later, but V3 should not add a fake or over-engineered animation solely for decoration.
+
+### Lesson header
+
+- The lesson header should use a visually deliberate blue chevron/back glyph rather than a generic-looking arrow.
+- Topic context, lesson position and progress should remain compact and aligned.
+- Do not let header chrome dominate the learning content.
+
+### Content composition
+
+- Use `lesson.description` when available to provide a short supporting description beneath the lesson title instead of inventing copy.
+- The current generic lightbulb treatment is not sufficient as a final visual. Icons should be consistent, clean and closer to the mockup language.
+- Summary/text blocks should align icon and title as one visual unit rather than making the title appear vertically detached from the icon.
+- Example/dialogue content should feel more like a conversation. When the existing payload can support it honestly, use stronger visual differentiation between primary and secondary lines; do not falsely label translation/note content as a second speaker when the contract does not guarantee that meaning.
+- VIDEO inside content should use a more compact horizontal media-card composition when practical: preview/poster area plus title/caption information, rather than consuming a large vertical region for an unavailable placeholder.
+- Real playback remains a later media capability; V3 may improve the placeholder composition without pretending a player exists.
+
+### Activity density and visual fidelity
+
+- Multiple-choice and fill-blank activities should make better use of the viewport. Increase intentional spacing, tap-target size, radio/selection affordances and visual hierarchy rather than leaving large unused empty regions.
+- Hint presentation should feel like a learning aid, with a small visual cue/icon when appropriate, while remaining conditional on a real hint.
+- Feedback V2 is considered directionally good; prioritize refinement rather than redesign unless a concrete usability issue appears.
+- Matching V2 is close to the desired direction, but connector geometry should visually terminate at the displayed anchor nodes and should avoid jagged/pixelated appearance.
+- Demo matching may use at least three pairs when useful for realistic density testing, provided the content remains demo-only and backend contracts are unchanged.
+
+### Summary
+
+- Summary should feel richer than a single generic card.
+- Add a concise supporting subtitle when it can be rendered as static interface copy without inventing lesson data.
+- Key words/phrases inside real summary points may receive blue emphasis only when derived from the actual point text or known structured content; do not invent semantic labels that the payload does not provide.
+- Future sections such as key phrases or completed-activity counts remain desirable, but must not be fabricated until reliable data supports them.
+
+### Result
+
+- Result should use more balanced vertical composition and feel less top-heavy.
+- Course progress should use available horizontal space cleanly and avoid overly administrative copy.
+- Future links such as `Ver mi progreso` should only appear once the real Progress destination exists.
+- Preserve current first-attempt score wording and Premium/access semantics.
+
+### Iconography
+
+Lessons should stop accumulating one-off placeholder-looking icons. Reuse a small coherent icon set for:
+- back;
+- concept/summary;
+- dialogue/example;
+- fill blank;
+- hint;
+- matching;
+- completion;
+- video/media.
+
+Prefer the project's existing icon capabilities or lightweight vector/SVG treatment over introducing a disproportionate dependency.
+
 ## Implementation principle
 
 Backend/domain models should describe stable product facts, not visual layout.
