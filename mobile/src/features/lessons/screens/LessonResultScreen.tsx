@@ -25,9 +25,23 @@ function CompletionHero({ perfect }: { perfect: boolean }) {
 }
 export function LessonResultScreen({ route, navigation }: NativeStackScreenProps<CoursesStackParamList, 'LessonResult'>) {
   const { courseId, result: response } = route.params;
-  const { result, nextLesson, courseProgress, course } = response;
   const insets = useSafeAreaInsets();
   const exit = () => navigation.popTo('Roadmap', { courseId });
+  if (response.mode === 'REPLAY') return <ScrollView style={s.page} contentContainerStyle={[s.content, local.content, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 24 }]}>
+    <View style={local.hero}><CompletionHero perfect={response.result.isPerfect} /><Text style={[s.title, local.center]}>¡Repaso completado!</Text></View>
+    <View style={local.identity}>
+      <Text style={[s.caption, local.courseTitle, local.center]}>{courseLabel(response.course)} · Repaso</Text>
+      <Text style={[s.heading, local.center]}>{response.lesson.title}</Text>
+    </View>
+    {response.result.totalActivities > 0 ? <View style={local.score}>
+      <Text style={[s.caption, local.courseTitle]}>PRECISIÓN</Text>
+      <Text style={local.scoreNumber}>{accuracy(response.result.correctAnswers, response.result.totalActivities)}%</Text>
+      <Text style={[s.body, local.center]}>{response.result.correctAnswers} de {response.result.totalActivities} correctas al primer intento</Text>
+      <Text style={[s.caption, local.center]}>Basado en tu primer intento de esta repetición.</Text>
+    </View> : null}
+    <Button title="Continuar mi ruta" arrow onPress={exit} />
+  </ScrollView>;
+  const { result, nextLesson, courseProgress, course } = response;
   const access = nextLesson?.lockReason === 'ACCESS';
   const accessible = nextLesson?.accessible && !access;
   return <ScrollView style={s.page} contentContainerStyle={[s.content, local.content, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 24 }]}>

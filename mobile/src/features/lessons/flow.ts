@@ -1,19 +1,40 @@
 import { lessonsApi } from './api/lessons';
-import type { Answer, AttemptResponse, LessonData, LessonResult, StepProgress } from './types';
+import type { Answer, ActivityFeedback, LessonData, LessonMode, LessonOutcome, StepProgress } from './types';
 
 type State = { data: LessonData | null; stepId: string | null; progress: StepProgress | null;
-  feedback: AttemptResponse | null; answer: Answer | null; result: LessonResult | null; busy: boolean; loading: boolean; error: unknown; review: boolean };
-// One instance per mounted lesson; server owns progression. Local history only supports back navigation.
+  feedback: ActivityFeedback | null; answer: Answer | null; result: LessonOutcome | null; busy: boolean; loading: boolean; error: unknown; mode: LessonMode };
+// One instance per mounted lesson. Normal/Resume use server progression;
+// Replay owns ephemeral traversal and first-submission correctness locally.
 export class LessonFlow {
-  private state: State = { data: null, stepId: null, progress: null, feedback: null, answer: null, result: null, busy: false, loading: true, error: null, review: false };
+  private state: State = { data: null, stepId: null, progress: null, feedback: null, answer: null, result: null, busy: false, loading: true, error: null, mode: 'NORMAL' };
   private listeners = new Set<() => void>();
   private disposed = false;
   private controller = new AbortController();
   private frontier: string | null = null;
-  private feedbackByStep = new Map<string, AttemptResponse>();
+  private feedbackByStep = new Map<string, ActivityFeedback>();
   private answersByStep = new Map<string, Answer>();
   private browsingPrevious = false;
   private activityReadVersion = 0;
+  private replayCompleted = new Set<string>();
+  private replayFirst = new Map<string, boolean>();
+  private replaySubmissions = new Map<string, number>();
+  private startReplay(data: LessonData) {
+    this.feedbackByStep.clear();
+    this.answersByStep.clear();
+    this.replayCompleted.clear();
+    this.replayFirst.clear();
+    this.replaySubmissions.clear();
+    this.frontier = null;
+    this.set({ data, mode: 'REPLAY', stepId: data.steps[0]?.id ?? null, feedback: null, answer: null, result: null });
+    this.set(this.replayProgress());
+  }
+  private replayProgress(): Partial<State> {
+    const data = this.state.data!;
+    const activities = data.steps.filter(s => s.type === 'ACTIVITY_STEP');
+    return { progress: { completedSteps: this.replayCompleted.size, totalSteps: data.steps.length,
+      percentage: data.steps.length ? this.replayCompleted.size / data.steps.length * 100 : 0 },
+      data: { ...data, activityProgress: { completed: activities.filter(s => this.replayCompleted.has(s.id)).length, total: activities.length } } };
+  }
   constructor(private id: string, private api = lessonsApi) {}
   snapshot = () => this.state;
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
@@ -32,15 +53,15 @@ export class LessonFlow {
     const data = await this.api.read(this.id, this.controller.signal);
     if (this.disposed) return;
     if (data.state.status === 'COMPLETED') {
-      // Review is local reading order, not a new scored run or a progress reset.
-      this.set({ data, review: true, stepId: data.steps[0]?.id ?? null });
+      this.startReplay(data);
     } else {
       const started = await this.api.start(this.id);
+      if (started.status === 'COMPLETED') { this.startReplay(data); return; }
       this.frontier = started.currentStepId;
-      this.set({ data, stepId: started.currentStepId, progress: started.progress, review: started.status === 'COMPLETED' });
+      this.set({ data, stepId: started.currentStepId, progress: started.progress, mode: data.state.status === 'IN_PROGRESS' ? 'RESUME' : 'NORMAL' });
     }
   });
-  private reviewNext() {
+  private orderedNext() {
     const steps = this.state.data?.steps ?? [];
     return steps[steps.findIndex(s => s.id === this.state.stepId) + 1]?.id ?? null;
   }
@@ -55,7 +76,8 @@ export class LessonFlow {
     const steps = this.state.data?.steps ?? [];
     const index = steps.findIndex(s => s.id === this.state.stepId);
     const frontier = this.frontier === null ? steps.length : steps.findIndex(s => s.id === this.frontier);
-    return this.state.review || (index >= 0 && index < frontier && steps[index].required) || this.feedbackByStep.has(this.state.stepId ?? '');
+    if (this.state.mode === 'REPLAY') return false; // Replay never exposes historical skip/visited actions.
+    return (index >= 0 && index < frontier && steps[index].required) || this.feedbackByStep.has(this.state.stepId ?? '');
   };
   back = () => {
     if (this.state.busy) return true;
@@ -66,11 +88,19 @@ export class LessonFlow {
     return true;
   };
   continueVisited = () => {
-    if (!this.state.busy && this.canContinueActivity()) this.showStep(this.reviewNext());
+    if (!this.state.busy && this.canContinueActivity()) this.showStep(this.orderedNext());
   };
   continueContent = () => this.run(async () => {
     if (!this.state.stepId) return;
-    if (this.canContinueActivity()) { this.showStep(this.reviewNext()); return; }
+    if (this.state.mode === 'REPLAY') {
+      const step = this.state.data?.steps.find(s => s.id === this.state.stepId);
+      if (step?.type !== 'CONTENT_STEP') return;
+      this.replayCompleted.add(step.id);
+      this.set(this.replayProgress());
+      this.showStep(this.orderedNext());
+      return;
+    }
+    if (this.canContinueActivity()) { this.showStep(this.orderedNext()); return; }
     const response = await this.api.completeStep(this.id, this.state.stepId);
     this.frontier = response.currentStepId;
     this.set({ progress: response.progress });
@@ -91,6 +121,20 @@ export class LessonFlow {
     let refreshVersion: number | undefined;
     await this.run(async () => {
       if (!this.state.stepId || this.state.feedback) return;
+      if (this.state.mode === 'REPLAY') {
+        const stepId = this.state.stepId;
+        if (this.state.data?.steps.find(s => s.id === stepId)?.type !== 'ACTIVITY_STEP') return;
+        const checked = await this.api.replayCheck(this.id, stepId, answer);
+        if (this.disposed) return;
+        const submissionNumber = (this.replaySubmissions.get(stepId) ?? 0) + 1;
+        this.replaySubmissions.set(stepId, submissionNumber);
+        if (!this.replayFirst.has(stepId)) this.replayFirst.set(stepId, checked.isCorrect);
+        this.replayCompleted.add(stepId);
+        const feedback: ActivityFeedback = { ...checked, mode: 'REPLAY', submissionNumber };
+        this.feedbackByStep.set(stepId, feedback);
+        this.answersByStep.set(stepId, answer);
+        return { ...this.replayProgress(), feedback, answer };
+      }
       // Invalidate a previous metadata read before starting a new attempt.
       const version = ++this.activityReadVersion;
       const response = await this.api.attempt(this.id, this.state.stepId, answer);
@@ -105,15 +149,43 @@ export class LessonFlow {
     });
     if (refreshVersion !== undefined && !this.disposed) void this.refreshActivityProgress(refreshVersion);
   };
-  retryAnswer = () => { if (!this.state.busy) this.set({ feedback: null, error: null }); };
+  rememberAnswer = (answer: Answer) => {
+    if (this.state.mode !== 'REPLAY' || this.state.busy || this.state.feedback || !this.state.stepId) return;
+    this.answersByStep.set(this.state.stepId, answer);
+  };
+  retryAnswer = () => {
+    if (this.state.busy) return;
+    if (this.state.mode === 'REPLAY' && this.state.stepId) {
+      this.feedbackByStep.delete(this.state.stepId);
+      const answer = this.answersByStep.get(this.state.stepId);
+      if (answer && 'pairs' in answer) this.answersByStep.set(this.state.stepId, { pairs: [] });
+    }
+    this.set({ feedback: null, error: null });
+  };
   continueFeedback = () => {
     if (this.state.busy || !this.state.feedback) return;
-    this.showStep(this.state.review || this.browsingPrevious ? this.reviewNext() : this.frontier);
+    this.showStep(this.state.mode === 'REPLAY' || this.browsingPrevious ? this.orderedNext() : this.frontier);
   };
   finish = () => this.run(async () => {
     if (this.state.result) return;
     const step = this.state.data?.steps.find(s => s.id === this.state.stepId);
-    if (!this.state.review && step?.type === 'SUMMARY_STEP') {
+    if (this.state.mode === 'REPLAY') {
+      if (step?.type === 'SUMMARY_STEP') {
+        this.replayCompleted.add(step.id);
+        this.set(this.replayProgress());
+        const next = this.orderedNext();
+        if (next) { this.showStep(next); return; }
+      }
+      const data = this.state.data!;
+      const pending = data.steps.find(s => !this.replayCompleted.has(s.id));
+      if (pending) { this.showStep(pending.id); return; }
+      const totalActivities = data.steps.filter(s => s.type === 'ACTIVITY_STEP').length;
+      const correctAnswers = [...this.replayFirst.values()].filter(Boolean).length;
+      return { progress: { completedSteps: data.steps.length, totalSteps: data.steps.length, percentage: 100 },
+        result: { mode: 'REPLAY', lesson: { id: data.lesson.id, title: data.lesson.title }, course: data.lesson.course,
+          result: { correctAnswers, totalActivities, isPerfect: totalActivities > 0 && correctAnswers === totalActivities } } };
+    }
+    if (step?.type === 'SUMMARY_STEP') {
       const traversed = await this.api.completeStep(this.id, step.id);
       this.set({ progress: traversed.progress });
       if (traversed.currentStepId) { this.set({ stepId: traversed.currentStepId }); return; }

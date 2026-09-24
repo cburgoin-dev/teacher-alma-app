@@ -112,6 +112,23 @@ export class LessonService {
     });
   }
 
+  replayCheck(lessonId: string, stepId: string, userId: string, answer: unknown) {
+    return this.repository.read(async session => {
+      const { lesson } = await this.resolve(session, lessonId, userId, false);
+      if (lesson.lessonProgress[0]?.status !== 'COMPLETED') {
+        fail(409, 'LESSON_REPLAY_REQUIRES_COMPLETION', 'Complete the lesson before replaying it');
+      }
+      const step = requireStep(deriveSteps(lesson.lessonBlocks), stepId);
+      if (step.type !== 'ACTIVITY_STEP') fail(409, 'STEP_IS_NOT_ACTIVITY', 'Step is not an activity');
+      const activity = step.blocks[0]!.activity;
+      if (!activity) throw new Error('Missing activity');
+      const checked = checkAnswer(activity, answer);
+      return { isCorrect: checked.isCorrect,
+        feedback: { message: checked.isCorrect ? 'Correct answer' : 'Incorrect answer', correctAnswer: checked.correctAnswer,
+          ...(activity.explanation ? { explanation: activity.explanation } : {}) } };
+    });
+  }
+
   attempt(lessonId: string, stepId: string, userId: string, answer: unknown) {
     return this.repository.write(userId, async session => {
       const { lesson } = await this.resolve(session, lessonId, userId, true);

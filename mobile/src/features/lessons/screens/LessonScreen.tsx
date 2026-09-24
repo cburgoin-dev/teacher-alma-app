@@ -52,21 +52,21 @@ export function LessonScreen({ route, navigation }: NativeStackScreenProps<Cours
     </ContextualHeader>
     <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" contentContainerStyle={[s.content, { flexGrow: 1, paddingBottom: Math.max(24, insets.bottom + 12) }]}>
       {step?.type !== 'ACTIVITY_STEP' ? <>
-        {courseLabel(data.lesson.course) ? <Text style={s.chip}>{courseLabel(data.lesson.course)}{state.review ? ' · Repaso' : ''}</Text> : null}
+        {courseLabel(data.lesson.course) ? <Text style={s.chip}>{courseLabel(data.lesson.course)}{state.mode === 'REPLAY' ? ' · Repaso' : ''}</Text> : null}
         <Text style={s.title}>{step?.type === 'SUMMARY_STEP' ? step.blocks.find(block => block.type === 'SUMMARY')?.title ?? 'Resumen de la lección' : data.lesson.title}</Text>
         {step?.type === 'CONTENT_STEP' && data.lesson.description ? <Text style={[s.body, { marginTop: -8 }]}>{data.lesson.description}</Text> : null}
       </> : null}
       {state.error ? <Text accessibilityLiveRegion="polite" style={s.error}>{lessonError(state.error)}</Text> : null}
       {step?.type === 'ACTIVITY_STEP' && activity?.type === 'ACTIVITY' ?
         <ActivityStep key={step.id} activity={activity.activity} feedback={state.feedback} busy={state.busy} initialAnswer={state.answer}
-          onSubmit={flow.submit} onRetry={flow.retryAnswer} onContinue={flow.continueFeedback}
+          onAnswerChange={flow.rememberAnswer} onSubmit={flow.submit} onRetry={flow.retryAnswer} onContinue={flow.continueFeedback}
           onSkip={flow.canContinueActivity() ? flow.continueVisited : undefined} />
         : step ? <>
           <ContentBlocks blocks={step.blocks} />
           {step.type === 'SUMMARY_STEP' && data.activityProgress ? <View style={local.completed}>
             <LearningIcon kind="completion" /><View style={{ flex: 1 }}><Text style={s.heading}>{data.activityProgress.completed} {data.activityProgress.completed === 1 ? 'actividad completada' : 'actividades completadas'}</Text><Text style={s.caption}>Ejercicios y práctica</Text></View>
           </View> : null}
-          <Button title={step.type === 'SUMMARY_STEP' ? 'Finalizar lección' : 'Continuar'} arrow busy={state.busy}
+          <Button title={step.type === 'SUMMARY_STEP' ? state.mode === 'REPLAY' ? 'Finalizar repaso' : 'Finalizar lección' : 'Continuar'} arrow busy={state.busy}
             onPress={step.type === 'SUMMARY_STEP' ? flow.finish : flow.continueContent} />
         </> : <View style={s.card}><Text style={s.body}>Ya recorriste los pasos requeridos. Finaliza para ver tu resultado.</Text><Button title="Ver resultado" busy={state.busy} onPress={flow.finish} /></View>}
     </ScrollView>

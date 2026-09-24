@@ -934,7 +934,7 @@ Required.
 
 For an in-progress lesson, `currentStepId` identifies the step at whose beginning the client should resume.
 
-For a completed lesson, content remains readable/repeatable; reading it does not clear completion or create a new scored run.
+For a completed lesson, Mobile starts a fresh local Replay from the first step. It ignores historical `currentStepId` and `activityProgress` for this session. GET itself does not clear completion or create a persisted scored run.
 
 ### Read-only behavior
 
@@ -1000,7 +1000,7 @@ The endpoint must **not** create `course_progress` implicitly.
 - Repeating start for an `IN_PROGRESS` lesson returns its existing state and does not duplicate progress.
 - Resume occurs at the **start of the last meaningful pending/current step**.
 - Exact scroll offsets and video timestamps are intentionally not restored.
-- Starting a previously completed lesson for review must not erase the original completion or first-attempt score. A future explicit repeat-session model may be introduced if product needs require scored replays.
+- Starting an already completed lesson remains idempotent and does not erase original completion/score. Mobile does not start completed lessons: it uses local Replay and the dedicated read-only check below. If completion races with start, Mobile switches to fresh Replay.
 
 ### Relevant failures
 
@@ -1342,3 +1342,31 @@ Lessons v1 progression, scoring, Review, access and completion semantics remain 
 Implementation should prefer extending JSONB-backed content/configuration and public sanitization/serialization before introducing schema migrations.
 
 Content Contract v2 implementation: GET lesson now also returns `activityProgress` (completed/total ACTIVITY blocks, including optional, based on persisted user traversal). Completion Result now returns `course: { id, title, level }`. See the implementation notes in `docs/lesson-content-contract-v2.md` for nested allowlists, optional-field handling, media URL validation and compatibility. These additions do not alter required progression or first-attempt score.
+
+
+## Lessons Replay Semantics v1 — POST /lessons/:lessonId/replay/steps/:stepId/check
+
+Checks an answer for an authenticated learner's COMPLETED lesson without persisting an attempt. Body is the same Answer as the normal activity endpoint: selectedOptionId, text, or pairs according to activity type.
+
+Success (200), dedicated response:
+
+```json
+{
+  "isCorrect": false,
+  "feedback": {
+    "message": "Incorrect answer",
+    "correctAnswer": "hello",
+    "explanation": "Hello is a greeting."
+  }
+}
+```
+
+correctAnswer follows the normal checker representation; explanation is included only when configured. There is no attempt ID, attempt number, progress or Review state. Mobile uses lessonsApi.replayCheck, not attempt, and derives local progress/activity count/first-submission accuracy.
+
+The service reuses lesson/access resolution, step derivation and checkAnswer. It requires a PUBLISHED lesson and course, current commercial access, user lesson status COMPLETED, a step belonging to this lesson and ACTIVITY_STEP type. It does not require historical optional-step traversal.
+
+Failures: 400 INVALID_LESSON_ID / INVALID_STEP_ID / INVALID_ANSWER; 401 unauthenticated; 403 LESSON_ACCESS_REQUIRED; 404 LESSON_NOT_FOUND / STEP_NOT_FOUND; 409 LESSON_REPLAY_REQUIRES_COMPLETION / STEP_IS_NOT_ACTIVITY. Existing prerequisite resolution also applies to non-completed lessons before the Replay-specific check.
+
+The repository read transaction uses RepeatableRead and SET TRANSACTION READ ONLY. PostgreSQL rejects accidental writes; the service only reads and evaluates the answer. No ActivityAttempt, ReviewItem, LessonBlockProgress, LessonProgress, CourseProgress, LearningDay, coins or streak changes occur. No migration or replay session table.
+
+Replay finishes locally after all session steps; it never calls /complete. Normal/Resume continue using /start, /steps/:stepId/complete, /steps/:stepId/attempt and /complete unchanged. Legacy repeated calls to normal endpoints retain their existing persistence semantics; clients must explicitly choose Replay to get the read-only guarantee. Resume != Replay != future Review.

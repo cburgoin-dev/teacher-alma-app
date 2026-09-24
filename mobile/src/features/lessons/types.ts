@@ -21,6 +21,7 @@ export type Block = { id: string } & (
 );
 export type Step = { id: string; type: 'CONTENT_STEP' | 'ACTIVITY_STEP' | 'SUMMARY_STEP'; required: boolean; blocks: Block[] };
 export type LessonStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
+export type LessonMode = 'NORMAL' | 'RESUME' | 'REPLAY';
 export type LessonData = {
   lesson: { id: string; title: string; description: string | null; accessType: string;
     topic: { id: string; title: string }; course: { id: string; title: string; level: string | null };
@@ -38,9 +39,21 @@ export type AttemptResponse = {
   progress: StepProgress & { currentStepId: string | null };
 };
 export type LessonResult = {
+  mode?: never;
   course?: { id: string; title: string; level: string | null };
   lesson: { id: string; title: string };
   result: { correctAnswers: number; totalActivities: number; isPerfect: boolean; pendingReviewCount: number };
   courseProgress: { completedLessons: number; totalLessons: number; percentage: number; status: string };
   nextLesson: { id: string; title: string; accessible: boolean; lockReason: string | null } | null;
 };
+export type ReplayCheckResponse = { isCorrect: boolean; feedback: AttemptResponse['feedback'] };
+// This is local UI history, not a persisted attempt or an API response.
+export type ReplayFeedback = ReplayCheckResponse & { mode: 'REPLAY'; submissionNumber: number };
+export type ActivityFeedback = AttemptResponse | ReplayFeedback;
+export type ReplayResult = {
+  mode: 'REPLAY';
+  lesson: LessonResult['lesson'];
+  course: LessonData['lesson']['course'];
+  result: { correctAnswers: number; totalActivities: number; isPerfect: boolean };
+};
+export type LessonOutcome = LessonResult | ReplayResult;

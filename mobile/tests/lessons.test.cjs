@@ -79,11 +79,11 @@ test('first published feedback is ready for one Continue; pending attempts canno
   flow.continueFeedback();
   assert.equal(flow.snapshot().stepId, '2', 'a repeated Continue does not skip the next step');
 });
-test('resume uses backend pointer; completed opens for reading without start/reset', async () => {
-  const resumed = fixture({ start: async () => ({ status: 'IN_PROGRESS', currentStepId: '2', progress }) });
-  await resumed.flow.load(); assert.equal(resumed.flow.snapshot().stepId, '2');
+test('resume uses backend pointer; completed opens a fresh Replay without start/reset', async () => {
+  const resumed = fixture({ read: async () => ({ ...data, state: { status: 'IN_PROGRESS' } }), start: async () => ({ status: 'IN_PROGRESS', currentStepId: '2', progress }) });
+  await resumed.flow.load(); assert.equal(resumed.flow.snapshot().stepId, '2'); assert.equal(resumed.flow.snapshot().mode, 'RESUME');
   const completed = fixture({ read: async () => ({ ...data, state: { status: 'COMPLETED' } }) });
-  await completed.flow.load(); assert.equal(completed.flow.snapshot().review, true);
+  await completed.flow.load(); assert.equal(completed.flow.snapshot().mode, 'REPLAY');
   await completed.flow.continueContent(); assert.equal(completed.flow.snapshot().stepId, '1');
   assert.deepEqual(completed.calls, []);
 });

@@ -66,6 +66,23 @@ test('Lessons HTTP + Prisma/PostgreSQL integration', { skip: process.env.RUN_LES
       prisma.activityAttempt.count({ where: { userId } }), prisma.reviewItem.count({ where: { userId } }),
       prisma.courseProgress.count({ where: { userId } }),
     ]);
+    const persisted = () => Promise.all([
+      prisma.activityAttempt.findMany({ where: { userId }, orderBy: { id: 'asc' } }),
+      prisma.reviewItem.findMany({ where: { userId }, orderBy: { id: 'asc' } }),
+      prisma.lessonProgress.findMany({ where: { userId }, orderBy: { id: 'asc' } }),
+      prisma.lessonBlockProgress.findMany({ where: { userId }, orderBy: { id: 'asc' } }),
+      prisma.courseProgress.findMany({ where: { userId }, orderBy: { id: 'asc' } }),
+      prisma.learningDay.findMany({ where: { userId }, orderBy: { id: 'asc' } }),
+      prisma.coinTransaction.findMany({ where: { userId }, orderBy: { id: 'asc' } }),
+      prisma.streakChallenge.findMany({ where: { userId }, orderBy: { id: 'asc' } }),
+      prisma.user.findUniqueOrThrow({ where: { id: userId } }),
+    ]);
+    await t.test('Replay rejects NOT_STARTED, with database-enforced read-only transactions', async () => {
+      const before = await persisted();
+      assert.equal((await post('/replay/steps/' + mcId + '/check', { selectedOptionId: 'a' })).body.error.code, 'LESSON_REPLAY_REQUIRES_COMPLETION');
+      await assert.rejects(repo.read(session => session.createProgress(userId, lessonId, contentId)), /read-only transaction/i);
+      assert.deepEqual(await persisted(), before);
+    });
     await t.test('GET is read-only, grouped, sanitized and user-scoped; UUID/auth/visibility boundaries', async () => {
       const before = await counts(); const read = await request(`/lessons/${lessonId}`);
       assert.equal(read.status, 200); assert.equal(read.body.state.status, 'NOT_STARTED'); assert.equal(read.body.steps.length, 6);
@@ -93,6 +110,11 @@ test('Lessons HTTP + Prisma/PostgreSQL integration', { skip: process.env.RUN_LES
       assert.equal(await prisma.lessonProgress.count({ where: { userId } }), 1);
       assert.equal(await prisma.lessonBlockProgress.count({ where: { userId } }), 0);
       assert.equal((await request(`/lessons/${lessonId}`, 'GET', undefined, 'other')).body.state.status, 'NOT_STARTED');
+    });
+    await t.test('Replay cannot check an IN_PROGRESS lesson', async () => {
+      const before = await persisted();
+      assert.equal((await post('/replay/steps/' + mcId + '/check', { selectedOptionId: 'a' })).body.error.code, 'LESSON_REPLAY_REQUIRES_COMPLETION');
+      assert.deepEqual(await persisted(), before);
     });
     await t.test('no skipping, no activity via complete, membership and incomplete lesson failures', async () => {
       assert.equal((await post(`/steps/${summaryId}/complete`)).body.error.code, 'STEP_NOT_AVAILABLE');
@@ -160,6 +182,34 @@ test('Lessons HTTP + Prisma/PostgreSQL integration', { skip: process.env.RUN_LES
       assert.equal((await post('/start')).body.status, 'COMPLETED'); await post('/complete');
       assert.deepEqual(await prisma.lessonProgress.findUniqueOrThrow({ where: { userId_lessonId: { userId, lessonId } } }), stored);
     });
+    await t.test('Replay checks correct/wrong answers without changing any learning state or original score', async () => {
+      const before = await persisted();
+      const check = (step: string, answer: unknown) => post('/replay/steps/' + step + '/check', answer);
+      for (const selectedOptionId of ['b', 'a', 'b']) {
+        const response = await check(mcId, { selectedOptionId });
+        assert.equal(response.status, 200);
+        assert.deepEqual(response.body, { isCorrect: selectedOptionId === 'a', feedback: {
+          message: selectedOptionId === 'a' ? 'Correct answer' : 'Incorrect answer', correctAnswer: 'a', explanation: 'Hello is a greeting' } });
+      }
+      for (const [step, answer] of [[optionsId, { selectedOptionId: 'a' }], [textId, { text: ' AM ' }], [matchId, { pairs: [{ wordId: 'w', imageId: 'i' }] }]] as const) {
+        assert.equal((await check(step, answer)).body.isCorrect, true);
+      }
+      // Wrong answer on an activity with no ReviewItem must not create one either.
+      assert.equal((await check(textId, { text: 'is' })).body.isCorrect, false);
+      assert.equal((await check(mcId, { selectedOptionId: 'unknown' })).body.error.code, 'INVALID_ANSWER');
+      assert.equal((await check(contentId, { text: 'a' })).body.error.code, 'STEP_IS_NOT_ACTIVITY');
+      assert.equal((await check(paidSummaryId, { text: 'a' })).body.error.code, 'STEP_NOT_FOUND');
+      assert.equal((await request('/lessons/' + lessonId + '/replay/steps/' + mcId + '/check', 'POST', { selectedOptionId: 'a' }, 'other')).body.error.code, 'LESSON_REPLAY_REQUIRES_COMPLETION');
+      assert.equal((await request('/lessons/' + lessonId + '/replay/steps/' + mcId + '/check', 'POST', { selectedOptionId: 'a' }, 'none')).status, 401);
+      assert.equal((await request('/lessons/' + paidId + '/replay/steps/' + paidSummaryId + '/check', 'POST', { text: 'a' })).status, 403);
+      await prisma.course.update({ where: { id: courseId }, data: { status: 'DRAFT' } });
+      try { assert.equal((await check(mcId, { selectedOptionId: 'a' })).status, 404); }
+      finally { await prisma.course.update({ where: { id: courseId }, data: { status: 'PUBLISHED' } }); }
+      await prisma.lesson.update({ where: { id: lessonId }, data: { status: 'DRAFT' } });
+      try { assert.equal((await check(mcId, { selectedOptionId: 'a' })).status, 404); }
+      finally { await prisma.lesson.update({ where: { id: lessonId }, data: { status: 'PUBLISHED' } }); }
+      assert.deepEqual(await persisted(), before, 'compare full rows, including Review increments and progress timestamps');
+    });
     await t.test('optional pending stays visible and does not block required course completion; entitlement enforced', async () => {
       assert.equal((await request(`/lessons/${paidId}/start`, 'POST')).body.error.code, 'LESSON_ACCESS_REQUIRED');
       assert.equal((await request(`/lessons/${paidId}`)).body.error.code, 'LESSON_ACCESS_REQUIRED');
@@ -189,6 +239,13 @@ test('Lessons HTTP + Prisma/PostgreSQL integration', { skip: process.env.RUN_LES
       assert.deepEqual(await prisma.courseProgress.findUniqueOrThrow({ where: { userId_courseId: { userId, courseId } } }), stored);
       assert.equal((await courses.detail(courseId, userId)).content.lessonCount, 4);
     });
+    await t.test('Replay includes previously unvisited optional activities without traversal writes', async () => {
+      const before = await persisted();
+      const response = await request('/lessons/' + optionalId + '/replay/steps/' + optionalActivityId + '/check', 'POST', { selectedOptionId: 'a' });
+      assert.equal(response.status, 200); assert.equal(response.body.isCorrect, true);
+      assert.deepEqual(await persisted(), before);
+      assert.deepEqual((await request('/lessons/' + optionalId)).body.activityProgress, { completed: 0, total: 1 });
+    });
     await t.test('optional activity traversal survives resume and completion without inflating on retry', async () => {
       const root = `/lessons/${optionalId}`;
       assert.deepEqual((await request(root)).body.activityProgress, { completed: 0, total: 1 });
@@ -198,6 +255,12 @@ test('Lessons HTTP + Prisma/PostgreSQL integration', { skip: process.env.RUN_LES
       await request(`${root}/steps/${optionalActivityId}/attempt`, 'POST', { selectedOptionId: 'a' });
       assert.deepEqual((await request(root)).body.activityProgress, { completed: 1, total: 1 });
       assert.deepEqual((await request(root, 'GET', undefined, 'other')).body.activityProgress, undefined); // prerequisite access remains enforced
+    });
+    await t.test('Completed paid lessons still enforce access during Replay', async () => {
+      await prisma.entitlement.deleteMany({ where: { userId, courseId } });
+      const before = await persisted();
+      assert.equal((await request('/lessons/' + paidId + '/replay/steps/' + paidSummaryId + '/check', 'POST', { text: 'a' })).body.error.code, 'LESSON_ACCESS_REQUIRED');
+      assert.deepEqual(await persisted(), before);
     });
   } finally {
     if (server) await new Promise<void>((resolve, reject) => { server!.close(e => e ? reject(e) : resolve()); server!.closeAllConnections(); });

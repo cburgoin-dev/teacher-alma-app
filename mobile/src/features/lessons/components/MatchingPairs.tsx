@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { LayoutRectangle } from 'react-native';
-import type { Activity, AttemptResponse, Pair } from '../types';
+import type { Activity, ActivityFeedback, Pair } from '../types';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { connectionPath, pairFeedback } from '../activityPresentation';
 import { LessonImage } from './ContentBlocks';
 import { lessonStyles as s } from './lessonStyles';
 export function MatchingPairs({ activity, pairs, word, disabled, feedback, onSelect, onConnect }: {
   activity: Extract<Activity, { type: 'MATCH_WORD_IMAGE' }>; pairs: Pair[]; disabled: boolean;
-  feedback: AttemptResponse | null; word: string | null; onSelect: (wordId: string) => void; onConnect: (imageId: string) => void;
+  feedback: ActivityFeedback | null; word: string | null; onSelect: (wordId: string) => void; onConnect: (imageId: string) => void;
 }) {
   const [width, setWidth] = useState(0);
   const [rightX, setRightX] = useState(0);

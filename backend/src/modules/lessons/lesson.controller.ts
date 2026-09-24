@@ -23,6 +23,9 @@ export class LessonController {
   attempt: RequestHandler = async (request, response) => {
     response.json(await this.service.attempt(id(request, 'lessonId'), id(request, 'stepId'), authenticatedUserId(request), request.body));
   };
+  replayCheck: RequestHandler = async (request, response) => {
+    response.json(await this.service.replayCheck(id(request, 'lessonId'), id(request, 'stepId'), authenticatedUserId(request), request.body));
+  };
   complete: RequestHandler = async (request, response) => {
     response.json(await this.service.complete(id(request, 'lessonId'), authenticatedUserId(request)));
   };

@@ -29,7 +29,7 @@ This document records agreed or provisional product rules for the MVP. Rules may
 - Courses and lessons have separate **learning-progress state** and **commercial access state**. These concepts should not be collapsed into one status.
 - A course can conceptually be available, in progress, completed, access-locked or coming soon.
 - Lesson roadmap nodes can conceptually be completed, current, available, prerequisite-locked or access-locked.
-- Completed lessons should remain accessible for repetition/review.
+- Completed lessons remain available for Replay, subject to current commercial access.
 - A prerequisite lock means learning progression requirements are not satisfied.
 - An access lock means the learner does not have the required entitlement/payment access.
 - The UI may use a similar lock icon for both, but the reason and resulting action must be different.
@@ -69,6 +69,18 @@ Current provisional direction:
 - Level labels (A1, A2, etc.) should be shown when applicable.
 - `COMING_SOON` content should be visible only when it provides useful product context; it must not look actionable as if it were already available.
 - Course Detail provides the main action appropriate to state: start, continue/view route, review, unlock, or unavailable/coming soon.
+
+## Lessons Replay Semantics v1
+
+- `NOT_STARTED` opens in NORMAL; `IN_PROGRESS` opens in RESUME at the backend frontier; `COMPLETED` opens in REPLAY.
+- Resume preserves persisted attempts and meaningful progress. Replay is a fresh, ephemeral full-lesson session. Future Review is a separate vertical for saved errors; Replay is neither Review nor activity-only Practice.
+- Replay starts at the first step and 0%, traverses every step including optional content, examples, video, activities and Summary, and ends at 100%. Going back never lowers the session's completed-step percentage.
+- Replay starts with no historical answers, feedback or activity count. Back navigation retains this session's answers/feedback while mounted; leaving and reopening starts fresh. No Replay storage/table is introduced.
+- Each activity's first successful check submission in this session fixes its local correctness for accuracy; an incorrect answer can continue, and retries do not replace the first result. A failed network check is not a submitted result.
+- Replay answer checks are read-only. They do not create attempts, create/increment/resolve Review, change original score, block/lesson/course completion, access, learning days, coins or streaks.
+- Replay Summary uses the session's completed activity count. Replay Result shows local first-attempt accuracy and “¡Repaso completado!”, without historical Review, rewards, course progress or a newly unlocked next lesson.
+- “Continuar mi ruta” returns to the existing current frontier, not the replayed lesson. Completed paid lessons still require current access.
+- Normal/Resume completion and first-attempt scoring remain unchanged. Their previous-activity “Responder de nuevo” action remains available where answers are not returned by GET; Replay never uses historical visited/skip state.
 
 ## Lesson model and completion
 

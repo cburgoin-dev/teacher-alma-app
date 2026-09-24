@@ -63,7 +63,11 @@ export class PrismaLessonRepository {
   constructor(private readonly db: PrismaClient) {}
 
   read<T>(work: (session: LessonSession) => Promise<T>): Promise<T> {
-    return this.db.$transaction(tx => work(new LessonSession(tx)), { isolationLevel: 'RepeatableRead' });
+    return this.db.$transaction(async tx => {
+      // Enforce the read boundary in PostgreSQL, including replay answer checks.
+      await tx.$executeRaw`SET TRANSACTION READ ONLY`;
+      return work(new LessonSession(tx));
+    }, { isolationLevel: 'RepeatableRead' });
   }
 
   write<T>(userId: string, work: (session: LessonSession) => Promise<T>): Promise<T> {

@@ -11,6 +11,8 @@ async function main() {
   }
   if (process.argv.includes('--access-boundary') && action !== '--reset') throw new DemoGuard('Use --reset --access-boundary to select the alternate scenario.');
   const lessonScenario = process.argv.includes('--lessons');
+  const resumeScenario = process.argv.includes('--resume');
+  if (resumeScenario && (action !== '--reset' || lessonScenario || process.argv.includes('--access-boundary'))) throw new DemoGuard('Use --reset --resume without other scenario flags.');
   if (lessonScenario && (action !== '--reset' || process.argv.includes('--access-boundary'))) throw new DemoGuard('Use --reset --lessons without --access-boundary.');
   if (process.env.NODE_ENV !== 'development') throw new DemoGuard('NODE_ENV must be development.');
   let target: URL;
@@ -102,8 +104,14 @@ async function main() {
       const a1 = courses[0]!;
       const initializeProgress = !await tx.courseProgress.findUnique({ where: { userId_courseId: { userId, courseId: a1.id } } });
       await tx.courseProgress.createMany({ data: [{ userId, courseId: a1.id, status: 'IN_PROGRESS' }], skipDuplicates: true });
-      for (const lesson of (initializeProgress ? a1.topics.flatMap(t => t.lessons).filter(l => l.lessonProgress.length).slice(0, lessonScenario ? 2 : undefined) : [])) {
+      for (const lesson of (initializeProgress ? a1.topics.flatMap(t => t.lessons).filter(l => l.lessonProgress.length).slice(0, lessonScenario || resumeScenario ? 2 : undefined) : [])) {
         await tx.lessonProgress.createMany({ data: [{ userId, lessonId: lesson.id, status: 'COMPLETED', completedAt: new Date() }], skipDuplicates: true });
+      }
+      if (resumeScenario) {
+        // Deterministic Resume at the first activity, after the grouped Content/Example/Video step.
+        await tx.lessonProgress.create({ data: { userId, lessonId: demoId(1003), status: 'IN_PROGRESS', currentBlockId: demoId(31003) } });
+        await tx.lessonBlockProgress.createMany({ data: content.blocks.filter(b => b.lessonId === demoId(1003) && b.position < 4)
+          .map(b => ({ userId, lessonBlockId: b.id!, status: 'COMPLETED', completedAt: new Date() })) });
       }
     }, { timeout: 30000 });
     console.log(JSON.stringify({ action, courses: courses.map(c => ({ id: c.id, title: c.title, topics: c.topics.length,
