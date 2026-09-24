@@ -456,3 +456,19 @@ Not required in the initial data model unless scope changes:
 - advanced spaced-repetition scheduling;
 - detailed analytics/event warehouse;
 - push-notification delivery records.
+
+
+## Rich lesson content evolution
+
+The richer lesson-content contract required for high-fidelity mobile rendering does not currently require new relational entities.
+
+Existing flexible fields remain the preferred storage boundary:
+
+- `lesson_blocks.content JSONB` for TEXT segments, EXAMPLE variants/dialogue turns, VIDEO metadata and SUMMARY structure.
+- `activities.config JSONB` for public activity presentation context plus private type-specific validation configuration.
+
+This preserves the stable Course -> Topic -> Lesson -> LessonBlock model while allowing structured dialogue, optional audio metadata, contextual images and richer summaries.
+
+Provider-specific audio generation/storage should remain outside the core domain model. Content should reference playable media through URLs/metadata rather than embedding provider behavior in lessons.
+
+A future migration should only be introduced if actual querying, indexing, ownership or lifecycle requirements make a dedicated relational media/content entity necessary.
