@@ -1,4 +1,4 @@
-import { NavigationContainer } from '@react-navigation/native';
+import { getFocusedRouteNameFromRoute, NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { HomeScreen } from '../features/home/screens/HomeScreen';
 import { CoursesNavigator } from '../features/courses/navigation/CoursesNavigator';
@@ -26,7 +26,7 @@ export function RootNavigator() {
         tabBarLabel: ({ color, children }) => <Text maxFontSizeMultiplier={1.5} style={{ color, fontSize: 12, lineHeight: 18, fontWeight: '600', includeFontPadding: false, textAlign: 'center' }}>{children}</Text>,
         tabBarIconStyle: { width: 28, height: 28, marginBottom: 1 },
         tabBarItemStyle: { paddingVertical: 0 },
-        tabBarStyle: { height: contentHeight + bottomPadding, paddingTop: 4, paddingBottom: bottomPadding, borderTopColor: '#DEEAFA', backgroundColor: '#FFF' },
+        tabBarStyle: { display: route.name === 'CoursesTab' && ['Lesson', 'LessonResult'].includes(getFocusedRouteNameFromRoute(route) ?? '') ? 'none' : 'flex', height: contentHeight + bottomPadding, paddingTop: 4, paddingBottom: bottomPadding, borderTopColor: '#DEEAFA', backgroundColor: '#FFF' },
       })}>
         <Tabs.Screen name="Home" component={HomeScreen} options={{ title: 'Inicio' }} />
         <Tabs.Screen name="CoursesTab" component={CoursesNavigator} options={{ title: 'Cursos', headerShown: false }} />

@@ -1,6 +1,8 @@
 # Teacher Alma — Courses v1 móvil
 
-Expo + React Native + TypeScript y React Navigation. Courses incluye catálogo, detalle y roadmap conectados a la API. Inicio, Progreso y Perfil siguen como placeholders. No se implementan autenticación, lecciones ni pagos.
+Expo + React Native + TypeScript y React Navigation. Courses y Lessons están conectados a la API real. Inicio, Progreso y Perfil siguen como placeholders. No se implementan proveedor de autenticación ni pagos.
+
+La guía actual de [Mobile Lessons v1](LESSONS.md) contiene arranque, reset, recorrido Android, respuestas demo, estados y limitaciones. Las secciones de iteraciones de Courses que siguen son el registro histórico.
 
 ## Ejecutar
 
@@ -47,7 +49,7 @@ Configurar `EXPO_PUBLIC_API_URL` mediante el entorno del proceso Expo o una copi
 
 Se consumen los cuatro contratos de Courses. El detalle consulta también el roadmap para mostrar nombres de temas y conocer el acceso a la primera lección; la presencia de alguna lección gratis no implica que la primera lo sea. La UI representa los estados devueltos por el servidor sin recalcular prerrequisitos. Las peticiones de lectura se cancelan al salir de pantalla. El inicio bloquea pulsaciones repetidas y conserva los errores del contrato.
 
-Las acciones de lecciones y acceso muestran avisos contextuales: no inician lecciones, simulan compras ni alteran progreso.
+Las lecciones accesibles abren el flujo real de Lessons. Acceso/Premium muestra información contextual sin compras.
 
 Las variables `EXPO_PUBLIC_*` son públicas y quedan incluidas en la aplicación. No colocar contraseñas, tokens ni la configuración del backend en ellas.
 

@@ -23,7 +23,7 @@ Los dos fixtures de integración originales, identificados exactamente por UUID,
 node --import tsx scripts/seed-courses-demo.ts --reset
 ```
 
-Restablece exclusivamente `course_progress` y `lesson_progress` del usuario configurado para estos cuatro cursos demo. Deja A1 iniciado con tres lecciones completadas y A2 sin iniciar. No elimina cursos, usuarios, otros progresos ni modifica compras, entitlements, monedas o rachas. Los estados completados son datos de escenario introducidos por tooling, no eventos de aprendizaje ni una implementación de Lessons.
+Restablece `course_progress` y `lesson_progress` del usuario configurado para estos cuatro cursos demo. También limpia sus block progress, attempts y Review de las dos lecciones demo de Lessons identificadas por UUIDs estables. Deja A1 iniciado con tres lecciones completadas y A2 sin iniciar. No elimina cursos, usuarios, otros progresos ni modifica compras, entitlements, monedas o rachas. Los estados completados iniciales son datos de escenario introducidos por tooling.
 
 El script se detiene ante colisiones de identificadores o entitlements activos que desbloqueen estos cursos; nunca revoca acceso para fabricar un bloqueo.
 
@@ -44,7 +44,29 @@ Completa cuatro de ocho lecciones de A1 (50%). La siguiente es PAID: el servicio
 
 Fuente común: `courses-demo-data.ts`. Los datos no contienen porcentajes, coordenadas, labels de botones ni flags Premium. Progreso, acceso y navegación se derivan en los servicios existentes.
 
-## Preview sin PostgreSQL
+## Lessons v1: contenido persistente para Android
+
+Se añaden 11 bloques y 4 actividades a las lecciones A1 existentes 3 («Nice to meet you!») y 4 («Verb to be»). Cada una deriva CONTENT + ACTIVITY + ACTIVITY + SUMMARY; cubren MULTIPLE_CHOICE, FILL_BLANK_OPTIONS, FILL_BLANK_TEXT y MATCH_WORD_IMAGE. Las dos imágenes PNG originales se incorporan como data URLs, sin dependencia de red. Son contenido de desarrollo, no el temario definitivo. V2 agrega un VIDEO opcional sin URL (preview visual, sin reproducción falsa) en el primer CONTENT de la lección 3 y elimina el prefijo «Contenido demo» del texto visible. Los bloques existentes conservan UUID; se actualizan posiciones descendentes para liberar el espacio del VIDEO manteniendo guards de colisión. Usar --reset --lessons para probar el contenido nuevo desde cero.
+
+```powershell
+node --import tsx scripts/seed-courses-demo.ts --reset --lessons
+node --import tsx scripts/seed-courses-demo.ts --check
+```
+
+Este escenario deja A1 iniciado en **2/8**, A2 sin iniciar, sin attempts/Review previos de estas actividades. Permite completar ambas lecciones desde cero hasta llegar a la quinta PAID. `--lessons` exige `--reset` y no se combina con `--access-boundary`.
+
+`--apply` conserva el progreso existente (incluido 2/8 o avances realizados desde el móvil). Upsert con UUIDs estables evita duplicados. `--reset` normal restaura Courses 3/8; `--reset --access-boundary` restaura 4/8. Ninguno revoca entitlements. Las lecciones restantes siguen sin contenido demo: solo estas dos son el recorrido de prueba de Lessons.
+
+Comprobación HTTP real reproducible (resetea el progreso demo y termina listo en 2/8):
+
+```powershell
+node --import tsx scripts/check-lessons-demo.ts --run
+node --import tsx --test scripts/lessons-demo.test.ts
+```
+
+Verifica apply repetido, ambos resets, recorrido de los cinco endpoints, cuatro actividades, incorrect/retry sin reemplazar score, PERFECT, Review y ACCESS en Result/Roadmap. Reutiliza el guard del seed antes de conectarse. No imprime configuración ni secretos.
+
+## Preview de Courses sin PostgreSQL
 
 Se conserva la entrada anterior desde `mobile/`:
 

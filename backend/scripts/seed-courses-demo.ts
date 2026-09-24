@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { demoCourses } from './courses-demo-data.js';
 import { isUuid } from '../src/shared/auth.js';
+import { lessonsDemoData } from './lessons-demo-data.js';
 
 class DemoGuard extends Error {}
 async function main() {
@@ -9,6 +10,8 @@ async function main() {
     throw new DemoGuard('Use --check, --apply or --reset; optional --access-boundary with --reset.');
   }
   if (process.argv.includes('--access-boundary') && action !== '--reset') throw new DemoGuard('Use --reset --access-boundary to select the alternate scenario.');
+  const lessonScenario = process.argv.includes('--lessons');
+  if (lessonScenario && (action !== '--reset' || process.argv.includes('--access-boundary'))) throw new DemoGuard('Use --reset --lessons without --access-boundary.');
   if (process.env.NODE_ENV !== 'development') throw new DemoGuard('NODE_ENV must be development.');
   let target: URL;
   try { target = new URL(process.env.DATABASE_URL ?? ''); }
@@ -24,9 +27,16 @@ async function main() {
     if (!await prisma.user.findUnique({ where: { id: userId }, select: { id: true } })) throw new DemoGuard('The configured development user does not exist.');
     const courses = demoCourses(process.argv.includes('--access-boundary'));
     const ids = courses.map(c => c.id);
+    const content = lessonsDemoData();
+    const blockIds = content.blocks.map(b => b.id!);
+    const activityIds = content.activities.map(a => a.id!);
     if (action === '--check') {
       console.log(JSON.stringify({ connected: true, configuredUserExists: true,
-        demoCounts: { courses: await prisma.course.count({ where: { id: { in: ids } } }),
+        demoCounts: { blocks: await prisma.lessonBlock.count({ where: { id: { in: blockIds } } }),
+          activities: await prisma.activity.count({ where: { id: { in: activityIds } } }),
+          attempts: await prisma.activityAttempt.count({ where: { userId, activityId: { in: activityIds } } }),
+          reviews: await prisma.reviewItem.count({ where: { userId, activityId: { in: activityIds } } }),
+          courses: await prisma.course.count({ where: { id: { in: ids } } }),
           topics: await prisma.topic.count({ where: { courseId: { in: ids } } }),
           lessons: await prisma.lesson.count({ where: { topic: { courseId: { in: ids } } } }),
           courseProgress: await prisma.courseProgress.count({ where: { userId, courseId: { in: ids } } }),
@@ -66,15 +76,31 @@ async function main() {
           }
         }
       }
+      for (const activity of content.activities) {
+        const existing = await tx.activity.findUnique({ where: { id: activity.id! } });
+        if (existing && (existing.type !== activity.type || existing.prompt !== activity.prompt)) throw new DemoGuard('Demo activity identifier collision.');
+        await tx.activity.upsert({ where: { id: activity.id! }, create: activity, update: activity });
+      }
+      // Descending positions let existing demo blocks move one slot right for the VIDEO preview.
+      // Collision guards still reject any row outside the exact fixture identities.
+      for (const block of [...content.blocks].sort((a, b) => b.position - a.position)) {
+        const existing = await tx.lessonBlock.findFirst({ where: { OR: [{ id: block.id! }, { lessonId: block.lessonId, position: block.position }] } });
+        if (existing && (existing.id !== block.id || existing.lessonId !== block.lessonId)) throw new DemoGuard('Demo block identifier collision.');
+        await tx.lessonBlock.upsert({ where: { id: block.id! }, create: block, update: block });
+      }
       const lessonIds = courses.flatMap(c => c.topics.flatMap(t => t.lessons.map(l => l.id)));
       if (action === '--reset') {
         // Only the named demo courses and configured user's learning state; never whole tables.
+        await tx.activityAttempt.deleteMany({ where: { userId, activityId: { in: activityIds }, lessonId: { in: lessonIds } } });
+        await tx.reviewItem.deleteMany({ where: { userId, activityId: { in: activityIds }, sourceLessonId: { in: lessonIds } } });
+        await tx.lessonBlockProgress.deleteMany({ where: { userId, lessonBlockId: { in: blockIds } } });
         await tx.lessonProgress.deleteMany({ where: { userId, lessonId: { in: lessonIds } } });
         await tx.courseProgress.deleteMany({ where: { userId, courseId: { in: ids } } });
       }
       const a1 = courses[0]!;
+      const initializeProgress = !await tx.courseProgress.findUnique({ where: { userId_courseId: { userId, courseId: a1.id } } });
       await tx.courseProgress.createMany({ data: [{ userId, courseId: a1.id, status: 'IN_PROGRESS' }], skipDuplicates: true });
-      for (const lesson of a1.topics.flatMap(t => t.lessons).filter(l => l.lessonProgress.length)) {
+      for (const lesson of (initializeProgress ? a1.topics.flatMap(t => t.lessons).filter(l => l.lessonProgress.length).slice(0, lessonScenario ? 2 : undefined) : [])) {
         await tx.lessonProgress.createMany({ data: [{ userId, lessonId: lesson.id, status: 'COMPLETED', completedAt: new Date() }], skipDuplicates: true });
       }
     }, { timeout: 30000 });

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { NavigationIcon } from '../../../components/NavigationIcon';
 import { colors, shadows } from '../../../theme';
@@ -8,14 +8,19 @@ import { Button } from './ui';
 import { curvedDashes, courseStops } from './pathGeometry';
 import { PathScenery } from './PathScenery';
 
-export function CoursePath({ topics, onLessonPress }: {
+export function CoursePath({ topics, onLessonPress, targetId, onTargetLayout }: {
   topics: Roadmap['topics']; onLessonPress: (lesson: Lesson) => void;
+  targetId?: string | null; onTargetLayout?: (id: string, y: number) => void;
 }) {
   const [width, setWidth] = useState(0);
   const { fontScale } = useWindowDimensions();
   const entries = useMemo(() => topics.flatMap((topic, topicIndex) => topic.lessons.map((lesson, index) => ({ lesson, topic, topicIndex, sectionStart: index === 0 }))), [topics]);
   const expanded = entries.map(({ lesson }) => lessonState(lesson) === 'CURRENT' || (lesson.progression.isCurrent && lessonState(lesson) === 'LOCKED_ACCESS'));
   const stops = courseStops(width, expanded, entries.map(entry => entry.sectionStart), fontScale);
+  const targetY = stops[entries.findIndex(entry => entry.lesson.id === targetId)]?.y;
+  useEffect(() => {
+    if (width > 0 && targetId && targetY !== undefined) onTargetLayout?.(targetId, targetY);
+  }, [width, targetId, targetY, onTargetLayout]);
   const dots = stops.slice(0, -1).flatMap((stop, index) => curvedDashes(stop, stops[index + 1], entries[index + 1].sectionStart)
     .map(dot => ({ ...dot, color: lessonState(entries[index].lesson) === 'COMPLETED' ? '#55A9E8' : '#A2B6CC' })));
   return <View onLayout={event => setWidth(event.nativeEvent.layout.width)}>
