@@ -1344,6 +1344,26 @@ Implementation should prefer extending JSONB-backed content/configuration and pu
 Content Contract v2 implementation: GET lesson now also returns `activityProgress` (completed/total ACTIVITY blocks, including optional, based on persisted user traversal). Completion Result now returns `course: { id, title, level }`. See the implementation notes in `docs/lesson-content-contract-v2.md` for nested allowlists, optional-field handling, media URL validation and compatibility. These additions do not alter required progression or first-attempt score.
 
 
+## Lessons Session Semantics v1 — accepted direction
+
+`docs/lesson-session-semantics-v1.md` supersedes the earlier normal-lesson Resume contract.
+
+Normal incomplete lessons will move to an explicit `LessonRun` boundary:
+
+- start creates a fresh ACTIVE run and returns a run identifier;
+- any stale prior ACTIVE run for the same learner/lesson is abandoned/replaced;
+- run traversal and activity submissions belong to that run;
+- abandoning a run produces no durable score, Review, lesson/course progression or rewards;
+- completing a run atomically consolidates durable lesson/block/course state and Review signals;
+- the Mobile back/chevron action for a normal run is exit-with-confirmation, not previous-step navigation;
+- re-entering an unfinished lesson starts from 0%; there is no normal Resume UX.
+
+The implementation iteration may revise the existing normal lesson route shapes to carry an explicit run id. Exact request/response shapes should be finalized in code/docs together rather than preserving accidental Resume compatibility.
+
+Replay v1 remains a separate read-only flow for already-completed lessons and does not require a LessonRun.
+
+---
+
 ## Lessons Replay Semantics v1 — POST /lessons/:lessonId/replay/steps/:stepId/check
 
 Checks an answer for an authenticated learner's COMPLETED lesson without persisting an attempt. Body is the same Answer as the normal activity endpoint: selectedOptionId, text, or pairs according to activity type.
