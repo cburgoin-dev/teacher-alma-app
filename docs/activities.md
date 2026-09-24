@@ -270,3 +270,20 @@ Activities and Review belong to the focused learning flow and should remain clea
 - Minimal global navigation/chrome while actively learning.
 - Content and interaction take priority over decorative elements.
 - Review may use the future branded Alma character/mascot selectively for encouragement and completion states.
+
+
+## Activity presentation contract v2
+
+For the next mobile fidelity pass, activities may expose optional structured pedagogical context as defined in `docs/lesson-content-contract-v2.md`.
+
+Important direction:
+
+- Multiple Choice and Matching define the preferred shared visual language for activity headers, spacing, selection states, feedback and primary actions.
+- Fill Blank keeps its own central interaction but should belong to the same visual family rather than appearing as a separate design system.
+- Activity context can be `TEXT`, `DIALOGUE` or `IMAGE` when configured by content.
+- Speaker labels, dialogue text, contextual images and audio must come from content configuration; the client must not invent them.
+- Real/colorful images are preferred for matching content when available; monochrome demo artwork is not a target visual standard.
+- Audio playback is an MVP content capability, but controls render only when real audio media exists.
+- The primary action region should be predictable without adding arbitrary empty space merely to fill the viewport.
+
+The current answer/retry/Review semantics remain unchanged.
