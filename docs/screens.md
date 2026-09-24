@@ -295,6 +295,8 @@ Preferred behavior:
 
 - On initial entry to an `IN_PROGRESS` roadmap, automatically position the viewport around the `CURRENT` lesson node.
 - For a completed course, position near the last relevant/final lesson segment rather than always at the top.
+- Prefer a short animated initial scroll after the relevant path geometry has been measured instead of an abrupt visual teleport.
+- The animation should orient the learner, not become a long cinematic transition; once it finishes, the viewport belongs entirely to the learner.
 - Keep the learner free to scroll anywhere immediately after that initial positioning.
 - Do not keep auto-scrolling while the learner is already browsing the roadmap.
 - This is a frontend usability behavior only; it must not alter progression/access rules or couple domain logic to a specific path geometry.
