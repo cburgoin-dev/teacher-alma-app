@@ -1315,3 +1315,28 @@ Do not expand this slice into:
 - media-provider-specific playback analytics.
 
 Mobile may attempt both matching interaction modes, but `TAP` is the required reliable fallback and `DRAG` may be deferred if it requires disproportionate gesture/layout complexity. The REST contract must remain unchanged either way.
+
+
+---
+
+# Lessons Content Contract v2
+
+The high-fidelity mobile learning flow requires richer public content than the original Lessons v1 payloads provide.
+
+The detailed backward-compatible evolution is defined in:
+
+`docs/lesson-content-contract-v2.md`
+
+Key additions planned before the next high-fidelity mobile pass:
+
+- TEXT segments with explicit pedagogical emphasis.
+- EXAMPLE variants, especially structured DIALOGUE turns.
+- optional audio metadata on dialogue turns/key phrases/activity context.
+- optional structured activity context for TEXT, DIALOGUE and IMAGE.
+- richer SUMMARY payloads with subtitle, takeaways and key phrases.
+- reliable activity-completion metadata when derivable.
+- course metadata in lesson completion Result.
+
+Lessons v1 progression, scoring, Review, access and completion semantics remain unchanged.
+
+Implementation should prefer extending JSONB-backed content/configuration and public sanitization/serialization before introducing schema migrations.
