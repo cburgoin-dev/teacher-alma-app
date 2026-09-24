@@ -806,3 +806,19 @@ The backend should validate/sanitize their shapes before exposing them publicly.
 Likewise, Summary activity-completion counts and Result course metadata should be derived from existing lesson/activity/course records when possible rather than persisted as UI-specific columns.
 
 Only introduce new tables/columns later if real operational requirements justify them.
+
+
+## Planned LessonRun schema evolution
+
+The accepted session model in `docs/lesson-session-semantics-v1.md` requires an explicit migration before implementation is considered complete.
+
+Expected relational direction:
+
+- add `lesson_runs` with user, lesson, lifecycle status, current run pointer and lifecycle timestamps;
+- associate normal lesson `activity_attempts` with the originating run;
+- persist run-specific block traversal separately when required for required/optional-step correctness;
+- keep durable `lesson_progress` / `lesson_block_progress` as consolidated learner state rather than transient run state.
+
+An ABANDONED run must not contribute to durable score, Review, progression or rewards. A COMPLETED run is consolidated atomically and idempotently.
+
+The exact constraints/indexes and migration/backfill strategy are implementation details to finalize in the Lessons Session Semantics v1 coding iteration. Replay v1 remains read-only and does not require a run row.
