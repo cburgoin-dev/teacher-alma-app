@@ -472,3 +472,22 @@ This preserves the stable Course -> Topic -> Lesson -> LessonBlock model while a
 Provider-specific audio generation/storage should remain outside the core domain model. Content should reference playable media through URLs/metadata rather than embedding provider behavior in lessons.
 
 A future migration should only be introduced if actual querying, indexing, ownership or lifecycle requirements make a dedicated relational media/content entity necessary.
+
+
+## LessonRun session model
+
+The accepted normal-lesson session direction is defined in `docs/lesson-session-semantics-v1.md`.
+
+Introduce an explicit `LessonRun` aggregate for temporary normal lesson execution rather than overloading durable `LessonProgress` with active-session state.
+
+Conceptually:
+
+- `LessonRun`: learner, lesson, status `ACTIVE | COMPLETED | ABANDONED`, current run pointer and lifecycle timestamps.
+- normal `ActivityAttempt` rows belong to a run;
+- run traversal is represented explicitly where required (for example `LessonRunBlockProgress`);
+- `LessonProgress` / durable `LessonBlockProgress` represent consolidated learning state, not an unfinished session;
+- only a COMPLETED run contributes score/Review/progression;
+- ABANDONED run data may remain for integrity/analytics but has no durable pedagogical effect;
+- Replay v1 remains read-only and does not create LessonRun rows.
+
+This direction intentionally favors a clean pre-production model over preserving the earlier Resume-oriented implementation.
