@@ -7,11 +7,11 @@ import { AudioButton, DialogueRow, RichText } from './RichContent';
 import { LearningIcon } from './LearningIcon';
 import { lessonStyles as s } from './lessonStyles';
 
-export function LessonImage({ url, alt }: { url: string; alt: string }) {
+export function LessonImage({ url, alt, wide = false }: { url: string; alt: string; wide?: boolean }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   return failedUrl === url ? <Text style={s.body}>{alt} · Imagen no disponible</Text> :
     <Image source={{ uri: url }} accessibilityLabel={alt} accessible resizeMode="contain"
-      style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: 14 }} onError={() => setFailedUrl(url)} />;
+      style={{ width: '100%', aspectRatio: wide ? 16 / 9 : 4 / 3, borderRadius: 14 }} onError={() => setFailedUrl(url)} />;
 }
 function Example({ block }: { block: Extract<Block, { type: 'EXAMPLE' }> }) {
   return <View style={[local.card, local.example]}>
@@ -26,6 +26,8 @@ function Example({ block }: { block: Extract<Block, { type: 'EXAMPLE' }> }) {
   </View>;
 }
 export function SummaryContent({ block }: { block: Extract<Block, { type: 'SUMMARY' }> }) {
+  const { width, fontScale } = useWindowDimensions();
+  const indent = width >= 360 && fontScale <= 1.3 ? 54 : 0;
   return <>
     {block.subtitle ? <Text style={[s.body, { marginTop: -8 }]}>{block.subtitle}</Text> : null}
     <View style={[local.card, { gap: 0 }]}>
@@ -35,8 +37,8 @@ export function SummaryContent({ block }: { block: Extract<Block, { type: 'SUMMA
       </View>)}
     </View>
     {block.keyPhrases?.length ? <View style={[local.card, local.example]}>
-      <View style={local.row}><LearningIcon kind="chat" rose /><Text style={[s.heading, local.flex]}>Frases clave de la lección</Text></View>
-      {block.keyPhrases.map((phrase, i) => <View key={i} style={[local.bubble, local.row]}>
+      <View style={local.row}><LearningIcon kind="chat" rose /><View style={local.flex}><Text style={s.heading}>Frases clave de la lección</Text><Text style={s.caption}>Practica y memoriza estas frases clave.</Text></View></View>
+      {block.keyPhrases.map((phrase, i) => <View key={i} style={[local.bubble, local.row, { marginLeft: indent }]}>
         <View style={local.flex}><Text style={[s.heading, local.blue]}>{phrase.text}</Text>
           {phrase.translation ? <Text style={s.body}>{phrase.translation}</Text> : null}</View>
         <AudioButton {...phrase} />
@@ -81,7 +83,7 @@ const local = StyleSheet.create({
   card: { padding: 16, borderRadius: 18, borderWidth: 1, borderColor: '#DFEAFA', backgroundColor: '#F0F6FF', gap: 14 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 }, flex: { flex: 1 }, blue: { color: '#0062E9' },
   concept: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 }, conceptText: { flex: 1, gap: 8 },
-  example: { backgroundColor: '#FFF8F9', borderColor: '#FBE7EB' },
+  example: { backgroundColor: '#FFF8F9', borderColor: '#FFF8F9' },
   bubble: { backgroundColor: '#FFF', borderRadius: 14, borderWidth: 1, borderColor: '#E0EAF8', padding: 14, gap: 10 },
   mediaRow: { flexDirection: 'row', gap: 12, alignItems: 'center' },
   preview: { width: '57%', borderRadius: 12, overflow: 'hidden', backgroundColor: '#E0EDFA' },

@@ -236,3 +236,93 @@ node --import tsx scripts/seed-courses-demo.ts --reset
 - No se repiten tests backend: no se modificó backend. No se ejecutó seed/reset ni se cambió el aprendizaje actual durante la implementación.
 - Deuda: fotografías/video/audio reales dependen del contenido; audio/video abren externamente, sin reproductor integrado; celebración estática, sin animación adicional; títulos legacy siguen siendo contenido configurado. Result sin next/course y campos v2 ausentes conservan fallback, pero sus estados visuales requieren datos reales para aceptación física. DRAG, Review real, rewards y Progress quedan fuera.
 - Sin commit, push ni merge. Revisión y aceptación Android pendientes antes del checkpoint.
+
+# Lessons Mobile V5 — Fidelity & Consistency Pass
+
+V5 continúa sobre el checkpoint V4 `de47457`. Los cambios previos al corte de uso se conservaron. No se modifica `flow.ts`, el contrato ni ninguna regla backend.
+
+## Cambios y alcance
+
+Antes del corte ya estaban implementados: estado de Matching controlado por `matchingDraft` (reset de pares y palabra seleccionada), feedback incorrecto simplificado, tipografía Lessons body 16/24 y caption 14/20, normalización de course metadata, bubble con tail, discos sin doble halo, fixture IMAGE y servidor estático demo, Summary enriquecido, precisión porcentual y progreso Result.
+
+Después del corte: revisión del diff, bubbles cortas que ajustan su ancho al mensaje, reducción del espacio vertical de la oración Fill Blank, validación real del asset HTTP, ejecución de los tests de fixture fuera del sandbox, validaciones finales y este recorrido de aceptación.
+
+- Courses conserva su theme; la nueva escala se limita a `lessonStyles`. Traducciones, instrucciones y video metadata heredan una lectura más cómoda.
+- Content/Summary muestran el título real del curso (por ejemplo Inglés A1), sin un chip A1 redundante. Result mantiene una referencia única en su identidad y la referencia contextual bajo progreso.
+- Dialogue A/B y MC D comparten bubble redondeada sin borde pesado, tail solo cuando hay speaker real, traducción secundaria y audio arriba a la derecha únicamente con URL válida. `showTranslation` permite composición futura sin crear Settings. Los ejemplos no-DIALOGUE mantienen fallback v1.
+- MC conserva radios y estados V4. El contexto de diálogo tiene menos padding; la bubble corta ya no ocupa forzosamente todo el ancho.
+- Fill options demo tiene una ilustración original de Sofía saludando, encima de la frase. La imagen usa contain en un marco panorámico. Fill text de lección 4 conserva su contexto TEXT y sirve para comprobar el fallback sin imagen. No se inventa imagen en el renderer.
+- Matching: retry resetea pares y palabra seleccionada en una sola transición del reducer; el handler existente elimina feedback. Desaparecen conexiones y estados rojo/verde, permanecen anchors neutrales. Comprobar queda deshabilitado hasta reconstruir todos los pares. El siguiente envío es un nuevo attempt. La respuesta esperada se obtiene exclusivamente del feedback del servidor; en incorrecto reemplaza la explicación larga redundante.
+- Summary v2 conserva subtitle configurado, takeaways con KEY en los tres puntos y key phrases. Descriptor genérico «Practica y memoriza estas frases clave». Phrase cards alineadas con el texto del heading; en ancho menor de 360 o fontScale mayor de 1.3 recuperan ancho para legibilidad. Contador de actividades intacto.
+- Result prioriza PRECISIÓN y porcentaje redondeado, manteniendo «x de y correctas al primer intento». No usa retries para recalcular score ni modifica isPerfect. Progreso coloca porcentaje junto al heading, barra a todo el ancho y metadata inferior de lecciones obligatorias. Review, Premium, siguiente lección y Volver a la ruta conservan su comportamiento.
+- Iconos de sección usan un disco saturado limpio y glyph blanco. Se conserva el halo celebratorio del hero de Result.
+- No se añade audio demo, TTS ni reproductor. URLs reales siguen abriéndose externamente; sin URL no hay control.
+
+## Archivos V5
+
+Mobile: `components/{ActivityStep,ContentBlocks,LearningIcon,MatchingPairs,RichContent,lessonStyles}`, `contentPresentation.ts`, nuevo `matchingDraft.ts`, screens `LessonScreen`/`LessonResultScreen`, `tests/lessons.test.cjs` y este documento.
+
+Demo: `backend/scripts/lessons-demo-data.ts`, `lessons-demo.test.ts`, nuevos `assets/greeting.png`, `assets/generate-greeting.ps1` y `serve-lesson-assets.mjs`.
+
+El PNG es una ilustración original, reproducible con System.Drawing, sin media externa. El servidor estático de desarrollo entrega exclusivamente ese PNG en puerto 3001; está separado de la API. No se agrega ningún endpoint al backend de aplicación. IMAGE context requiere HTTP(S), por eso no se usa un data URL ni se cambia su validador.
+
+## Preparación física Android V5
+
+No se ejecutó seed/reset durante esta iteración. Para preparar la aceptación, usar tres terminales. PC y teléfono deben compartir LAN. Reutilizar backend/Metro si ya están levantados; evitar duplicar puertos.
+
+Terminal 1 — asset demo (dejar abierta):
+
+```powershell
+Set-Location C:\software-development\projects\teacher-alma-app\backend
+node scripts/serve-lesson-assets.mjs
+```
+
+Terminal 2 — seed y backend, con el PostgreSQL de desarrollo existente:
+
+```powershell
+Set-Location C:\software-development\projects\teacher-alma-app\backend
+$v5Lan = Get-NetIPConfiguration | Where-Object { $_.IPv4DefaultGateway -and $_.NetAdapter.Status -eq 'Up' } | Select-Object -First 1
+$env:LESSONS_DEMO_ASSET_BASE_URL = 'http://' + $v5Lan.IPv4Address.IPAddress + ':3001'
+node --import tsx scripts/seed-courses-demo.ts --reset --lessons
+node --import tsx scripts/seed-courses-demo.ts --check
+& 'C:\Program Files\nodejs\npm.cmd' run dev
+```
+
+Comprobar la interfaz si hay VPN. La variable debe estar configurada ANTES del seed: la URL queda almacenada en la fixture. No usar localhost para Android físico. El reset guardado afecta al aprendizaje demo del usuario de desarrollo y deja A1 2/8, A2 sin iniciar. Si cambia la IP de la PC, volver a aplicar la fixture con la nueva variable usando `--apply` (sin borrar aprendizaje).
+
+Terminal 3 — Metro:
+
+```powershell
+Set-Location C:\software-development\projects\teacher-alma-app\mobile
+$v5Lan = Get-NetIPConfiguration | Where-Object { $_.IPv4DefaultGateway -and $_.NetAdapter.Status -eq 'Up' } | Select-Object -First 1
+$env:EXPO_PUBLIC_API_URL = 'http://' + $v5Lan.IPv4Address.IPAddress + ':3000'
+node node_modules/expo/bin/cli start --host lan --port 8081 --clear
+```
+
+Abrir desde el navegador del teléfono `http://<IP-PC>:3001/greeting.png` y verificar que aparece Sofía saludando. Si falla, resolver conectividad LAN/puerto 3001 antes de evaluar IMAGE. Escanear QR con Expo Go compatible con SDK 57 o usar el development build existente. No hay nuevas dependencias nativas.
+
+## Recorrido exacto V5
+
+1. Cursos → Inglés A1 → Nice to meet you! Confirmar un chip **Inglés A1**, título y descripción. Concepto con KEY. Dialogue A/B con tail hacia cada speaker, frase protagonista y traducción legible secundaria. Revisar video preview predominante y metadata. Sin audio ficticio. Continuar.
+2. MC: bubble **D — Hi, I’m Daniel.** compacta, traducción y nueva instrucción. Seleccionar **Goodbye!**; radio centrado y azul. Comprobar → incorrecto. Retry → **Nice to meet you!** → ¡Ahora sí! → Continue al primer tap. Score sigue basado en el primer intento.
+3. Fill options: imagen de Sofía arriba, frase **_____, I’m Sofía.** debajo, opciones, Pista/Verificar. Mostrar/ocultar pista. Elegir **Hello** al primer intento y continuar.
+4. Summary de lección 3: subtitle «¡Muy bien!...», tres takeaways más descriptivos con KEY, descriptor de frases clave y alineación con la columna del heading. Traducciones visibles. **2 actividades completadas**, sin barra 2/3. Finalizar.
+5. Result: **PRECISIÓN 50%**, **1 de 2 correctas al primer intento**, una referencia Inglés A1 (sin chip A1 adicional), un ejercicio para reforzar, curso **38% / 3 de 8**. Porcentaje junto a Progreso del curso, barra a todo el ancho. Siguiente lección accesible: Verb to be.
+6. Lección 4: verificar Content v1; Fill text sin IMAGE mantiene contexto textual e input. Escribir **am** correctamente desde el primer intento, verificar y continuar. Probar teclado, hint y back físico.
+7. Matching: conectar **Book→taza, Cup→libro, Ball→pelota**, comprobar. Debe mostrar dos pares incorrectos, uno correcto y feedback simplificado con pares esperados.
+8. Pulsar **Intentar de nuevo**. Confirmar inmediatamente: **cero conexiones, ninguna palabra seleccionada, colores neutrales, feedback anterior ausente y Comprobar deshabilitado**. Tocar primero una imagen no debe usar una palabra seleccionada antes del retry. Construir **Book→libro, Cup→taza, Ball→pelota** desde cero; comprobar → verde/¡Ahora sí! → Continue al primer tap.
+9. Summary v1 de lección 4 mantiene points, sin frases/subtitle inventados, y contador 2 actividades. Finalizar: **50%**, **1 de 2 al primer intento**, un ejercicio pendiente, curso **50% / 4 de 8**. Mi familia es próxima Premium; Obtener acceso muestra información existente. Volver a la ruta conserva el mismo botón secundario.
+10. Pasada perfecta: repetir `--reset --lessons` con la variable LAN configurada y recargar. Acertar Nice to meet you!, Hello, am y los tres pares desde el primer envío. Result de ambas lecciones muestra **100%**, ¡Excelente trabajo! y 2 de 2 al primer intento; no aparece Review pendiente. No convertir retries en 100%.
+11. Repetir con ancho estrecho y fuente 1.3–1.5. Revisar wrapping de headings, burbujas, traducciones y video apilado; key phrases recuperan ancho. Matching debe mantener conectores unidos al centro de sus nodos tras medir nuevas alturas. Result y Summary deben poder desplazarse sin overflow; teclado no debe tapar el CTA. Back/forward y resume mantienen semántica V4.
+
+## Validación y deuda
+
+- TypeScript Mobile y scripts demo: PASS.
+- Mobile: 32/32 tests PASS, incluidos reset Matching, precisión, normalización, first-feedback ready y doble submit.
+- Fixture Lessons: 2/2 tests PASS. El intento previo al corte falló por `uv_os_get_passwd ENOMEM` en tsx dentro del sandbox; el mismo test fuera del sandbox pasó sin cambios de entorno/código para ocultarlo.
+- Asset HTTP: GET 200 con bytes idénticos al PNG original; ruta inexistente 404. Sin seed/reset de datos en esta validación.
+- No se ejecutan suites completas backend: solo cambian fixtures y herramientas de demo.
+- Pendiente aceptación visual física V5, fuente ampliada, teclado y TalkBack. No se acredita una cifra de fidelidad antes de esa prueba. La imagen es ilustración demo, no fotografía como el mockup; video/audio reales siguen fuera. Expo patch warning preexistente no se modifica.
+- Sin cambios de schema/migrations, reglas backend, API, dependencias ni archivos .env. Sin commit, push ni merge.
+- Android export final: PASS, 1014 módulos y bundle Hermes de 2,2 MB en `mobile/dist/lessons-v5-check` (ignorado por Git).
+- `git diff --check`: PASS; solo advertencias de conversión LF/CRLF propias de Windows.

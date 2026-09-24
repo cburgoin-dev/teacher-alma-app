@@ -7,9 +7,9 @@ const image = (name: string) => `data:image/png;base64,${readFileSync(new URL(`.
 export function lessonsDemoData() {
   const activities: Prisma.ActivityCreateManyInput[] = [
     { id: demoId(30001), type: 'MULTIPLE_CHOICE', prompt: 'Alguien dice: “Hi, I’m Daniel.” ¿Qué responderías?', explanation: 'Nice to meet you expresa que te alegra conocer a alguien.',
-      config: { instruction: 'Elige la mejor respuesta.', options: [{ id: 'hello', text: 'Nice to meet you!' }, { id: 'bye', text: 'Goodbye!' }, { id: 'night', text: 'Good night!' }], correctOptionId: 'hello', context: { type: 'DIALOGUE', speakerLabel: 'D', text: 'Hi, I’m Daniel.', translation: 'Hola, soy Daniel.' } } },
+      config: { instruction: 'Elige la mejor opción para continuar la conversación.', options: [{ id: 'hello', text: 'Nice to meet you!' }, { id: 'bye', text: 'Goodbye!' }, { id: 'night', text: 'Good night!' }], correctOptionId: 'hello', context: { type: 'DIALOGUE', speakerLabel: 'D', text: 'Hi, I’m Daniel.', translation: 'Hola, soy Daniel.' } } },
     { id: demoId(30002), type: 'FILL_BLANK_OPTIONS', prompt: '_____, I’m Sofía.', explanation: 'Hello es un saludo para iniciar una conversación.',
-      config: { instruction: 'Elige la mejor respuesta.', options: [{ id: 'please', text: 'Please' }, { id: 'hello', text: 'Hello' }, { id: 'bye', text: 'Goodbye' }], correctOptionId: 'hello', hint: 'Empieza con un saludo.' } },
+      config: { instruction: 'Observa la escena y elige el saludo para presentarte.', context: { type: 'IMAGE', url: new URL('/greeting.png', process.env.LESSONS_DEMO_ASSET_BASE_URL ?? 'http://localhost:3001').href, alt: 'Sofía saluda con la mano a otra persona antes de presentarse.' }, options: [{ id: 'please', text: 'Please' }, { id: 'hello', text: 'Hello' }, { id: 'bye', text: 'Goodbye' }], correctOptionId: 'hello', hint: 'Empieza con un saludo.' } },
     { id: demoId(30003), type: 'FILL_BLANK_TEXT', prompt: 'I _____ a student.', explanation: 'Con I usamos am: I am a student.',
       config: { instruction: 'Escribe la palabra que falta.', context: { type: 'TEXT', text: 'Preséntate como estudiante.' }, acceptedAnswers: ['am'], caseSensitive: false, hint: 'Usa la forma de to be que acompaña a I.' } },
     { id: demoId(30004), type: 'MATCH_WORD_IMAGE', prompt: 'Relaciona cada palabra con su imagen.', explanation: 'Book significa libro, cup significa taza y ball significa pelota.',
@@ -40,10 +40,11 @@ export function lessonsDemoData() {
     { speakerLabel: 'B', text: 'Hello, I’m Daniel. Nice to meet you too!', translation: 'Hola, soy Daniel. El gusto es mío.' },
   ] });
   Object.assign(blocks[4]!.content as Prisma.JsonObject, {
-    subtitle: 'Muy bien, aquí tienes lo más importante de esta lección.',
+    subtitle: '¡Muy bien! Aquí tienes lo más importante de esta lección.',
     takeaways: [
-      { text: 'Hello inicia una conversación.', segments: [{ text: 'Hello', emphasis: 'KEY' }, { text: ' inicia una conversación.' }] },
-      { text: 'I’m + tu nombre sirve para presentarte.' }, { text: 'Nice to meet you expresa mucho gusto.' },
+      { text: 'Hello es un saludo para iniciar una conversación de forma amable.', segments: [{ text: 'Hello', emphasis: 'KEY' }, { text: ' es un saludo para iniciar una conversación de forma amable.' }] },
+      { text: 'Usa I’m seguido de tu nombre para decir quién eres.', segments: [{ text: 'Usa ' }, { text: 'I’m', emphasis: 'KEY' }, { text: ' seguido de tu nombre para decir quién eres.' }] },
+      { text: 'Nice to meet you expresa que te alegra conocer a alguien por primera vez.', segments: [{ text: 'Nice to meet you', emphasis: 'KEY' }, { text: ' expresa que te alegra conocer a alguien por primera vez.' }] },
     ],
     keyPhrases: [{ text: 'Nice to meet you!', translation: 'Mucho gusto.' }, { text: 'Nice to meet you too!', translation: 'El gusto es mío.' }],
   });

@@ -3,10 +3,11 @@ import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { CoursesStackParamList } from '../../../navigation/types';
-import { Button, ProgressBar } from '../../courses/components/ui';
+import { Button } from '../../courses/components/ui';
 import { showAccessInfo } from '../../courses/components/accessInfo';
 import { lessonStyles as s } from '../components/lessonStyles';
 import { LearningIcon } from '../components/LearningIcon';
+import { accuracy, courseLabel } from '../contentPresentation';
 
 function CompletionHero({ perfect }: { perfect: boolean }) {
   return <View accessible={false} pointerEvents="none" style={local.art}>
@@ -36,14 +37,21 @@ export function LessonResultScreen({ route, navigation }: NativeStackScreenProps
       {result.isPerfect ? <Text style={[s.body, local.center]}>Has completado la lección con éxito.</Text> : null}
     </View>
     <View style={local.identity}>
-      {course ? <View style={local.courseRow}><Text style={[s.caption, local.courseTitle]}>{course.title}</Text>{course.level ? <Text style={s.chip}>{course.level}</Text> : null}</View> : null}
+      {courseLabel(course) ? <Text style={[s.caption, local.courseTitle, local.center]}>{courseLabel(course)}</Text> : null}
       <Text style={[s.heading, local.center, { fontSize: 22, lineHeight: 29 }]}>{response.lesson.title}</Text>
     </View>
     {result.totalActivities > 0 ? <View style={[local.score, result.isPerfect && local.positive]}>
-      <Text style={local.scoreNumber}>{result.correctAnswers}<Text style={{ fontSize: 32 }}>/{result.totalActivities}</Text></Text>
-      <Text style={s.body}>correctas al primer intento</Text>
+      <Text style={[s.caption, local.courseTitle]}>PRECISIÓN</Text>
+      <Text style={local.scoreNumber}>{accuracy(result.correctAnswers, result.totalActivities)}%</Text>
+      <Text style={[s.body, local.center]}>{result.correctAnswers} de {result.totalActivities} correctas al primer intento</Text>
     </View> : null}
-    <View style={local.progress}><Text style={s.heading}>Progreso del curso</Text><ProgressBar percentage={courseProgress.percentage} /><Text style={s.caption}>{courseProgress.completedLessons} de {courseProgress.totalLessons} lecciones requeridas completadas</Text></View>
+    <View style={local.progress}>
+      <View style={local.progressHeading}><Text style={[s.heading, { flex: 1 }]}>Progreso del curso</Text><Text style={[s.heading, local.courseTitle]}>{Math.round(courseProgress.percentage)}%</Text></View>
+      <View style={local.track} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: courseProgress.percentage }} accessibilityLabel="Progreso de lecciones obligatorias">
+        <View style={[local.fill, { width: `${Math.max(0, Math.min(100, courseProgress.percentage))}%` }]} />
+      </View>
+      <Text style={s.caption}>{courseLabel(course) ? courseLabel(course) + ' · ' : ''}{courseProgress.completedLessons} de {courseProgress.totalLessons} lecciones obligatorias completadas</Text>
+    </View>
     {result.pendingReviewCount > 0 ? <View style={local.review}>
       <LearningIcon kind="pencil" rose /><View style={{ flex: 1 }}>
         <Text style={s.heading}>{result.pendingReviewCount} {result.pendingReviewCount === 1 ? 'ejercicio para reforzar' : 'ejercicios para reforzar'}</Text>
@@ -67,7 +75,9 @@ const local = StyleSheet.create({
   content: { gap: 14 }, center: { textAlign: 'center' },
   hero: { alignItems: 'center', gap: 8 }, art: { width: 260, maxWidth: '100%', height: 150 },
   identity: { gap: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  courseRow: { flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
+  progressHeading: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  track: { height: 12, borderRadius: 6, overflow: 'hidden', backgroundColor: '#DEE8F5' },
+  fill: { height: '100%', borderRadius: 6, backgroundColor: '#0878F8' },
   courseTitle: { color: '#0062E9', fontWeight: '700', flexShrink: 1 },
   score: { alignItems: 'center', padding: 14, borderRadius: 18, borderWidth: 1, borderColor: '#DEEAFA', backgroundColor: '#EFF6FF' },
   scoreNumber: { fontSize: 46, lineHeight: 54, fontWeight: '800', color: '#0062E9' },

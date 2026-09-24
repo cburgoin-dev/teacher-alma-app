@@ -17,12 +17,13 @@ export function AudioButton({ audioUrl, audioAlt }: AudioMetadata) {
     <Volume2 color="#0062E9" size={24} strokeWidth={2.5} />
   </Pressable>;
 }
-export function DialogueRow({ turn, alternate = false }: { turn: DialogueTurn; alternate?: boolean }) {
+export function DialogueRow({ turn, alternate = false, showTranslation = true }: { turn: DialogueTurn; alternate?: boolean; showTranslation?: boolean }) {
   return <View style={local.row}>
     {turn.speakerLabel ? <View style={[local.speaker, alternate && local.rose]}><Text style={local.label}>{turn.speakerLabel}</Text></View> : null}
     <View style={local.bubble}>
+      {turn.speakerLabel ? <View pointerEvents="none" style={local.tail} /> : null}
       <View style={local.words}><Text style={[s.heading, local.phrase]}>{turn.text}</Text>
-        {turn.translation ? <Text style={s.caption}>{turn.translation}</Text> : null}</View>
+        {showTranslation && turn.translation ? <Text style={s.caption}>{turn.translation}</Text> : null}</View>
       <AudioButton {...turn} />
     </View>
   </View>;
@@ -33,6 +34,7 @@ const local = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   speaker: { minWidth: 38, minHeight: 38, borderRadius: 22, padding: 8, backgroundColor: '#197AF3', alignItems: 'center', justifyContent: 'center', marginTop: 10, flexShrink: 0, maxWidth: '28%' },
   rose: { backgroundColor: '#F52A46' }, label: { fontSize: 18, fontWeight: '700', color: '#FFF' },
-  bubble: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF', padding: 14, borderWidth: 1, borderColor: '#E1EBFA', borderRadius: 16 },
-  words: { flex: 1, gap: 5 }, phrase: { fontSize: 17, lineHeight: 24, color: '#101B4D' },
+  bubble: { flexShrink: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: '#FFF', padding: 14, borderRadius: 22 },
+  tail: { position: 'absolute', left: -5, top: 24, width: 12, height: 12, backgroundColor: '#FFF', transform: [{ rotate: '45deg' }] },
+  words: { flexShrink: 1, gap: 5 }, phrase: { fontSize: 17, lineHeight: 24, color: '#101B4D' },
 });

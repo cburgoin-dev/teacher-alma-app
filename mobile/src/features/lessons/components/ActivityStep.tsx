@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useReducer, useState } from 'react';
 import { Keyboard, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { Button } from '../../courses/components/ui';
 import { colors } from '../../../theme';
-import type { Activity, Answer, AttemptResponse, Pair } from '../types';
-import { expectedAnswer, pairSelection } from '../presentation';
+import type { Activity, Answer, AttemptResponse } from '../types';
+import { expectedAnswer } from '../presentation';
+import { matchingDraft } from '../matchingDraft';
 import { feedbackTitle } from '../activityPresentation';
 import { MatchingPairs } from './MatchingPairs';
 import { LearningIcon } from './LearningIcon';
@@ -20,7 +21,8 @@ export function ActivityStep({ activity, feedback, busy, onSubmit, onRetry, onCo
   const stackedActions = width < 350 || fontScale > 1.3;
   const [option, setOption] = useState<string | null>(initialAnswer && 'selectedOptionId' in initialAnswer ? initialAnswer.selectedOptionId : null);
   const [text, setText] = useState(initialAnswer && 'text' in initialAnswer ? initialAnswer.text : '');
-  const [pairs, setPairs] = useState<Pair[]>(initialAnswer && 'pairs' in initialAnswer ? initialAnswer.pairs : []);
+  const [draft, dispatch] = useReducer(matchingDraft, { pairs: initialAnswer && 'pairs' in initialAnswer ? initialAnswer.pairs : [], word: null });
+  const { pairs } = draft;
   const [hint, setHint] = useState(false);
   const [answerAgain, setAnswerAgain] = useState(false);
   const visited = !!onSkip && !answerAgain && !feedback;
@@ -28,6 +30,8 @@ export function ActivityStep({ activity, feedback, busy, onSubmit, onRetry, onCo
   const fill = activity.type === 'FILL_BLANK_OPTIONS' || activity.type === 'FILL_BLANK_TEXT';
   const matching = activity.type === 'MATCH_WORD_IMAGE';
   const presentation = activityPresentation(activity);
+  const correctAnswer = feedback ? expectedAnswer(activity, feedback.feedback.correctAnswer) : '';
+  const matchingCorrection = matching && feedback && !feedback.attempt.isCorrect && correctAnswer;
   const answer: Answer | null = 'options' in activity ? option ? { selectedOptionId: option } : null
     : activity.type === 'FILL_BLANK_TEXT' ? text.trim() ? { text } : null
     : pairs.length === activity.words.length ? { pairs } : null;
@@ -37,10 +41,10 @@ export function ActivityStep({ activity, feedback, busy, onSubmit, onRetry, onCo
       <Text style={[s.body, { marginTop: 6 }]}>{presentation.instruction}</Text>
     </View></View>
     <View style={local.exercise}>
-    {activity.context ? <View style={local.context}>
+    {activity.context ? <View style={[local.context, activity.context.type === 'DIALOGUE' && local.dialogueContext]}>
       {activity.context.type === 'DIALOGUE' ? <DialogueRow turn={activity.context} />
         : activity.context.type === 'TEXT' ? <View style={local.contextText}><Text style={[s.body, { flex: 1 }]}>{activity.context.text}</Text><AudioButton {...activity.context} /></View>
-          : <><LessonImage url={activity.context.url} alt={activity.context.alt} />{activity.context.caption ? <Text style={s.caption}>{activity.context.caption}</Text> : null}</>}
+          : <><LessonImage wide url={activity.context.url} alt={activity.context.alt} />{activity.context.caption ? <Text style={s.caption}>{activity.context.caption}</Text> : null}</>}
     </View> : null}
     {presentation.showPrompt ? !matching ? <View style={[local.prompt, !fill && { backgroundColor: colors.pale }]}><Text style={[s.heading, fill && local.sentence]}>{activity.prompt}</Text></View> : <Text style={s.body}>{activity.prompt}</Text> : null}
     {'options' in activity ? <View style={fill ? local.bank : { gap: 10 }}>{activity.options.map(item => <Pressable key={item.id} accessibilityRole="radio" accessibilityState={{ selected: option === item.id, disabled }} disabled={disabled}
@@ -51,7 +55,7 @@ export function ActivityStep({ activity, feedback, busy, onSubmit, onRetry, onCo
     {activity.type === 'FILL_BLANK_TEXT' ? <TextInput accessibilityLabel="Escribe tu respuesta" placeholder="Escribe tu respuesta"
       placeholderTextColor={colors.muted} value={text} onChangeText={setText} editable={!disabled} autoCapitalize="none" autoCorrect={false}
       style={[local.option, s.body, { color: colors.ink, minHeight: 68, fontSize: 19, textAlign: 'center', borderColor: text ? colors.blue : colors.border }]} returnKeyType="done" onSubmitEditing={() => Keyboard.dismiss()} /> : null}
-    {matching ? <MatchingPairs activity={activity} pairs={pairs} feedback={feedback} disabled={disabled} onPair={(word, image) => setPairs(pairSelection(pairs, word, image))} /> : null}
+    {matching ? <MatchingPairs activity={activity} pairs={pairs} word={draft.word} feedback={feedback} disabled={disabled} onSelect={word => dispatch({ type: 'select', word })} onConnect={image => dispatch({ type: 'connect', image })} /> : null}
     {hint && activity.hint && !feedback && !visited ? <Text accessibilityLiveRegion="polite" style={[s.body, local.hint]}>{activity.hint}</Text> : null}
     </View>
     {visited ? <><Button title="Continuar" arrow busy={busy} onPress={onSkip!} /><Pressable disabled={busy} onPress={() => setAnswerAgain(true)} accessibilityRole="button"><Text style={s.link}>Responder de nuevo</Text></Pressable></>
@@ -60,11 +64,11 @@ export function ActivityStep({ activity, feedback, busy, onSubmit, onRetry, onCo
         <View style={!stackedActions && { flex: 1 }}><Button title={fill ? 'Verificar' : 'Comprobar'} arrow busy={busy} disabled={!answer} onPress={() => { Keyboard.dismiss(); if (answer) onSubmit(answer); }} /></View>
       </View> : <View accessibilityLiveRegion="polite" style={[local.feedback, { backgroundColor: feedback.attempt.isCorrect ? '#EDF9F2' : '#FFF3F1', borderColor: feedback.attempt.isCorrect ? '#D8EFE2' : '#F4DDD9' }]}>
         <View style={local.contextText}><LearningIcon kind={feedback.attempt.isCorrect ? 'completion' : 'pencil'} rose={!feedback.attempt.isCorrect} /><Text style={[s.heading, { flex: 1, fontSize: 21, lineHeight: 28, color: feedback.attempt.isCorrect ? '#13874C' : '#A33C25' }]}>{feedbackTitle(feedback)}</Text></View>
-        {feedback.feedback.explanation ? <Text style={s.body}>{feedback.feedback.explanation}</Text> : null}
-        {!feedback.attempt.isCorrect && expectedAnswer(activity, feedback.feedback.correctAnswer) ? <Text style={s.body}>Respuesta esperada: {expectedAnswer(activity, feedback.feedback.correctAnswer)}</Text> : null}
+        {matchingCorrection ? <Text style={s.body}>Revisa las conexiones marcadas en rojo.</Text> : feedback.feedback.explanation ? <Text style={s.body}>{feedback.feedback.explanation}</Text> : null}
+        {!feedback.attempt.isCorrect && correctAnswer ? <Text style={s.body}>{matching ? 'Respuesta correcta:\n' : 'Respuesta esperada: '}{correctAnswer}</Text> : null}
         {feedback.review.pending ? <Text style={s.caption}>{feedback.attempt.isCorrect ? 'Lo resolviste. Conservamos el primer intento en tu puntuación y este ejercicio para reforzarlo más adelante.' : 'Guardamos este ejercicio para reforzarlo más adelante.'}</Text> : null}
         <Button title="Continuar" arrow onPress={onContinue} busy={busy} />
-        {!feedback.attempt.isCorrect ? <Pressable accessibilityRole="button" disabled={busy} onPress={() => { setAnswerAgain(true); onRetry(); }}><Text style={s.link}>Intentar de nuevo</Text></Pressable> : null}
+        {!feedback.attempt.isCorrect ? <Pressable accessibilityRole="button" disabled={busy} onPress={() => { if (busy) return; if (matching) dispatch({ type: 'retry' }); setAnswerAgain(true); onRetry(); }}><Text style={s.link}>Intentar de nuevo</Text></Pressable> : null}
       </View>}
   </View>;
 }
@@ -74,9 +78,10 @@ const local = StyleSheet.create({
   heading: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   title: { fontSize: 27, lineHeight: 33, fontWeight: '800', color: colors.ink },
   context: { backgroundColor: '#F0F6FF', borderRadius: 18, borderWidth: 1, borderColor: '#DBE9FD', padding: 16, gap: 10 },
+  dialogueContext: { borderWidth: 0, padding: 10, backgroundColor: '#F1F7FF', borderRadius: 24 },
   contextText: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   feedback: { padding: 18, borderRadius: 20, borderWidth: 1, gap: 14 },
-  prompt: { padding: 18, borderRadius: 20 }, sentence: { fontSize: 29, lineHeight: 40, textAlign: 'center', paddingVertical: 24, color: colors.ink },
+  prompt: { padding: 14, borderRadius: 20 }, sentence: { fontSize: 29, lineHeight: 40, textAlign: 'center', paddingVertical: 14, color: colors.ink },
   bank: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   option: { padding: 18, minHeight: 72, justifyContent: 'center', borderRadius: 18, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.white },
   choice: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 14 },

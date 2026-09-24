@@ -1,5 +1,12 @@
 import type { Activity, Block, Segment } from './types';
 
+export function courseLabel(course?: { title: string; level: string | null }) {
+  return course?.title.trim() || (course?.level ? `Inglés ${course.level}` : undefined);
+}
+export function accuracy(correct: number, total: number) {
+  return total > 0 ? Math.round(correct / total * 100) : 0;
+}
+
 export function textRuns(fallback?: string, segments?: Segment[]): Segment[] {
   return segments?.length ? segments : fallback ? [{ text: fallback }] : [];
 }

@@ -13,6 +13,7 @@ import { ContentBlocks } from '../components/ContentBlocks';
 import { ActivityStep } from '../components/ActivityStep';
 import { LearningIcon } from '../components/LearningIcon';
 import { ContextualHeader } from '../../../components/ContextualHeader';
+import { courseLabel } from '../contentPresentation';
 import { lessonStyles as s } from '../components/lessonStyles';
 
 export function LessonScreen({ route, navigation }: NativeStackScreenProps<CoursesStackParamList, 'Lesson'>) {
@@ -51,7 +52,7 @@ export function LessonScreen({ route, navigation }: NativeStackScreenProps<Cours
     </ContextualHeader>
     <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" contentContainerStyle={[s.content, { flexGrow: 1, paddingBottom: Math.max(24, insets.bottom + 12) }]}>
       {step?.type !== 'ACTIVITY_STEP' ? <>
-        {data.lesson.course.level ? <Text style={s.chip}>{data.lesson.course.level}{state.review ? ' · Repaso' : ''}</Text> : null}
+        {courseLabel(data.lesson.course) ? <Text style={s.chip}>{courseLabel(data.lesson.course)}{state.review ? ' · Repaso' : ''}</Text> : null}
         <Text style={s.title}>{step?.type === 'SUMMARY_STEP' ? step.blocks.find(block => block.type === 'SUMMARY')?.title ?? 'Resumen de la lección' : data.lesson.title}</Text>
         {step?.type === 'CONTENT_STEP' && data.lesson.description ? <Text style={[s.body, { marginTop: -8 }]}>{data.lesson.description}</Text> : null}
       </> : null}

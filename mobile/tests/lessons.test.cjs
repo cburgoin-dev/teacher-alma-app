@@ -262,3 +262,33 @@ test('resume preserves server activity traversal count including pending optiona
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(flow.snapshot(), snapshot);
 });
+
+test('Matching retry clears pairs and pending word, removes feedback and submits a new attempt', async () => {
+  const { matchingDraft } = require('../src/features/lessons/matchingDraft.ts');
+  const { pairFeedback } = require('../src/features/lessons/activityPresentation.ts');
+  let draft = { pairs: [], word: null };
+  draft = matchingDraft(draft, { type: 'select', word: 'book' });
+  draft = matchingDraft(draft, { type: 'connect', image: 'cup' });
+  draft = matchingDraft(draft, { type: 'select', word: 'ball' });
+  const { flow, calls } = fixture();
+  await flow.load(); await flow.continueContent(); await flow.submit({ pairs: draft.pairs });
+  draft = matchingDraft(draft, { type: 'retry' }); flow.retryAnswer();
+  assert.deepEqual(draft, { pairs: [], word: null });
+  assert.equal(flow.snapshot().feedback, null);
+  assert.equal(pairFeedback(undefined, flow.snapshot().feedback), null);
+  assert.equal(matchingDraft(draft, { type: 'connect', image: 'book' }), draft, 'cannot connect using the old selected word');
+  draft = matchingDraft(draft, { type: 'select', word: 'book' });
+  draft = matchingDraft(draft, { type: 'connect', image: 'book' });
+  await flow.submit({ pairs: draft.pairs });
+  assert.equal(calls.filter(c => c === 'attempt').length, 2);
+  assert.deepEqual(flow.snapshot().answer, { pairs: [{ wordId: 'book', imageId: 'book' }] });
+});
+
+test('Result accuracy uses first-attempt totals and course label has no duplicate level', () => {
+  const { accuracy, courseLabel } = require('../src/features/lessons/contentPresentation.ts');
+  assert.equal(accuracy(1, 2), 50); assert.equal(accuracy(2, 2), 100);
+  assert.equal(accuracy(0, 0), 0); assert.equal(accuracy(2, 3), 67);
+  assert.equal(courseLabel({ title: 'Inglés A2', level: 'A2' }), 'Inglés A2');
+  assert.equal(courseLabel({ title: 'Conversation', level: null }), 'Conversation');
+  assert.equal(courseLabel(undefined), undefined);
+});

@@ -6,11 +6,10 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { connectionPath, pairFeedback } from '../activityPresentation';
 import { LessonImage } from './ContentBlocks';
 import { lessonStyles as s } from './lessonStyles';
-export function MatchingPairs({ activity, pairs, disabled, feedback, onPair }: {
+export function MatchingPairs({ activity, pairs, word, disabled, feedback, onSelect, onConnect }: {
   activity: Extract<Activity, { type: 'MATCH_WORD_IMAGE' }>; pairs: Pair[]; disabled: boolean;
-  feedback: AttemptResponse | null; onPair: (wordId: string, imageId: string) => void;
+  feedback: AttemptResponse | null; word: string | null; onSelect: (wordId: string) => void; onConnect: (imageId: string) => void;
 }) {
-  const [word, setWord] = useState<string | null>(null);
   const [width, setWidth] = useState(0);
   const [rightX, setRightX] = useState(0);
   const [rects, setRects] = useState<Record<string, LayoutRectangle>>({});
@@ -22,7 +21,7 @@ export function MatchingPairs({ activity, pairs, disabled, feedback, onPair }: {
       const pair = pairs.find(p => p.wordId === item.id), correct = pairFeedback(pair, feedback);
       return <Pressable key={item.id} onLayout={e => record('w:' + item.id, e.nativeEvent.layout)} disabled={disabled}
         accessibilityRole="button" accessibilityState={{ selected: word === item.id, disabled }} accessibilityLabel={`${item.text}${pair ? ', conectada' : ''}`}
-        onPress={() => setWord(item.id)} style={[local.card, (pair || word === item.id) && { borderColor: word === item.id ? '#0062E9' : tint(pair), backgroundColor: surface(pair) }]}>
+        onPress={() => onSelect(item.id)} style={[local.card, (pair || word === item.id) && { borderColor: word === item.id ? '#0062E9' : tint(pair), backgroundColor: surface(pair) }]}>
         <Text style={[s.heading, { textAlign: 'center' }]}>{item.text}</Text>
         {correct !== null ? <Text style={[s.caption, { color: tint(pair), textAlign: 'center' }]}>{correct ? '✓ Correcto' : '× Revisar'}</Text> : null}
       </Pressable>;
@@ -31,7 +30,7 @@ export function MatchingPairs({ activity, pairs, disabled, feedback, onPair }: {
       const pair = pairs.find(p => p.imageId === item.id);
       return <Pressable key={item.id} onLayout={e => record('i:' + item.id, e.nativeEvent.layout)} disabled={disabled || !word}
         accessibilityRole="button" accessibilityState={{ disabled: disabled || !word, selected: !!pair }} accessibilityLabel={`${item.alt}${pair ? ', conectada con ' + activity.words.find(w => w.id === pair.wordId)?.text : ''}`}
-        onPress={() => { if (word) { onPair(word, item.id); setWord(null); } }} style={[local.card, { padding: 6 }, pair && { borderColor: tint(pair), backgroundColor: surface(pair) }]}>
+        onPress={() => { if (word) onConnect(item.id); }} style={[local.card, { padding: 6 }, pair && { borderColor: tint(pair), backgroundColor: surface(pair) }]}>
         <LessonImage url={item.url} alt={item.alt} />
       </Pressable>;
     })}</View>
