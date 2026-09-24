@@ -22,7 +22,7 @@ test('Lessons HTTP + Prisma/PostgreSQL integration', { skip: process.env.RUN_LES
   const blocks = Array.from({ length: 7 }, () => randomUUID());
   const [contentId, videoId, mcId, optionsId, textId, matchId, summaryId] = blocks as [string, string, string, string, string, string, string];
   const activityIds = Array.from({ length: 4 }, () => randomUUID());
-  const paidSummaryId = randomUUID(), optionalSummaryId = randomUUID();
+  const paidSummaryId = randomUUID(), optionalSummaryId = randomUUID(), optionalActivityId = randomUUID();
   const courses = new CourseService(new PrismaCourseRepository(prisma));
   const repo = new PrismaLessonRepository(prisma);
   const service = new LessonService(repo);
@@ -34,18 +34,19 @@ test('Lessons HTTP + Prisma/PostgreSQL integration', { skip: process.env.RUN_LES
     await prisma.lesson.createMany({ data: lessonIds.map((id, i) => ({ id, topicId, title: `Test lesson ${i + 1}`, position: i + 1,
       status: i === 3 ? 'DRAFT' : i === 5 ? 'ARCHIVED' : 'PUBLISHED', accessType: i === 2 ? 'PAID' : 'FREE', isRequired: i === 0 || i === 2 })) });
     await prisma.activity.createMany({ data: [
-      { id: activityIds[0]!, type: 'MULTIPLE_CHOICE', prompt: 'Choose hello', explanation: 'Hello is a greeting', config: { options: [{ id: 'a', text: 'Hello' }, { id: 'b', text: 'Bye' }], correctOptionId: 'a' } },
+      { id: activityIds[0]!, type: 'MULTIPLE_CHOICE', prompt: 'Choose hello', explanation: 'Hello is a greeting', config: { instruction: 'Choose a greeting', context: { type: 'DIALOGUE', speakerLabel: 'D', text: 'Hi', audioUrl: 'https://media.example.test/hi.mp3', privateKey: 'must-not-leak' }, options: [{ id: 'a', text: 'Hello' }, { id: 'b', text: 'Bye' }], correctOptionId: 'a' } },
       { id: activityIds[1]!, type: 'FILL_BLANK_OPTIONS', prompt: '___ there', config: { options: [{ id: 'a', text: 'Hello' }], correctOptionId: 'a' } },
       { id: activityIds[2]!, type: 'FILL_BLANK_TEXT', prompt: 'I ___', config: { acceptedAnswers: ['am', "I'm"], caseSensitive: false } },
       { id: activityIds[3]!, type: 'MATCH_WORD_IMAGE', prompt: 'Match', config: { interactionMode: 'DRAG', words: [{ id: 'w', text: 'Hello' }], images: [{ id: 'i', url: '/hello.png', alt: 'Hello' }], pairs: [{ wordId: 'w', imageId: 'i' }] } },
     ] });
     await prisma.lessonBlock.createMany({ data: [
-      { id: contentId, lessonId, type: 'TEXT', position: 1, content: { body: 'Test content', secret: 'must-not-leak' } },
+      { id: contentId, lessonId, type: 'TEXT', position: 1, content: { body: 'Test content', segments: [{ text: 'Test', emphasis: 'KEY', privateKey: 'must-not-leak' }, { text: ' content' }], secret: 'must-not-leak' } },
       { id: videoId, lessonId, type: 'VIDEO', position: 2, content: { url: '/test.mp4' } },
       ...[mcId, optionsId, textId, matchId].map((id, i) => ({ id, lessonId, type: 'ACTIVITY', position: i + 3, activityId: activityIds[i]! })),
-      { id: summaryId, lessonId, type: 'SUMMARY', position: 7, content: { points: ['Test summary'] } },
+      { id: summaryId, lessonId, type: 'SUMMARY', position: 7, content: { points: ['Test summary'], subtitle: 'Well done', takeaways: [{ text: 'Test summary' }], keyPhrases: [{ text: 'Hi', translation: 'Hola', audioUrl: 'https://media.example.test/hi.mp3', privateKey: 'must-not-leak' }] } },
       { id: paidSummaryId, lessonId: paidId, type: 'SUMMARY', position: 1, content: { points: ['Final required lesson'] } },
       { id: optionalSummaryId, lessonId: optionalId, type: 'SUMMARY', position: 1, content: { points: ['Optional practice'] } },
+      { id: optionalActivityId, lessonId: optionalId, type: 'ACTIVITY', position: 2, required: false, activityId: activityIds[0]! },
     ] });
     server = createApp(courses, (request, _response, next) => {
       // Test-only trusted context; production application never trusts this header.
@@ -69,6 +70,10 @@ test('Lessons HTTP + Prisma/PostgreSQL integration', { skip: process.env.RUN_LES
       const before = await counts(); const read = await request(`/lessons/${lessonId}`);
       assert.equal(read.status, 200); assert.equal(read.body.state.status, 'NOT_STARTED'); assert.equal(read.body.steps.length, 6);
       assert.equal(read.body.steps[0].blocks.length, 2);
+      assert.deepEqual(read.body.activityProgress, { completed: 0, total: 4 });
+      assert.deepEqual(read.body.steps[0].blocks[0].segments, [{ text: 'Test', emphasis: 'KEY' }, { text: ' content' }]);
+      assert.equal(read.body.steps[1].blocks[0].activity.context.audioUrl, 'https://media.example.test/hi.mp3');
+      assert.equal(read.body.steps[5].blocks[0].keyPhrases[0].translation, 'Hola');
       for (const key of ['correctOptionId', 'acceptedAnswers', 'must-not-leak', 'Hello is a greeting', '"pairs"']) assert.ok(!JSON.stringify(read.body).includes(key));
       assert.deepEqual(await counts(), before);
       assert.equal((await request('/lessons/bad')).body.error.code, 'INVALID_LESSON_ID');
@@ -111,12 +116,15 @@ test('Lessons HTTP + Prisma/PostgreSQL integration', { skip: process.env.RUN_LES
       assert.equal(result.status, 200); assert.equal(result.body.attempt.isCorrect, false); assert.equal(result.body.attempt.attemptNumber, 1);
       assert.equal(result.body.attempt.countsForLessonScore, true); assert.equal(result.body.review.pending, true);
       assert.equal(result.body.progress.currentStepId, optionsId);
+      assert.deepEqual((await request(`/lessons/${lessonId}`)).body.activityProgress, { completed: 1, total: 4 });
+      assert.deepEqual((await request(`/lessons/${lessonId}`, 'GET', undefined, 'other')).body.activityProgress, { completed: 0, total: 4 });
       assert.equal((await prisma.lessonBlockProgress.findUniqueOrThrow({ where: { userId_lessonBlockId: { userId, lessonBlockId: mcId } } })).status, 'COMPLETED');
     });
     await t.test('concurrent retries have distinct numbers and correct retry never resolves Review', async () => {
       const retries = await Promise.all([post(`/steps/${mcId}/attempt`, { selectedOptionId: 'a' }), post(`/steps/${mcId}/attempt`, { selectedOptionId: 'b' })]);
       assert.deepEqual(retries.map(r => r.body.attempt.attemptNumber).sort(), [2, 3]);
       assert.ok(retries.every(r => r.body.attempt.countsForLessonScore === false && r.body.review.pending));
+      assert.deepEqual((await request(`/lessons/${lessonId}`)).body.activityProgress, { completed: 1, total: 4 });
       const reviews = await prisma.reviewItem.findMany({ where: { userId } });
       assert.equal(reviews.length, 1); assert.equal(reviews[0]!.incorrectAttempts, 2); assert.equal(reviews[0]!.resolvedAt, null);
     });
@@ -144,7 +152,7 @@ test('Lessons HTTP + Prisma/PostgreSQL integration', { skip: process.env.RUN_LES
     });
     await t.test('completion preserves first score, reports review and paid next, is concurrently idempotent', async () => {
       const results = await Promise.all([post('/complete'), post('/complete')]);
-      assert.equal(results[0]!.status, 200); assert.deepEqual(results[0], results[1]);
+      assert.deepEqual(results[0]!.body.course, { id: courseId, title: 'LESSONS INTEGRATION TEST', level: null }); assert.equal(results[0]!.status, 200); assert.deepEqual(results[0], results[1]);
       assert.deepEqual(results[0]!.body.result, { correctAnswers: 3, totalActivities: 4, isPerfect: false, pendingReviewCount: 1 });
       assert.deepEqual(results[0]!.body.courseProgress, { completedLessons: 1, totalLessons: 2, percentage: 50, status: 'IN_PROGRESS' });
       assert.deepEqual(results[0]!.body.nextLesson, { id: paidId, title: 'Test lesson 3', accessible: false, lockReason: 'ACCESS' });
@@ -180,6 +188,16 @@ test('Lessons HTTP + Prisma/PostgreSQL integration', { skip: process.env.RUN_LES
       assert.equal(result.body.nextLesson, null);
       assert.deepEqual(await prisma.courseProgress.findUniqueOrThrow({ where: { userId_courseId: { userId, courseId } } }), stored);
       assert.equal((await courses.detail(courseId, userId)).content.lessonCount, 4);
+    });
+    await t.test('optional activity traversal survives resume and completion without inflating on retry', async () => {
+      const root = `/lessons/${optionalId}`;
+      assert.deepEqual((await request(root)).body.activityProgress, { completed: 0, total: 1 });
+      assert.equal((await request(root + '/start', 'POST')).body.status, 'COMPLETED');
+      await request(`${root}/steps/${optionalActivityId}/attempt`, 'POST', { selectedOptionId: 'b' });
+      assert.deepEqual((await request(root)).body.activityProgress, { completed: 1, total: 1 });
+      await request(`${root}/steps/${optionalActivityId}/attempt`, 'POST', { selectedOptionId: 'a' });
+      assert.deepEqual((await request(root)).body.activityProgress, { completed: 1, total: 1 });
+      assert.deepEqual((await request(root, 'GET', undefined, 'other')).body.activityProgress, undefined); // prerequisite access remains enforced
     });
   } finally {
     if (server) await new Promise<void>((resolve, reject) => { server!.close(e => e ? reject(e) : resolve()); server!.closeAllConnections(); });

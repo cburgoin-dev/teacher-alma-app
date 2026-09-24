@@ -4,6 +4,7 @@ import { lessonsDemoData } from './lessons-demo-data.js';
 import { demoCourses, demoId } from './courses-demo-data.js';
 import { deriveSteps } from '../src/modules/lessons/lesson.steps.js';
 import { publicActivity } from '../src/modules/lessons/lesson.activity.js';
+import { publicContent } from '../src/modules/lessons/lesson.content.js';
 import type { Activity } from '../src/generated/prisma/client.js';
 
 test('two existing free A1 lessons contain four safe activity types in short real steps', () => {
@@ -14,6 +15,14 @@ test('two existing free A1 lessons contain four safe activity types in short rea
   assert.equal(blocks.length, 11);
   assert.equal(new Set(blocks.map(b => b.id)).size, 11);
   assert.equal(new Set(activities.map(a => a.type)).size, 4);
+  const text = publicContent('TEXT', blocks[0]!.content);
+  assert.ok(text.body && JSON.stringify(text.segments).includes('KEY'));
+  const example = publicContent('EXAMPLE', blocks[1]!.content);
+  assert.equal(example.variant, 'DIALOGUE');
+  assert.equal((example.turns as unknown[]).length, 2);
+  assert.ok(example.primaryText && example.secondaryText);
+  const summary = publicContent('SUMMARY', blocks[4]!.content);
+  assert.ok(summary.points && summary.takeaways && summary.keyPhrases);
   for (const id of [demoId(1003), demoId(1004)]) {
     assert.equal(courses[0]!.topics.flatMap(t => t.lessons).find(l => l.id === id)?.accessType, 'FREE');
     const steps = deriveSteps(blocks.filter(b => b.lessonId === id).map(b => ({ ...b, id: b.id!, required: true })));

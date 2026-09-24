@@ -439,3 +439,36 @@ This allows content to migrate incrementally.
 6. Only then perform the next high-fidelity mobile iteration.
 
 The high-fidelity mobile pass should not begin by hard-coding mockup-only content that the API still cannot represent.
+
+## Implemented API behavior (Content Contract v2)
+
+The v2 fields above are now supported by the backend allowlist serializers. No schema migration, new persistence table or media provider is needed.
+
+- New optional fields may be omitted or null in stored JSON; null optional additions are omitted in the public DTO. Existing v1 field validation remains unchanged.
+- Invalid known v2 shapes fail closed as an internal content/configuration error. Unknown keys are discarded at every public nesting level; no config object is spread into the response.
+- `segments` is a nonempty array of nonempty strings with optional `emphasis: KEY`. Whitespace-only runs are preserved. Dialogue requires at least one turn with nonblank text. Labels/translations/audio are never inferred.
+- New audio URLs and IMAGE context URLs must be absolute HTTP(S) URLs without embedded credentials. These are metadata references only; the server neither fetches them nor guarantees availability. Existing v1 IMAGE/VIDEO/Matching URL handling is unchanged.
+- Audio metadata is supported on dialogue turns, key phrases, and TEXT/DIALOGUE activity context. No audio is fabricated in the demo.
+- `GET /lessons/:lessonId` always includes `activityProgress: { completed, total }`. The unit is an ACTIVITY block (derived activity step), including required and optional blocks. Completion comes exclusively from that user's `lesson_block_progress.status = COMPLETED` on the blocks in this lesson. An incorrect submitted answer traverses a block; retries do not increment the count. Skipped optional activities remain in total and incomplete even if the lesson is completed. This is traversal metadata, not score, required progress or a new completion condition. If an activity is reused in two blocks, each block is counted separately, unlike Result's distinct-activity score denominator.
+- GET is read-only and reads the counters with the existing repeatable-read lesson snapshot. Resume/current pointer and historical first-attempt correctness do not determine these counters. No backfill is fabricated for legacy progress without block traversal rows.
+- `POST /lessons/:lessonId/complete` additionally returns `course: { id, title, level }` (`level` may be null), including repeated completion calls. Existing result/courseProgress/nextLesson semantics are unchanged.
+- Demo lesson 3 carries rich TEXT, two explicit dialogue turns and SUMMARY v2 alongside all v1 fallbacks. The Multiple Choice prompt retains its v1 contextual wording for Mobile V3, while also publishing instruction and structured DIALOGUE context. Lesson 4 retains v1 blocks and demonstrates optional TEXT activity context. Matching uses three colorful local illustrations.
+
+### Local validation commands
+
+From `backend` in PowerShell (existing guarded development configuration):
+
+```powershell
+node node_modules/typescript/bin/tsc --noEmit
+node node_modules/typescript/bin/tsc -p scripts/tsconfig.json
+node --import tsx --test src/modules/courses/*.test.ts src/modules/lessons/*.test.ts scripts/courses-demo.test.ts scripts/lessons-demo.test.ts
+$env:RUN_LESSONS_DB_TESTS = '1'
+try { node --import tsx --test src/modules/courses/*.test.ts src/modules/lessons/*.test.ts scripts/courses-demo.test.ts scripts/lessons-demo.test.ts } finally { Remove-Item Env:RUN_LESSONS_DB_TESTS }
+node --import tsx scripts/check-lessons-demo.ts --run
+node --import tsx scripts/seed-courses-demo.ts --reset --lessons
+node --import tsx scripts/seed-courses-demo.ts --check
+```
+
+The demo check exercises real HTTP/PostgreSQL payloads and ends at A1 2/8 + A2 unstarted, with demo attempts/reviews reset. Use `--reset` without `--lessons` to restore A1 3/8 + A2 unstarted. No other users' learning data is reset.
+
+Mobile public types include optional v2 fields for incremental API compatibility. Components still use v1 rendering; Mobile V4, media playback and final visual acceptance are separate work.

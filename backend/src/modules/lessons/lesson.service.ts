@@ -1,3 +1,4 @@
+import { publicContent } from './lesson.content.js';
 import { HttpError } from '../../shared/http-error.js';
 import { entitlementSource } from '../courses/course.rules.js';
 import { progress as courseProgress } from '../courses/course.service.js';
@@ -8,6 +9,11 @@ import type { LessonBlockRecord, LessonRecord, LessonSession, PrismaLessonReposi
 function fail(status: number, code: string, message: string): never { throw new HttpError(status, code, message); }
 const publishedPath = (lesson: LessonRecord) => lesson.topic.course.topics.flatMap(t => t.lessons).filter(l => l.status === 'PUBLISHED');
 const completedBlocks = (lesson: LessonRecord) => new Set(lesson.lessonBlocks.filter(b => b.lessonBlockProgress[0]?.status === 'COMPLETED').map(b => b.id));
+
+export function activityProgress(lesson: Pick<LessonRecord, 'lessonBlocks'>) {
+  const activities = lesson.lessonBlocks.filter(block => block.type === 'ACTIVITY');
+  return { completed: activities.filter(block => block.lessonBlockProgress[0]?.status === 'COMPLETED').length, total: activities.length };
+}
 
 function stepProgress(lesson: LessonRecord) {
   const steps = deriveSteps(lesson.lessonBlocks);
@@ -24,21 +30,7 @@ function publicBlock(block: LessonBlockRecord) {
     if (!block.activity) throw new Error('Activity block has no activity');
     return { id: block.id, type: block.type, activity: publicActivity(block.activity) };
   }
-  const content = block.content;
-  if (!content || typeof content !== 'object' || Array.isArray(content)) throw new Error('Invalid lesson content');
-  const fields: Record<string, string[]> = {
-    TEXT: ['title', 'body'], IMAGE: ['url', 'alt', 'caption'], VIDEO: ['url', 'title', 'posterUrl', 'caption'],
-    EXAMPLE: ['title', 'primaryText', 'secondaryText', 'note'], SUMMARY: ['title', 'points'],
-  };
-  const payload: Record<string, unknown> = { id: block.id, type: block.type };
-  for (const key of fields[block.type] ?? []) {
-    const value = content[key];
-    if (value !== undefined) {
-      if (key === 'points' ? !Array.isArray(value) || !value.every(v => typeof v === 'string') : typeof value !== 'string') throw new Error('Invalid public block field');
-      payload[key] = value;
-    }
-  }
-  return payload;
+  return { id: block.id, type: block.type, ...publicContent(block.type, block.content) };
 }
 
 export class LessonService {
@@ -69,7 +61,7 @@ export class LessonService {
         topic: { id: lesson.topic.id, title: lesson.topic.title }, course: { id: course.id, title: course.title, level: course.level },
         position: { lesson: path.findIndex(l => l.id === lesson.id) + 1, totalLessons: path.length } },
         state: { status: lesson.lessonProgress[0]?.status ?? 'NOT_STARTED', canStart: course.courseProgress.length > 0 && steps.length > 0,
-          lockReason: null, currentStepId: stepProgress(lesson).currentStepId }, steps };
+          lockReason: null, currentStepId: stepProgress(lesson).currentStepId }, steps, activityProgress: activityProgress(lesson) };
     });
   }
 
@@ -166,7 +158,7 @@ export class LessonService {
       const correctAnswers = first.filter(a => a?.isCorrect).length;
       const next = path.find(l => l.isRequired && l.lessonProgress[0]?.status !== 'COMPLETED');
       const accessible = next ? next.accessType === 'FREE' || (next.accessType === 'PAID' && source !== 'NONE') : false;
-      return { lesson: { id: lesson.id, title: lesson.title },
+      return { lesson: { id: lesson.id, title: lesson.title }, course: { id: lesson.topic.course.id, title: lesson.topic.course.title, level: lesson.topic.course.level },
         result: { correctAnswers, totalActivities: ids.size, isPerfect: ids.size > 0 && correctAnswers === ids.size,
           pendingReviewCount: await session.countReviews(userId, lessonId) }, courseProgress: progress,
         nextLesson: next ? { id: next.id, title: next.title, accessible, lockReason: accessible ? null : 'ACCESS' } : null };

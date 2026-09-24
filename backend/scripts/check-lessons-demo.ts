@@ -40,6 +40,16 @@ async function main() {
       const root = `/lessons/${demoId(n)}`;
       const data = await request<Awaited<ReturnType<LessonService['read']>>>(root, undefined, 'GET');
       assert.equal(data.steps.length, 4);
+      assert.deepEqual(data.activityProgress, { completed: 0, total: 2 });
+      const publicJson = JSON.stringify(data);
+      for (const key of ['correctOptionId', 'acceptedAnswers', '"pairs"', 'privateKey']) assert.ok(!publicJson.includes(key));
+      if (n === 1003) {
+        assert.ok(publicJson.includes('"emphasis":"KEY"'));
+        assert.ok(publicJson.includes('"variant":"DIALOGUE"'));
+        assert.ok(publicJson.includes('"speakerLabel":"D"'));
+        assert.ok(publicJson.includes('"takeaways"'));
+        assert.ok(publicJson.includes('"keyPhrases"'));
+      }
       if (n === 1003) assert.ok(data.steps[0]!.blocks.some(b => b.type === 'VIDEO'));
       await request(root + '/start');
       await request(`${root}/steps/${data.steps[0]!.id}/complete`);
@@ -55,6 +65,8 @@ async function main() {
       }
       await request(`${root}/steps/${data.steps[3]!.id}/complete`);
       const result = await request<Awaited<ReturnType<LessonService['complete']>>>(root + '/complete');
+      assert.deepEqual(result.course, { id: demoId(1), title: 'Inglés A1', level: 'A1' });
+      assert.deepEqual((await request<Awaited<ReturnType<LessonService['read']>>>(root, undefined, 'GET')).activityProgress, { completed: 2, total: 2 });
       assert.equal(result.result.correctAnswers, n === 1003 ? 1 : 2);
       assert.equal(result.result.pendingReviewCount, n === 1003 ? 1 : 0);
       assert.equal(result.result.isPerfect, n === 1004);

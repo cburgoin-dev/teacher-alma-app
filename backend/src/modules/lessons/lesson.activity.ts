@@ -1,5 +1,6 @@
 import type { Activity, Prisma } from '../../generated/prisma/client.js';
 import { HttpError } from '../../shared/http-error.js';
+import { activityPresentation } from './lesson.content.js';
 
 type ObjectValue = Record<string, unknown>;
 function object(value: unknown): ObjectValue {
@@ -22,7 +23,7 @@ function configuration(activity: Activity) {
   if (activity.status !== 'ACTIVE') throw new Error('Inactive activity in published lesson');
   const c = object(activity.config);
   const hint = c.hint === undefined ? {} : { hint: text(c.hint) };
-  const common = { id: activity.id, type: activity.type, prompt: activity.prompt, ...hint };
+  const common = { id: activity.id, type: activity.type, prompt: activity.prompt, ...hint, ...activityPresentation(c) };
   if (activity.type === 'MULTIPLE_CHOICE' || activity.type === 'FILL_BLANK_OPTIONS') {
     const options = list(c.options, o => ({ id: text(o.id), text: text(o.text) }));
     unique(options.map(o => o.id));

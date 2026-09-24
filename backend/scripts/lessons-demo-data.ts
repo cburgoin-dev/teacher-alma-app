@@ -7,11 +7,11 @@ const image = (name: string) => `data:image/png;base64,${readFileSync(new URL(`.
 export function lessonsDemoData() {
   const activities: Prisma.ActivityCreateManyInput[] = [
     { id: demoId(30001), type: 'MULTIPLE_CHOICE', prompt: 'Alguien dice: “Hi, I’m Daniel.” ¿Qué responderías?', explanation: 'Nice to meet you expresa que te alegra conocer a alguien.',
-      config: { options: [{ id: 'hello', text: 'Nice to meet you!' }, { id: 'bye', text: 'Goodbye!' }, { id: 'night', text: 'Good night!' }], correctOptionId: 'hello' } },
+      config: { instruction: 'Elige la mejor respuesta.', options: [{ id: 'hello', text: 'Nice to meet you!' }, { id: 'bye', text: 'Goodbye!' }, { id: 'night', text: 'Good night!' }], correctOptionId: 'hello', context: { type: 'DIALOGUE', speakerLabel: 'D', text: 'Hi, I’m Daniel.', translation: 'Hola, soy Daniel.' } } },
     { id: demoId(30002), type: 'FILL_BLANK_OPTIONS', prompt: '_____, I’m Sofía.', explanation: 'Hello es un saludo para iniciar una conversación.',
-      config: { options: [{ id: 'please', text: 'Please' }, { id: 'hello', text: 'Hello' }, { id: 'bye', text: 'Goodbye' }], correctOptionId: 'hello', hint: 'Empieza con un saludo.' } },
+      config: { instruction: 'Elige la mejor respuesta.', options: [{ id: 'please', text: 'Please' }, { id: 'hello', text: 'Hello' }, { id: 'bye', text: 'Goodbye' }], correctOptionId: 'hello', hint: 'Empieza con un saludo.' } },
     { id: demoId(30003), type: 'FILL_BLANK_TEXT', prompt: 'I _____ a student.', explanation: 'Con I usamos am: I am a student.',
-      config: { acceptedAnswers: ['am'], caseSensitive: false, hint: 'Usa la forma de to be que acompaña a I.' } },
+      config: { instruction: 'Escribe la palabra que falta.', context: { type: 'TEXT', text: 'Preséntate como estudiante.' }, acceptedAnswers: ['am'], caseSensitive: false, hint: 'Usa la forma de to be que acompaña a I.' } },
     { id: demoId(30004), type: 'MATCH_WORD_IMAGE', prompt: 'Relaciona cada palabra con su imagen.', explanation: 'Book significa libro, cup significa taza y ball significa pelota.',
       config: { interactionMode: 'TAP', words: [{ id: 'book', text: 'Book' }, { id: 'cup', text: 'Cup' }, { id: 'ball', text: 'Ball' }],
         images: [{ id: 'cup-image', url: image('cup'), alt: 'Una taza' }, { id: 'book-image', url: image('book'), alt: 'Un libro' }, { id: 'ball-image', url: image('ball'), alt: 'Una pelota' }],
@@ -30,5 +30,22 @@ export function lessonsDemoData() {
     { id: demoId(31010), lessonId: demoId(1004), position: 5, type: 'SUMMARY', content: { title: 'Resumen de la lección', points: ['I am: yo soy / estoy.', 'Book: libro. Cup: taza.', 'It is introduce un objeto.'] } },
   ];
   blocks.push({ id: demoId(31011), lessonId: demoId(1003), position: 3, type: 'VIDEO', required: false, content: { title: 'Presentarte en inglés', caption: 'Una explicación para practicar cómo presentarte.' } });
+  // Explicit v2 semantics, with v1 text retained for existing mobile clients.
+  Object.assign(blocks[0]!.content as Prisma.JsonObject, { segments: [
+    { text: 'Usa “' }, { text: 'Nice to meet you!', emphasis: 'KEY' },
+    { text: '” cuando conoces a alguien. Puedes responder “' }, { text: 'Nice to meet you too!', emphasis: 'KEY' }, { text: '”.' },
+  ] });
+  Object.assign(blocks[1]!.content as Prisma.JsonObject, { variant: 'DIALOGUE', turns: [
+    { speakerLabel: 'A', text: 'Hi, I’m Sofía. Nice to meet you!', translation: 'Hola, soy Sofía. Mucho gusto.' },
+    { speakerLabel: 'B', text: 'Hello, I’m Daniel. Nice to meet you too!', translation: 'Hola, soy Daniel. El gusto es mío.' },
+  ] });
+  Object.assign(blocks[4]!.content as Prisma.JsonObject, {
+    subtitle: 'Muy bien, aquí tienes lo más importante de esta lección.',
+    takeaways: [
+      { text: 'Hello inicia una conversación.', segments: [{ text: 'Hello', emphasis: 'KEY' }, { text: ' inicia una conversación.' }] },
+      { text: 'I’m + tu nombre sirve para presentarte.' }, { text: 'Nice to meet you expresa mucho gusto.' },
+    ],
+    keyPhrases: [{ text: 'Nice to meet you!', translation: 'Mucho gusto.' }, { text: 'Nice to meet you too!', translation: 'El gusto es mío.' }],
+  });
   return { activities, blocks };
 }

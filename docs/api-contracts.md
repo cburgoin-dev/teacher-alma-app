@@ -1340,3 +1340,5 @@ Key additions planned before the next high-fidelity mobile pass:
 Lessons v1 progression, scoring, Review, access and completion semantics remain unchanged.
 
 Implementation should prefer extending JSONB-backed content/configuration and public sanitization/serialization before introducing schema migrations.
+
+Content Contract v2 implementation: GET lesson now also returns `activityProgress` (completed/total ACTIVITY blocks, including optional, based on persisted user traversal). Completion Result now returns `course: { id, title, level }`. See the implementation notes in `docs/lesson-content-contract-v2.md` for nested allowlists, optional-field handling, media URL validation and compatibility. These additions do not alter required progression or first-attempt score.

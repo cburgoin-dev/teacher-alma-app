@@ -1,5 +1,10 @@
 export type Pair = { wordId: string; imageId: string };
-type ActivityBase = { id: string; prompt: string; hint?: string };
+export type Segment = { text: string; emphasis?: 'KEY' };
+export type AudioMetadata = { audioUrl?: string; audioAlt?: string };
+export type DialogueTurn = AudioMetadata & { text: string; speakerLabel?: string; translation?: string };
+export type ActivityContext = (AudioMetadata & { type: 'TEXT'; text: string })
+  | (DialogueTurn & { type: 'DIALOGUE' }) | { type: 'IMAGE'; url: string; alt: string; caption?: string };
+type ActivityBase = { id: string; prompt: string; hint?: string; instruction?: string; context?: ActivityContext };
 export type Activity = ActivityBase & (
   | { type: 'MULTIPLE_CHOICE' | 'FILL_BLANK_OPTIONS'; options: { id: string; text: string }[] }
   | { type: 'FILL_BLANK_TEXT'; caseSensitive: boolean }
@@ -7,11 +12,11 @@ export type Activity = ActivityBase & (
 );
 export type Answer = { selectedOptionId: string } | { text: string } | { pairs: Pair[] };
 export type Block = { id: string } & (
-  | { type: 'TEXT'; title?: string; body?: string }
+  | { type: 'TEXT'; title?: string; body?: string; segments?: Segment[] }
   | { type: 'IMAGE'; url?: string; alt?: string; caption?: string }
   | { type: 'VIDEO'; url?: string; title?: string; posterUrl?: string; caption?: string }
-  | { type: 'EXAMPLE'; title?: string; primaryText?: string; secondaryText?: string; note?: string }
-  | { type: 'SUMMARY'; title?: string; points?: string[] }
+  | ({ type: 'EXAMPLE'; title?: string; primaryText?: string; secondaryText?: string; note?: string } & ({ variant?: never; turns?: never } | { variant: 'DIALOGUE'; turns: DialogueTurn[] }))
+  | { type: 'SUMMARY'; title?: string; points?: string[]; subtitle?: string; takeaways?: { text: string; segments?: Segment[] }[]; keyPhrases?: (AudioMetadata & { text: string; translation?: string })[] }
   | { type: 'ACTIVITY'; activity: Activity }
 );
 export type Step = { id: string; type: 'CONTENT_STEP' | 'ACTIVITY_STEP' | 'SUMMARY_STEP'; required: boolean; blocks: Block[] };
@@ -22,6 +27,7 @@ export type LessonData = {
     position: { lesson: number; totalLessons: number } };
   state: { status: LessonStatus; canStart: boolean; lockReason: string | null; currentStepId: string | null };
   steps: Step[];
+  activityProgress?: { completed: number; total: number };
 };
 export type StepProgress = { completedSteps: number; totalSteps: number; percentage: number };
 export type StartResponse = { lessonId: string; status: LessonStatus; currentStepId: string | null; progress: StepProgress };
@@ -32,6 +38,7 @@ export type AttemptResponse = {
   progress: StepProgress & { currentStepId: string | null };
 };
 export type LessonResult = {
+  course?: { id: string; title: string; level: string | null };
   lesson: { id: string; title: string };
   result: { correctAnswers: number; totalActivities: number; isPerfect: boolean; pendingReviewCount: number };
   courseProgress: { completedLessons: number; totalLessons: number; percentage: number; status: string };
