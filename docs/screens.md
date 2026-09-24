@@ -777,3 +777,42 @@ Visual principles remain consistent with the rest of the product:
 - Settings.
 - Purchases/access.
 - Authentication screens.
+
+
+---
+
+## Lessons high-fidelity follow-up
+
+Physical Android validation through Mobile Lessons V3 established the following next-step screen decisions:
+
+- The blue contextual back chevron should become a reusable nested-screen pattern rather than remain Lesson-only. Course Detail, Roadmap and future nested screens should converge on the same visual language when appropriate.
+- Lesson/activity high fidelity must be driven by structured content rather than frontend guesses. See `docs/lesson-content-contract-v2.md`.
+- Multiple Choice / Matching define the preferred shared activity family. Fill Blank should retain its task-specific center stage but use the same title scale, instruction scale, spacing rhythm, selection language and primary-action treatment.
+- A primary CTA may remain near the lower action region of the viewport when practical, but layout must not create arbitrary blank space simply to pin it to the bottom.
+- The next deep visual pass should focus on mockup fidelity after the richer content contract is available.
+
+### Summary target
+
+The high-fidelity Summary should support:
+
+- page title;
+- concise supporting subtitle;
+- richer structured takeaways with explicit key-word emphasis;
+- configured key phrases and optional audio when real data exists;
+- an activity completion indicator only when reliably derived;
+- one clear `Finalizar lección` action.
+
+### Result target
+
+The high-fidelity Result should feel more celebratory and vertically balanced:
+
+- larger/stronger completion hero;
+- restrained decorative celebration/confetti when appropriate;
+- lesson title and first-attempt score;
+- course/level metadata;
+- progress presentation with less administrative copy;
+- pending Review information;
+- consistent secondary `Volver a la ruta` treatment;
+- contextual next lesson/access state.
+
+`Ver mi progreso` remains deferred until the real Progress destination is implemented.
