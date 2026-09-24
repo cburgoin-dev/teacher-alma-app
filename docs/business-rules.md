@@ -96,14 +96,18 @@ Current provisional direction:
 - The learner may revisit previous content within an active lesson.
 - Required future content should not be skipped when sequential progression applies.
 
-### Lesson states and resume
+### Lesson sessions and abandonment
 
-- Conceptual lesson states are `NOT_STARTED`, `IN_PROGRESS`, `COMPLETED` and `LOCKED`.
-- `IN_PROGRESS` does **not** imply that lessons are expected to be long. It simply represents a lesson that was started but has not yet satisfied its completion conditions.
-- Leaving an unfinished lesson preserves already-submitted attempts and meaningful completed-step progress.
-- Re-entering an `IN_PROGRESS` lesson resumes at the **start of the last meaningful pending/current step**. The MVP does not need to restore an exact scroll offset, text position or video timestamp.
-- Because first-version lessons are intended to be short, resume is primarily a resilience/quality-of-life behavior for app closes, interruptions or connectivity changes rather than a design assumption that lessons are lengthy.
-- Do not introduce destructive automatic reset of attempts/progress merely because the learner leaves an unfinished lesson; a future explicit `Reiniciar lección` action can be designed separately if product validation shows it is useful.
+The accepted normal-lesson direction is defined in `docs/lesson-session-semantics-v1.md` and supersedes the earlier Resume assumption.
+
+- Normal lessons are short, coherent sessions represented by an explicit `LessonRun`.
+- There is no learner-facing Resume behavior for an unfinished normal lesson.
+- Back/chevron attempts to leave the lesson and asks for confirmation; it is not previous-step navigation.
+- Confirmed exit abandons the current run. Re-entering starts a new run at the first step and 0%.
+- If an ACTIVE run is left behind because the app/process dies, the next explicit start replaces/abandons it and starts fresh. Correctness must not depend on a client cleanup callback.
+- Attempts and traversal may be stored against the run for correctness/analytics, but an ABANDONED run does not consolidate score, Review, durable lesson/block progress, course progression or rewards.
+- Only a COMPLETED run consolidates durable learning state.
+- Completed lessons continue to use Replay v1; Replay is separate from normal LessonRun, future Review and future Practice.
 
 ### Completion rule
 
