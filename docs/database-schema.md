@@ -779,3 +779,30 @@ The main implementation decisions that remain provider-specific rather than sche
 - exact prices/rewards/economy values.
 
 Any future change should preferably occur through versioned migrations rather than manual database edits.
+
+
+---
+
+# Lessons Content Contract v2 — schema compatibility
+
+The planned richer lesson/content payloads are intentionally compatible with the current schema.
+
+No migration is required solely for:
+
+- structured TEXT segments/emphasis;
+- EXAMPLE dialogue variants and turns;
+- optional audio URLs/metadata;
+- structured activity presentation context;
+- richer SUMMARY takeaways/key phrases;
+- demo content/media references.
+
+These values fit the existing:
+
+- `lesson_blocks.content jsonb`
+- `activities.config jsonb`
+
+The backend should validate/sanitize their shapes before exposing them publicly.
+
+Likewise, Summary activity-completion counts and Result course metadata should be derived from existing lesson/activity/course records when possible rather than persisted as UI-specific columns.
+
+Only introduce new tables/columns later if real operational requirements justify them.
