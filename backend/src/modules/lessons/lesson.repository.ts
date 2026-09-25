@@ -20,8 +20,8 @@ export class LessonSession {
   }
 
   findEntitlements(userId: string) { return this.db.entitlement.findMany({ where: { userId } }); }
-  findAttempts(userId: string, lessonId: string) {
-    return this.db.activityAttempt.findMany({ where: { userId, lessonId, context: 'LESSON' },
+  findAttempts(runId: string) {
+    return this.db.activityAttempt.findMany({ where: { runId, context: 'LESSON' },
       orderBy: [{ attemptNumber: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }] });
   }
   findReview(userId: string, activityId: string) {
@@ -30,11 +30,29 @@ export class LessonSession {
   countReviews(userId: string, lessonId: string) {
     return this.db.reviewItem.count({ where: { userId, sourceLessonId: lessonId, status: 'ACTIVE' } });
   }
-  createProgress(userId: string, lessonId: string, currentBlockId: string | null) {
-    return this.db.lessonProgress.create({ data: { userId, lessonId, currentBlockId, status: 'IN_PROGRESS' } });
+  findRun(id: string, lessonId: string, userId: string) {
+    return this.db.lessonRun.findFirst({ where: { id, lessonId, userId }, include: { blocks: true } });
   }
-  updateProgress(userId: string, lessonId: string, data: Prisma.LessonProgressUpdateInput) {
-    return this.db.lessonProgress.update({ where: { userId_lessonId: { userId, lessonId } }, data });
+  findRunByKey(userId: string, lessonId: string, requestKey: string) {
+    return this.db.lessonRun.findUnique({ where: { userId_lessonId_requestKey: { userId, lessonId, requestKey } }, include: { blocks: true } });
+  }
+  abandonActive(userId: string, lessonId: string, now: Date) {
+    return this.db.lessonRun.updateMany({ where: { userId, lessonId, status: 'ACTIVE' }, data: { status: 'ABANDONED', abandonedAt: now, currentBlockId: null } });
+  }
+  createRun(userId: string, lessonId: string, requestKey: string, currentBlockId: string) {
+    return this.db.lessonRun.create({ data: { userId, lessonId, requestKey, currentBlockId }, include: { blocks: true } });
+  }
+  updateRun(id: string, data: Prisma.LessonRunUncheckedUpdateInput) {
+    return this.db.lessonRun.update({ where: { id }, data, include: { blocks: true } });
+  }
+  completeRunBlocks(runId: string, ids: string[], now: Date) {
+    return this.db.lessonRunBlockProgress.createMany({ data: ids.map(lessonBlockId => ({ runId, lessonBlockId, completedAt: now })), skipDuplicates: true });
+  }
+  consolidateProgress(userId: string, lessonId: string, runId: string, startedAt: Date, now: Date) {
+    return this.db.lessonProgress.create({ data: { userId, lessonId, status: 'COMPLETED', startedAt, completedAt: now, completedRunId: runId } });
+  }
+  linkReview(runId: string, activityId: string, reviewItemId: string) {
+    return this.db.activityAttempt.updateMany({ where: { runId, activityId }, data: { reviewItemId } });
   }
   async completeBlocks(userId: string, ids: string[], now: Date) {
     for (const lessonBlockId of ids) {
@@ -44,11 +62,11 @@ export class LessonSession {
     }
   }
   createAttempt(data: Prisma.ActivityAttemptUncheckedCreateInput) { return this.db.activityAttempt.create({ data }); }
-  createReview(userId: string, activityId: string, sourceLessonId: string) {
-    return this.db.reviewItem.create({ data: { userId, activityId, sourceLessonId, status: 'ACTIVE' } });
+  createReview(userId: string, activityId: string, sourceLessonId: string, incorrectAttempts = 1) {
+    return this.db.reviewItem.create({ data: { userId, activityId, sourceLessonId, incorrectAttempts, status: 'ACTIVE' } });
   }
-  incrementReview(id: string) {
-    return this.db.reviewItem.update({ where: { id }, data: { incorrectAttempts: { increment: 1 } } });
+  incrementReview(id: string, amount = 1) {
+    return this.db.reviewItem.update({ where: { id }, data: { incorrectAttempts: { increment: amount } } });
   }
   completeCourse(userId: string, courseId: string, now: Date) {
     return this.db.courseProgress.updateMany({ where: { userId, courseId, status: { not: 'COMPLETED' } },
@@ -56,6 +74,7 @@ export class LessonSession {
   }
 }
 
+export type RunRecord = NonNullable<Awaited<ReturnType<LessonSession['findRun']>>>;
 export type LessonRecord = NonNullable<Awaited<ReturnType<LessonSession['findLesson']>>>;
 export type LessonBlockRecord = LessonRecord['lessonBlocks'][number];
 

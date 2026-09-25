@@ -11,8 +11,9 @@ async function main() {
   }
   if (process.argv.includes('--access-boundary') && action !== '--reset') throw new DemoGuard('Use --reset --access-boundary to select the alternate scenario.');
   const lessonScenario = process.argv.includes('--lessons');
-  const resumeScenario = process.argv.includes('--resume');
-  if (resumeScenario && (action !== '--reset' || lessonScenario || process.argv.includes('--access-boundary'))) throw new DemoGuard('Use --reset --resume without other scenario flags.');
+  if (process.argv.includes('--resume')) throw new DemoGuard('Resume was removed. Use --reset --lessons or --reset --stale-run.');
+  const staleScenario = process.argv.includes('--stale-run');
+  if (staleScenario && (action !== '--reset' || lessonScenario || process.argv.includes('--access-boundary'))) throw new DemoGuard('Use --reset --stale-run without other scenario flags.');
   if (lessonScenario && (action !== '--reset' || process.argv.includes('--access-boundary'))) throw new DemoGuard('Use --reset --lessons without --access-boundary.');
   if (process.env.NODE_ENV !== 'development') throw new DemoGuard('NODE_ENV must be development.');
   let target: URL;
@@ -34,7 +35,7 @@ async function main() {
     const activityIds = content.activities.map(a => a.id!);
     if (action === '--check') {
       console.log(JSON.stringify({ connected: true, configuredUserExists: true,
-        demoCounts: { blocks: await prisma.lessonBlock.count({ where: { id: { in: blockIds } } }),
+        demoCounts: { activeRuns: await prisma.lessonRun.count({ where: { userId, lesson: { topic: { courseId: { in: ids } } }, status: 'ACTIVE' } }), blocks: await prisma.lessonBlock.count({ where: { id: { in: blockIds } } }),
           activities: await prisma.activity.count({ where: { id: { in: activityIds } } }),
           attempts: await prisma.activityAttempt.count({ where: { userId, activityId: { in: activityIds } } }),
           reviews: await prisma.reviewItem.count({ where: { userId, activityId: { in: activityIds } } }),
@@ -95,23 +96,26 @@ async function main() {
       const lessonIds = courses.flatMap(c => c.topics.flatMap(t => t.lessons.map(l => l.id)));
       if (action === '--reset') {
         // Only the named demo courses and configured user's learning state; never whole tables.
-        await tx.activityAttempt.deleteMany({ where: { userId, activityId: { in: activityIds }, lessonId: { in: lessonIds } } });
+        await tx.activityAttempt.deleteMany({ where: { userId, lessonId: { in: lessonIds }, context: 'LESSON' } });
         await tx.reviewItem.deleteMany({ where: { userId, activityId: { in: activityIds }, sourceLessonId: { in: lessonIds } } });
         await tx.lessonBlockProgress.deleteMany({ where: { userId, lessonBlockId: { in: blockIds } } });
         await tx.lessonProgress.deleteMany({ where: { userId, lessonId: { in: lessonIds } } });
+        await tx.lessonRun.deleteMany({ where: { userId, lessonId: { in: lessonIds } } });
         await tx.courseProgress.deleteMany({ where: { userId, courseId: { in: ids } } });
       }
       const a1 = courses[0]!;
       const initializeProgress = !await tx.courseProgress.findUnique({ where: { userId_courseId: { userId, courseId: a1.id } } });
       await tx.courseProgress.createMany({ data: [{ userId, courseId: a1.id, status: 'IN_PROGRESS' }], skipDuplicates: true });
-      for (const lesson of (initializeProgress ? a1.topics.flatMap(t => t.lessons).filter(l => l.lessonProgress.length).slice(0, lessonScenario || resumeScenario ? 2 : undefined) : [])) {
+      for (const lesson of (initializeProgress ? a1.topics.flatMap(t => t.lessons).filter(l => l.lessonProgress.length).slice(0, lessonScenario || staleScenario ? 2 : undefined) : [])) {
         await tx.lessonProgress.createMany({ data: [{ userId, lessonId: lesson.id, status: 'COMPLETED', completedAt: new Date() }], skipDuplicates: true });
       }
-      if (resumeScenario) {
-        // Deterministic Resume at the first activity, after the grouped Content/Example/Video step.
-        await tx.lessonProgress.create({ data: { userId, lessonId: demoId(1003), status: 'IN_PROGRESS', currentBlockId: demoId(31003) } });
-        await tx.lessonBlockProgress.createMany({ data: content.blocks.filter(b => b.lessonId === demoId(1003) && b.position < 4)
-          .map(b => ({ userId, lessonBlockId: b.id!, status: 'COMPLETED', completedAt: new Date() })) });
+      if (staleScenario) {
+        // Simulate a process killed after Content + one incorrect activity; no durable effects.
+        const run = await tx.lessonRun.create({ data: { userId, lessonId: demoId(1003), requestKey: 'demo-stale-run-v1', currentBlockId: demoId(31004) } });
+        await tx.lessonRunBlockProgress.createMany({ data: content.blocks.filter(b => b.lessonId === demoId(1003) && b.position < 5)
+          .map(b => ({ runId: run.id, lessonBlockId: b.id! })) });
+        await tx.activityAttempt.create({ data: { userId, lessonId: demoId(1003), runId: run.id, activityId: demoId(30001), context: 'LESSON',
+          answerData: { selectedOptionId: 'bye' }, isCorrect: false, attemptNumber: 1 } });
       }
     }, { timeout: 30000 });
     console.log(JSON.stringify({ action, courses: courses.map(c => ({ id: c.id, title: c.title, topics: c.topics.length,

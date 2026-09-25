@@ -44,8 +44,9 @@ test('Lessons HTTP + Prisma/PostgreSQL integration', { skip: process.env.RUN_LES
       { id: videoId, lessonId, type: 'VIDEO', position: 2, content: { url: '/test.mp4' } },
       ...[mcId, optionsId, textId, matchId].map((id, i) => ({ id, lessonId, type: 'ACTIVITY', position: i + 3, activityId: activityIds[i]! })),
       { id: summaryId, lessonId, type: 'SUMMARY', position: 7, content: { points: ['Test summary'], subtitle: 'Well done', takeaways: [{ text: 'Test summary' }], keyPhrases: [{ text: 'Hi', translation: 'Hola', audioUrl: 'https://media.example.test/hi.mp3', privateKey: 'must-not-leak' }] } },
-      { id: paidSummaryId, lessonId: paidId, type: 'SUMMARY', position: 1, content: { points: ['Final required lesson'] } },
-      { id: optionalSummaryId, lessonId: optionalId, type: 'SUMMARY', position: 1, content: { points: ['Optional practice'] } },
+      { id: randomUUID(), lessonId: paidId, type: 'SUMMARY', position: 1, content: { points: ['Presentation only'] } },
+      { id: paidSummaryId, lessonId: paidId, type: 'TEXT', position: 2, content: { body: 'Final required lesson' } },
+      { id: optionalSummaryId, lessonId: optionalId, type: 'TEXT', position: 1, content: { points: ['Optional practice'] } },
       { id: optionalActivityId, lessonId: optionalId, type: 'ACTIVITY', position: 2, required: false, activityId: activityIds[0]! },
     ] });
     server = createApp(courses, (request, _response, next) => {
@@ -58,209 +59,206 @@ test('Lessons HTTP + Prisma/PostgreSQL integration', { skip: process.env.RUN_LES
     const request = async (path: string, method = 'GET', body?: unknown, auth = 'user') => {
       const response = await fetch(url + path, { method, headers: { 'content-type': 'application/json', 'x-test-auth': auth },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
-      return { status: response.status, body: await response.json() };
+      return { status: response.status, body: await response.json().catch(() => null) };
     };
-    const post = (suffix: string, body?: unknown) => request(`/lessons/${lessonId}${suffix}`, 'POST', body);
-    const counts = async () => Promise.all([
-      prisma.lessonProgress.count({ where: { userId } }), prisma.lessonBlockProgress.count({ where: { userId } }),
-      prisma.activityAttempt.count({ where: { userId } }), prisma.reviewItem.count({ where: { userId } }),
-      prisma.courseProgress.count({ where: { userId } }),
-    ]);
-    const persisted = () => Promise.all([
-      prisma.activityAttempt.findMany({ where: { userId }, orderBy: { id: 'asc' } }),
-      prisma.reviewItem.findMany({ where: { userId }, orderBy: { id: 'asc' } }),
+    let runId = '';
+    const start = (key = randomUUID()) => request('/lessons/' + lessonId + '/runs', 'POST', { requestKey: key });
+    const post = (suffix: string, body?: unknown) => request('/lessons/' + lessonId + '/runs/' + runId + suffix, 'POST', body);
+    const durable = () => Promise.all([
       prisma.lessonProgress.findMany({ where: { userId }, orderBy: { id: 'asc' } }),
       prisma.lessonBlockProgress.findMany({ where: { userId }, orderBy: { id: 'asc' } }),
+      prisma.reviewItem.findMany({ where: { userId }, orderBy: { id: 'asc' } }),
       prisma.courseProgress.findMany({ where: { userId }, orderBy: { id: 'asc' } }),
-      prisma.learningDay.findMany({ where: { userId }, orderBy: { id: 'asc' } }),
       prisma.coinTransaction.findMany({ where: { userId }, orderBy: { id: 'asc' } }),
-      prisma.streakChallenge.findMany({ where: { userId }, orderBy: { id: 'asc' } }),
-      prisma.user.findUniqueOrThrow({ where: { id: userId } }),
+      prisma.learningDay.findMany({ where: { userId }, orderBy: { id: 'asc' } }),
     ]);
-    await t.test('Replay rejects NOT_STARTED, with database-enforced read-only transactions', async () => {
-      const before = await persisted();
-      assert.equal((await post('/replay/steps/' + mcId + '/check', { selectedOptionId: 'a' })).body.error.code, 'LESSON_REPLAY_REQUIRES_COMPLETION');
-      await assert.rejects(repo.read(session => session.createProgress(userId, lessonId, contentId)), /read-only transaction/i);
-      assert.deepEqual(await persisted(), before);
-    });
-    await t.test('GET is read-only, grouped, sanitized and user-scoped; UUID/auth/visibility boundaries', async () => {
-      const before = await counts(); const read = await request(`/lessons/${lessonId}`);
-      assert.equal(read.status, 200); assert.equal(read.body.state.status, 'NOT_STARTED'); assert.equal(read.body.steps.length, 6);
-      assert.equal(read.body.steps[0].blocks.length, 2);
-      assert.deepEqual(read.body.activityProgress, { completed: 0, total: 4 });
-      assert.deepEqual(read.body.steps[0].blocks[0].segments, [{ text: 'Test', emphasis: 'KEY' }, { text: ' content' }]);
-      assert.equal(read.body.steps[1].blocks[0].activity.context.audioUrl, 'https://media.example.test/hi.mp3');
-      assert.equal(read.body.steps[5].blocks[0].keyPhrases[0].translation, 'Hola');
+    const check = (step: string, answer: unknown) => request('/lessons/' + lessonId + '/replay/steps/' + step + '/check', 'POST', answer);
+    await t.test('GET remains read-only/sanitized; old implicit endpoints are removed; publication/auth/access gates', async () => {
+      const before = await durable(); const read = await request('/lessons/' + lessonId);
+      assert.equal(read.status, 200); assert.equal(read.body.state.status, 'NOT_STARTED'); assert.equal(read.body.state.currentStepId, null);
+      assert.equal(read.body.steps.length, 6); assert.equal(read.body.steps[0].blocks.length, 2);
       for (const key of ['correctOptionId', 'acceptedAnswers', 'must-not-leak', 'Hello is a greeting', '"pairs"']) assert.ok(!JSON.stringify(read.body).includes(key));
-      assert.deepEqual(await counts(), before);
-      assert.equal((await request('/lessons/bad')).body.error.code, 'INVALID_LESSON_ID');
-      assert.equal((await request(`/lessons/${lessonId}`, 'GET', undefined, 'none')).status, 401);
-      for (const id of [draftId, archivedId, randomUUID()]) assert.equal((await request(`/lessons/${id}`)).status, 404);
-      assert.equal((await post('/steps/bad/complete')).body.error.code, 'INVALID_STEP_ID');
-    });
-    await t.test('start rejects unstarted course and prerequisites without implicit course progress', async () => {
-      assert.equal((await post('/start')).body.error.code, 'COURSE_NOT_STARTED');
-      assert.equal(await prisma.courseProgress.count({ where: { userId } }), 0);
+      assert.equal((await request('/lessons/' + lessonId + '/start', 'POST')).status, 404);
+      assert.equal((await request('/lessons/' + lessonId + '/complete', 'POST')).status, 404);
+      assert.equal((await request('/lessons/' + lessonId + '/runs', 'POST', { requestKey: randomUUID() }, 'none')).status, 401);
+      assert.equal((await start()).body.error.code, 'COURSE_NOT_STARTED');
+      assert.equal((await request('/lessons/' + lessonId + '/runs', 'POST', {})).body.error.code, 'INVALID_RUN_REQUEST_KEY');
+      for (const id of [draftId, archivedId, randomUUID()]) assert.equal((await request('/lessons/' + id)).status, 404);
+      assert.equal((await check(mcId, { selectedOptionId: 'a' })).body.error.code, 'LESSON_REPLAY_REQUIRES_COMPLETION');
+      await assert.rejects(repo.read(session => session.createRun(userId, lessonId, randomUUID(), contentId)), /read-only transaction/i);
+      assert.deepEqual(await durable(), before);
       await courses.start(courseId, userId);
-      assert.equal((await request(`/lessons/${paidId}/start`, 'POST')).body.error.code, 'LESSON_PREREQUISITE_REQUIRED');
+      assert.equal((await request('/lessons/' + paidId + '/runs', 'POST', { requestKey: randomUUID() })).body.error.code, 'LESSON_PREREQUISITE_REQUIRED');
     });
-    await t.test('concurrent start is idempotent and does not create block progress', async () => {
-      const starts = await Promise.all(Array.from({ length: 5 }, () => post('/start')));
-      assert.ok(starts.every(r => r.status === 200 && r.body.currentStepId === contentId));
-      assert.equal(await prisma.lessonProgress.count({ where: { userId } }), 1);
-      assert.equal(await prisma.lessonBlockProgress.count({ where: { userId } }), 0);
-      assert.equal((await request(`/lessons/${lessonId}`, 'GET', undefined, 'other')).body.state.status, 'NOT_STARTED');
+    await t.test('same start key is idempotent, only one ACTIVE, fresh 0%, no durable LessonProgress', async () => {
+      const before = await durable(); const requestKey = randomUUID();
+      const starts = await Promise.all(Array.from({ length: 5 }, () => start(requestKey)));
+      assert.ok(starts.every(r => r.status === 200)); runId = starts[0]!.body.runId;
+      assert.ok(starts.every(r => r.body.runId === runId && r.body.firstStepId === contentId && r.body.progress.percentage === 0));
+      assert.equal(await prisma.lessonRun.count({ where: { userId, lessonId, status: 'ACTIVE' } }), 1);
+      await assert.rejects(prisma.lessonRun.create({ data: { userId, lessonId, requestKey: randomUUID() } }), /Unique constraint/);
+      await assert.rejects(prisma.lessonRun.update({ where: { id: runId }, data: { status: 'COMPLETED' } }), /lesson_runs_lifecycle/);
+      assert.deepEqual(await durable(), before);
     });
-    await t.test('Replay cannot check an IN_PROGRESS lesson', async () => {
-      const before = await persisted();
-      assert.equal((await post('/replay/steps/' + mcId + '/check', { selectedOptionId: 'a' })).body.error.code, 'LESSON_REPLAY_REQUIRES_COMPLETION');
-      assert.deepEqual(await persisted(), before);
-    });
-    await t.test('no skipping, no activity via complete, membership and incomplete lesson failures', async () => {
-      assert.equal((await post(`/steps/${summaryId}/complete`)).body.error.code, 'STEP_NOT_AVAILABLE');
-      assert.equal((await post(`/steps/${mcId}/attempt`, { selectedOptionId: 'a' })).body.error.code, 'STEP_NOT_AVAILABLE');
-      assert.equal((await post(`/steps/${mcId}/complete`)).body.error.code, 'ACTIVITY_REQUIRES_ATTEMPT');
-      assert.equal((await post(`/steps/${contentId}/attempt`, { text: 'a' })).body.error.code, 'STEP_IS_NOT_ACTIVITY');
-      assert.equal((await post(`/steps/${paidSummaryId}/complete`)).body.error.code, 'STEP_NOT_FOUND');
+    await t.test('run ownership, membership, required order and ACTIVE-only mutations', async () => {
+      assert.equal((await request('/lessons/' + lessonId + '/runs/' + runId + '/abandon', 'POST', undefined, 'other')).status, 404);
+      assert.equal((await request('/lessons/' + optionalId + '/runs/' + runId + '/abandon', 'POST')).status, 404);
+      assert.equal((await post('/steps/' + summaryId + '/complete')).body.error.code, 'STEP_NOT_AVAILABLE');
+      assert.equal((await post('/steps/' + mcId + '/complete')).body.error.code, 'ACTIVITY_REQUIRES_ATTEMPT');
+      assert.equal((await post('/steps/' + contentId + '/attempt', { text: 'a' })).body.error.code, 'STEP_IS_NOT_ACTIVITY');
+      assert.equal((await post('/steps/' + paidSummaryId + '/complete')).body.error.code, 'STEP_NOT_FOUND');
       assert.equal((await post('/complete')).body.error.code, 'LESSON_REQUIREMENTS_INCOMPLETE');
     });
-    await t.test('content/video traversal is idempotent and resume points to next activity', async () => {
-      assert.equal((await post(`/steps/${contentId}/complete`)).body.currentStepId, mcId);
-      const rows = await prisma.lessonBlockProgress.findMany({ where: { userId }, orderBy: { lessonBlockId: 'asc' } });
-      await post(`/steps/${contentId}/complete`);
-      assert.deepEqual(await prisma.lessonBlockProgress.findMany({ where: { userId }, orderBy: { lessonBlockId: 'asc' } }), rows);
-      assert.equal((await post('/start')).body.currentStepId, mcId);
+    const startSameRunProgress = async () => { const r = await prisma.lessonRun.findUniqueOrThrow({ where: { id: runId } }); return (await service.start(lessonId, userId, r.requestKey)).progress; };
+    let abandonedRunId = '';
+    await t.test('ACTIVE wrong/retry stores run attempts only; stale start abandons it with zero durable effects', async () => {
+      const before = await durable();
+      const traversal = await post('/steps/' + contentId + '/complete'); assert.equal(traversal.body.currentStepId, mcId);
+      await post('/steps/' + contentId + '/complete');
+      assert.equal(await prisma.lessonRunBlockProgress.count({ where: { runId } }), 2);
+      const wrong = await post('/steps/' + mcId + '/attempt', { selectedOptionId: 'b' });
+      assert.equal(wrong.body.attempt.attemptNumber, 1); assert.equal(wrong.body.attempt.isCorrect, false);
+      assert.deepEqual(wrong.body.reinforcement, { onCompletion: true }); assert.equal(wrong.body.review, undefined);
+      const retry = await post('/steps/' + mcId + '/attempt', { selectedOptionId: 'a' });
+      assert.equal(retry.body.attempt.attemptNumber, 2); assert.equal(retry.body.attempt.countsForLessonScore, false);
+      assert.equal((await request('/lessons/' + lessonId)).body.state.currentStepId, null);
+      assert.deepEqual(await durable(), before);
+      abandonedRunId = runId;
+      const fresh = await start(); runId = fresh.body.runId;
+      assert.notEqual(runId, abandonedRunId); assert.equal(fresh.body.progress.percentage, 0); assert.equal(fresh.body.currentStepId, contentId);
+      assert.equal((await prisma.lessonRun.findUniqueOrThrow({ where: { id: abandonedRunId } })).status, 'ABANDONED');
+      for (const suffix of ['/complete', '/steps/' + mcId + '/attempt', '/steps/' + contentId + '/complete']) {
+        assert.equal((await request('/lessons/' + lessonId + '/runs/' + abandonedRunId + suffix, 'POST', { selectedOptionId: 'a' })).body.error.code, 'LESSON_RUN_NOT_ACTIVE');
+      }
+      assert.deepEqual(await durable(), before);
     });
-    await t.test('invalid answer has zero effects; an incorrect answer traverses activity and creates review', async () => {
-      const before = await counts(); assert.equal((await post(`/steps/${mcId}/attempt`, { selectedOptionId: 'unknown' })).body.error.code, 'INVALID_ANSWER');
-      assert.deepEqual(await counts(), before);
-      const result = await post(`/steps/${mcId}/attempt`, { selectedOptionId: 'b' });
-      assert.equal(result.status, 200); assert.equal(result.body.attempt.isCorrect, false); assert.equal(result.body.attempt.attemptNumber, 1);
-      assert.equal(result.body.attempt.countsForLessonScore, true); assert.equal(result.body.review.pending, true);
-      assert.equal(result.body.progress.currentStepId, optionsId);
-      assert.deepEqual((await request(`/lessons/${lessonId}`)).body.activityProgress, { completed: 1, total: 4 });
-      assert.deepEqual((await request(`/lessons/${lessonId}`, 'GET', undefined, 'other')).body.activityProgress, { completed: 0, total: 4 });
-      assert.equal((await prisma.lessonBlockProgress.findUniqueOrThrow({ where: { userId_lessonBlockId: { userId, lessonBlockId: mcId } } })).status, 'COMPLETED');
+    await t.test('abandon is idempotent; concurrent fresh starts leave exactly one ACTIVE', async () => {
+      const before = await durable(); const current = runId;
+      const abandoned = await Promise.all([post('/abandon'), post('/abandon')]);
+      assert.ok(abandoned.every(r => r.status === 200 && r.body.status === 'ABANDONED'));
+      const stored = await prisma.lessonRun.findUniqueOrThrow({ where: { id: current } });
+      await post('/abandon'); assert.deepEqual(await prisma.lessonRun.findUniqueOrThrow({ where: { id: current } }), stored);
+      const fresh = await Promise.all([start(), start()]); assert.ok(fresh.every(r => r.status === 200));
+      const active = await prisma.lessonRun.findMany({ where: { userId, lessonId, status: 'ACTIVE' } });
+      assert.equal(active.length, 1); runId = active[0]!.id;
+      assert.deepEqual(await durable(), before);
     });
-    await t.test('concurrent retries have distinct numbers and correct retry never resolves Review', async () => {
-      const retries = await Promise.all([post(`/steps/${mcId}/attempt`, { selectedOptionId: 'a' }), post(`/steps/${mcId}/attempt`, { selectedOptionId: 'b' })]);
-      assert.deepEqual(retries.map(r => r.body.attempt.attemptNumber).sort(), [2, 3]);
-      assert.ok(retries.every(r => r.body.attempt.countsForLessonScore === false && r.body.review.pending));
-      assert.deepEqual((await request(`/lessons/${lessonId}`)).body.activityProgress, { completed: 1, total: 4 });
-      const reviews = await prisma.reviewItem.findMany({ where: { userId } });
-      assert.equal(reviews.length, 1); assert.equal(reviews[0]!.incorrectAttempts, 2); assert.equal(reviews[0]!.resolvedAt, null);
+    await t.test('numbering restarts per run; invalid answers have no effects; concurrent retries serialize', async () => {
+      const before = await durable(); await post('/steps/' + contentId + '/complete');
+      assert.equal((await post('/steps/' + mcId + '/attempt', { selectedOptionId: 'missing' })).body.error.code, 'INVALID_ANSWER');
+      assert.equal(await prisma.activityAttempt.count({ where: { runId } }), 0);
+      const first = await post('/steps/' + mcId + '/attempt', { selectedOptionId: 'b' }); assert.equal(first.body.attempt.attemptNumber, 1);
+      const replies = await Promise.all([post('/steps/' + mcId + '/attempt', { selectedOptionId: 'a' }), post('/steps/' + mcId + '/attempt', { selectedOptionId: 'b' })]);
+      assert.deepEqual(replies.map(r => r.body.attempt.attemptNumber).sort(), [2, 3]);
+      assert.equal(await prisma.reviewItem.count({ where: { userId } }), 0);
+      const original = await prisma.activityAttempt.findFirstOrThrow({ where: { runId } });
+      const { id: ignored, ...duplicate } = original;
+      await assert.rejects(prisma.activityAttempt.create({ data: { ...duplicate, answerData: { selectedOptionId: 'a' } } }), /Unique constraint/);
+      assert.deepEqual(await durable(), before);
+      for (const [step, answer] of [[optionsId, { selectedOptionId: 'a' }], [textId, { text: ' AM ' }]] as const) {
+        const response = await post('/steps/' + step + '/attempt', answer); assert.equal(response.status, 200); assert.equal(response.body.attempt.isCorrect, true);
+      }
+      assert.equal((await post('/complete')).body.error.code, 'LESSON_REQUIREMENTS_INCOMPLETE');
+      assert.deepEqual(await durable(), before);
+      assert.ok((await startSameRunProgress()).percentage < 100);
     });
-    await t.test('dependent writes roll back on an injected persistence failure', async () => {
+    await t.test('failed consolidation rolls back run status, durable completion and Review together', async () => {
       class FailingRepository extends PrismaLessonRepository {
         override write<T>(user: string, work: (session: LessonSession) => Promise<T>): Promise<T> {
-          return super.write(user, session => {
-            session.completeBlocks = async () => { throw new Error('Injected rollback'); };
-            return work(session);
-          });
+          return super.write(user, session => { session.completeBlocks = async () => { throw new Error('Injected failure'); }; return work(session); });
         }
       }
-      const before = await counts();
-      await assert.rejects(new LessonService(new FailingRepository(prisma)).attempt(lessonId, optionsId, userId, { selectedOptionId: 'a' }), /Injected rollback/);
-      assert.deepEqual(await counts(), before);
+      const before = await durable();
+      await assert.rejects(new LessonService(new FailingRepository(prisma)).attempt(lessonId, runId, matchId, userId, { pairs: [{ wordId: 'w', imageId: 'i' }] }), /Injected failure/);
+      assert.equal((await prisma.lessonRun.findUniqueOrThrow({ where: { id: runId } })).status, 'ACTIVE');
+      assert.equal(await prisma.activityAttempt.count({ where: { runId, activityId: activityIds[3]! } }), 0);
+      assert.equal(await prisma.lessonRunBlockProgress.count({ where: { runId, lessonBlockId: matchId } }), 0);
+      assert.deepEqual(await durable(), before);
     });
-    await t.test('remaining activity types submit correctly and Summary traversal is distinct from completion', async () => {
-      for (const [stepId, answer] of [[optionsId, { selectedOptionId: 'a' }], [textId, { text: ' AM ' }], [matchId, { pairs: [{ wordId: 'w', imageId: 'i' }] }]] as const) {
-        const response = await post(`/steps/${stepId}/attempt`, answer);
-        assert.equal(response.status, 200); assert.equal(response.body.attempt.isCorrect, true);
-      }
-      assert.equal((await post('/complete')).status, 409);
-      await post(`/steps/${summaryId}/complete`);
-      assert.equal((await prisma.lessonProgress.findUniqueOrThrow({ where: { userId_lessonId: { userId, lessonId } } })).status, 'IN_PROGRESS');
+    await t.test('complete consolidates first score, traversal, Review and course progression exactly once', async () => {
+      const last = await post('/steps/' + matchId + '/attempt', { pairs: [{ wordId: 'w', imageId: 'i' }] });
+      assert.equal(last.status, 200); assert.equal(last.body.status, 'COMPLETED'); assert.equal(last.body.progress.percentage, 100);
+      assert.equal(last.body.completion.result.correctAnswers, 3);
+      assert.equal((await request('/lessons/' + lessonId)).body.state.status, 'COMPLETED', 'crash before Summary/Result preserves completion');
+      const responses = await Promise.all([post('/complete'), post('/complete')]);
+      assert.equal(responses[0]!.status, 200); assert.deepEqual(responses[0], responses[1]);
+      assert.deepEqual(responses[0]!.body.result, { correctAnswers: 3, totalActivities: 4, isPerfect: false, pendingReviewCount: 1 });
+      assert.equal(responses[0]!.body.courseProgress.completedLessons, 1); assert.equal(responses[0]!.body.nextLesson.id, paidId);
+      const reviews = await prisma.reviewItem.findMany({ where: { userId } }); assert.equal(reviews[0]!.incorrectAttempts, 2);
+      const durableLesson = await prisma.lessonProgress.findUniqueOrThrow({ where: { userId_lessonId: { userId, lessonId } } });
+      assert.equal(durableLesson.status, 'COMPLETED'); assert.equal(durableLesson.completedRunId, runId);
+      assert.equal(await prisma.lessonBlockProgress.count({ where: { userId } }), 6);
+      const before = await durable(); await post('/complete'); assert.deepEqual(await durable(), before);
+      for (const suffix of ['/abandon', '/steps/' + mcId + '/attempt', '/steps/' + contentId + '/complete']) assert.equal((await post(suffix, { selectedOptionId: 'a' })).status, 409);
+      assert.equal((await start()).body.error.code, 'LESSON_ALREADY_COMPLETED');
     });
-    await t.test('completion preserves first score, reports review and paid next, is concurrently idempotent', async () => {
-      const results = await Promise.all([post('/complete'), post('/complete')]);
-      assert.deepEqual(results[0]!.body.course, { id: courseId, title: 'LESSONS INTEGRATION TEST', level: null }); assert.equal(results[0]!.status, 200); assert.deepEqual(results[0], results[1]);
-      assert.deepEqual(results[0]!.body.result, { correctAnswers: 3, totalActivities: 4, isPerfect: false, pendingReviewCount: 1 });
-      assert.deepEqual(results[0]!.body.courseProgress, { completedLessons: 1, totalLessons: 2, percentage: 50, status: 'IN_PROGRESS' });
-      assert.deepEqual(results[0]!.body.nextLesson, { id: paidId, title: 'Test lesson 3', accessible: false, lockReason: 'ACCESS' });
-      const stored = await prisma.lessonProgress.findUniqueOrThrow({ where: { userId_lessonId: { userId, lessonId } } });
-      assert.equal((await post('/start')).body.status, 'COMPLETED'); await post('/complete');
-      assert.deepEqual(await prisma.lessonProgress.findUniqueOrThrow({ where: { userId_lessonId: { userId, lessonId } } }), stored);
-    });
-    await t.test('Replay checks correct/wrong answers without changing any learning state or original score', async () => {
-      const before = await persisted();
-      const check = (step: string, answer: unknown) => post('/replay/steps/' + step + '/check', answer);
-      for (const selectedOptionId of ['b', 'a', 'b']) {
-        const response = await check(mcId, { selectedOptionId });
-        assert.equal(response.status, 200);
-        assert.deepEqual(response.body, { isCorrect: selectedOptionId === 'a', feedback: {
-          message: selectedOptionId === 'a' ? 'Correct answer' : 'Incorrect answer', correctAnswer: 'a', explanation: 'Hello is a greeting' } });
+    await t.test('Replay still checks all types read-only, including history and no-run guarantee', async () => {
+      const before = await durable(); const runs = await prisma.lessonRun.findMany({ where: { userId }, orderBy: { id: 'asc' } });
+      const attempts = await prisma.activityAttempt.findMany({ where: { userId }, orderBy: { id: 'asc' } });
+      for (const selectedOptionId of ['a', 'b', 'b']) {
+        const response = await check(mcId, { selectedOptionId }); assert.equal(response.status, 200);
+        assert.deepEqual(response.body, { isCorrect: selectedOptionId === 'a', feedback: { message: selectedOptionId === 'a' ? 'Correct answer' : 'Incorrect answer', correctAnswer: 'a', explanation: 'Hello is a greeting' } });
       }
-      for (const [step, answer] of [[optionsId, { selectedOptionId: 'a' }], [textId, { text: ' AM ' }], [matchId, { pairs: [{ wordId: 'w', imageId: 'i' }] }]] as const) {
-        assert.equal((await check(step, answer)).body.isCorrect, true);
-      }
-      // Wrong answer on an activity with no ReviewItem must not create one either.
-      assert.equal((await check(textId, { text: 'is' })).body.isCorrect, false);
-      assert.equal((await check(mcId, { selectedOptionId: 'unknown' })).body.error.code, 'INVALID_ANSWER');
+      for (const [step, answer] of [[optionsId, { selectedOptionId: 'a' }], [textId, { text: 'am' }], [matchId, { pairs: [{ wordId: 'w', imageId: 'i' }] }]] as const) assert.equal((await check(step, answer)).body.isCorrect, true);
       assert.equal((await check(contentId, { text: 'a' })).body.error.code, 'STEP_IS_NOT_ACTIVITY');
       assert.equal((await check(paidSummaryId, { text: 'a' })).body.error.code, 'STEP_NOT_FOUND');
-      assert.equal((await request('/lessons/' + lessonId + '/replay/steps/' + mcId + '/check', 'POST', { selectedOptionId: 'a' }, 'other')).body.error.code, 'LESSON_REPLAY_REQUIRES_COMPLETION');
-      assert.equal((await request('/lessons/' + lessonId + '/replay/steps/' + mcId + '/check', 'POST', { selectedOptionId: 'a' }, 'none')).status, 401);
-      assert.equal((await request('/lessons/' + paidId + '/replay/steps/' + paidSummaryId + '/check', 'POST', { text: 'a' })).status, 403);
-      await prisma.course.update({ where: { id: courseId }, data: { status: 'DRAFT' } });
-      try { assert.equal((await check(mcId, { selectedOptionId: 'a' })).status, 404); }
-      finally { await prisma.course.update({ where: { id: courseId }, data: { status: 'PUBLISHED' } }); }
-      await prisma.lesson.update({ where: { id: lessonId }, data: { status: 'DRAFT' } });
-      try { assert.equal((await check(mcId, { selectedOptionId: 'a' })).status, 404); }
-      finally { await prisma.lesson.update({ where: { id: lessonId }, data: { status: 'PUBLISHED' } }); }
-      assert.deepEqual(await persisted(), before, 'compare full rows, including Review increments and progress timestamps');
+      assert.equal((await check(mcId, { selectedOptionId: 'missing' })).body.error.code, 'INVALID_ANSWER');
+      assert.deepEqual(await durable(), before); assert.deepEqual(await prisma.lessonRun.findMany({ where: { userId }, orderBy: { id: 'asc' } }), runs);
+      assert.deepEqual(await prisma.activityAttempt.findMany({ where: { userId }, orderBy: { id: 'asc' } }), attempts);
     });
-    await t.test('optional pending stays visible and does not block required course completion; entitlement enforced', async () => {
-      assert.equal((await request(`/lessons/${paidId}/start`, 'POST')).body.error.code, 'LESSON_ACCESS_REQUIRED');
-      assert.equal((await request(`/lessons/${paidId}`)).body.error.code, 'LESSON_ACCESS_REQUIRED');
-      assert.equal((await request(`/lessons/${emptyId}/start`, 'POST')).body.error.code, 'LESSON_PREREQUISITE_REQUIRED');
-      await prisma.entitlement.create({ data: { userId, scope: 'COURSE', courseId, status: 'ACTIVE', startsAt: new Date(0) } });
-      assert.equal((await request(`/lessons/${paidId}/start`, 'POST')).status, 200);
-      await request(`/lessons/${paidId}/steps/${paidSummaryId}/complete`, 'POST');
-      const result = await request(`/lessons/${paidId}/complete`, 'POST');
-      assert.equal(result.body.courseProgress.status, 'COMPLETED'); assert.equal(result.body.courseProgress.percentage, 100); assert.equal(result.body.nextLesson, null);
-      assert.equal((await prisma.courseProgress.findUniqueOrThrow({ where: { userId_courseId: { userId, courseId } } })).status, 'COMPLETED');
-      assert.ok((await courses.roadmap(courseId, userId)).topics[0]!.lessons.some(l => l.id === optionalId));
-      assert.equal((await request(`/lessons/${emptyId}/start`, 'POST')).body.error.code, 'LESSON_HAS_NO_CONTENT');
-      assert.equal((await request(`/lessons/${optionalId}/complete`, 'POST')).body.error.code, 'LESSON_NOT_STARTED');
-      assert.equal(await prisma.coinTransaction.count({ where: { userId } }), 0);
-      assert.equal(await prisma.learningDay.count({ where: { userId } }), 0);
-      assert.equal(await prisma.purchase.count({ where: { userId } }), 0);
+    await t.test('abandoned wrong answers cannot contaminate a later perfect run or Review', async () => {
+      await courses.start(courseId, otherId);
+      const abandoned = await service.start(lessonId, otherId, randomUUID());
+      await service.completeStep(lessonId, abandoned.runId, contentId, otherId);
+      await service.attempt(lessonId, abandoned.runId, mcId, otherId, { selectedOptionId: 'b' });
+      await service.abandon(lessonId, abandoned.runId, otherId);
+      const fresh = await service.start(lessonId, otherId, randomUUID());
+      await service.completeStep(lessonId, fresh.runId, contentId, otherId);
+      for (const [step, answer] of [[mcId, { selectedOptionId: 'a' }], [optionsId, { selectedOptionId: 'a' }], [textId, { text: 'am' }], [matchId, { pairs: [{ wordId: 'w', imageId: 'i' }] }]] as const) {
+        const submitted = await service.attempt(lessonId, fresh.runId, step, otherId, answer);
+        assert.equal(submitted.attempt.attemptNumber, 1);
+      }
+      const completed = await service.complete(lessonId, fresh.runId, otherId);
+      assert.deepEqual(completed.result, { correctAnswers: 4, totalActivities: 4, isPerfect: true, pendingReviewCount: 0 });
+      assert.equal(await prisma.reviewItem.count({ where: { userId: otherId } }), 0);
+      assert.equal(await prisma.activityAttempt.count({ where: { runId: abandoned.runId, isCorrect: false } }), 1);
     });
-    await t.test('optional lesson remains readable and completable without changing mandatory progress or course completion', async () => {
-      const stored = await prisma.courseProgress.findUniqueOrThrow({ where: { userId_courseId: { userId, courseId } } });
-      assert.equal((await request(`/lessons/${optionalId}`)).status, 200);
-      assert.equal((await request(`/lessons/${optionalId}/start`, 'POST')).status, 200);
-      assert.equal((await request(`/lessons/${optionalId}/steps/${optionalSummaryId}/complete`, 'POST')).status, 200);
-      const result = await request(`/lessons/${optionalId}/complete`, 'POST');
-      assert.equal(result.status, 200);
-      assert.deepEqual(result.body.courseProgress, { completedLessons: 2, totalLessons: 2, percentage: 100, status: 'COMPLETED' });
-      assert.equal(result.body.nextLesson, null);
-      assert.deepEqual(await prisma.courseProgress.findUniqueOrThrow({ where: { userId_courseId: { userId, courseId } } }), stored);
-      assert.equal((await courses.detail(courseId, userId)).content.lessonCount, 4);
+    await t.test('optional activity is not required; completed optional run cannot accept later writes', async () => {
+      const root = '/lessons/' + optionalId; const response = await request(root + '/runs', 'POST', { requestKey: randomUUID() });
+      const path = root + '/runs/' + response.body.runId;
+      assert.equal((await request(path + '/steps/' + optionalSummaryId + '/complete', 'POST')).status, 200);
+      assert.equal((await request(path + '/complete', 'POST')).status, 200);
+      assert.equal((await request(path + '/steps/' + optionalActivityId + '/attempt', 'POST', { selectedOptionId: 'a' })).status, 409);
+      const before = await durable();
+      assert.equal((await request(root + '/replay/steps/' + optionalActivityId + '/check', 'POST', { selectedOptionId: 'a' })).body.isCorrect, true);
+      assert.deepEqual(await durable(), before);
     });
-    await t.test('Replay includes previously unvisited optional activities without traversal writes', async () => {
-      const before = await persisted();
-      const response = await request('/lessons/' + optionalId + '/replay/steps/' + optionalActivityId + '/check', 'POST', { selectedOptionId: 'a' });
-      assert.equal(response.status, 200); assert.equal(response.body.isCorrect, true);
-      assert.deepEqual(await persisted(), before);
-      assert.deepEqual((await request('/lessons/' + optionalId)).body.activityProgress, { completed: 0, total: 1 });
+    await t.test('current access is checked at start/attempt/complete; abandon works after access expires; course completes only at run completion', async () => {
+      const root = '/lessons/' + paidId;
+      assert.equal((await request(root + '/runs', 'POST', { requestKey: randomUUID() })).body.error.code, 'LESSON_ACCESS_REQUIRED');
+      const grant = await prisma.entitlement.create({ data: { userId, scope: 'COURSE', courseId, status: 'ACTIVE', startsAt: new Date(0) } });
+      const opened = await request(root + '/runs', 'POST', { requestKey: randomUUID() }); const path = root + '/runs/' + opened.body.runId;
+      assert.equal(opened.body.firstStepId, paidSummaryId, 'Summary cannot gate a later pedagogical requirement');
+      await prisma.entitlement.update({ where: { id: grant.id }, data: { status: 'REVOKED' } });
+      assert.equal((await request(path + '/complete', 'POST')).status, 403);
+      assert.equal((await request(path + '/steps/' + paidSummaryId + '/attempt', 'POST', { text: 'a' })).status, 403);
+      assert.equal((await request(path + '/abandon', 'POST')).status, 200);
+      await prisma.entitlement.update({ where: { id: grant.id }, data: { status: 'ACTIVE' } });
+      const second = await request(root + '/runs', 'POST', { requestKey: randomUUID() }); const secondPath = root + '/runs/' + second.body.runId;
+      await request(secondPath + '/steps/' + paidSummaryId + '/complete', 'POST');
+      const result = await request(secondPath + '/complete', 'POST'); assert.equal(result.body.courseProgress.status, 'COMPLETED');
+      await prisma.entitlement.delete({ where: { id: grant.id } });
+      assert.equal((await request(root + '/replay/steps/' + paidSummaryId + '/check', 'POST', { text: 'a' })).status, 403);
+      assert.equal(await prisma.coinTransaction.count({ where: { userId } }), 0); assert.equal(await prisma.learningDay.count({ where: { userId } }), 0);
     });
-    await t.test('optional activity traversal survives resume and completion without inflating on retry', async () => {
-      const root = `/lessons/${optionalId}`;
-      assert.deepEqual((await request(root)).body.activityProgress, { completed: 0, total: 1 });
-      assert.equal((await request(root + '/start', 'POST')).body.status, 'COMPLETED');
-      await request(`${root}/steps/${optionalActivityId}/attempt`, 'POST', { selectedOptionId: 'b' });
-      assert.deepEqual((await request(root)).body.activityProgress, { completed: 1, total: 1 });
-      await request(`${root}/steps/${optionalActivityId}/attempt`, 'POST', { selectedOptionId: 'a' });
-      assert.deepEqual((await request(root)).body.activityProgress, { completed: 1, total: 1 });
-      assert.deepEqual((await request(root, 'GET', undefined, 'other')).body.activityProgress, undefined); // prerequisite access remains enforced
-    });
-    await t.test('Completed paid lessons still enforce access during Replay', async () => {
-      await prisma.entitlement.deleteMany({ where: { userId, courseId } });
-      const before = await persisted();
-      assert.equal((await request('/lessons/' + paidId + '/replay/steps/' + paidSummaryId + '/check', 'POST', { text: 'a' })).body.error.code, 'LESSON_ACCESS_REQUIRED');
-      assert.deepEqual(await persisted(), before);
+    await t.test('nonempty Summary-only lesson consolidates on entry without requiring presentation interaction', async () => {
+      await prisma.lessonBlock.create({ data: { lessonId: emptyId, type: 'SUMMARY', position: 1, content: { points: ['Presentation'] } } });
+      const opened = await service.start(emptyId, userId, randomUUID());
+      assert.equal(opened.status, 'COMPLETED'); assert.equal(opened.progress.percentage, 100);
+      assert.ok(opened.completion); assert.equal(opened.completion.result.totalActivities, 0);
+      assert.equal((await service.read(emptyId, userId)).state.status, 'COMPLETED');
+      assert.equal(await prisma.lessonRunBlockProgress.count({ where: { runId: opened.runId } }), 0);
+      await assert.rejects(service.abandon(emptyId, opened.runId, userId), /Completed runs/);
     });
   } finally {
     if (server) await new Promise<void>((resolve, reject) => { server!.close(e => e ? reject(e) : resolve()); server!.closeAllConnections(); });

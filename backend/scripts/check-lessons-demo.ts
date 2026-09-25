@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import type { AddressInfo } from 'node:net';
@@ -51,20 +52,21 @@ async function main() {
         assert.ok(publicJson.includes('"keyPhrases"'));
       }
       if (n === 1003) assert.ok(data.steps[0]!.blocks.some(b => b.type === 'VIDEO'));
-      await request(root + '/start');
-      await request(`${root}/steps/${data.steps[0]!.id}/complete`);
+      const opened = await request<Awaited<ReturnType<LessonService['start']>>>(root + '/runs', { requestKey: randomUUID() });
+      const runRoot = root + '/runs/' + opened.runId;
+      await request(`${runRoot}/steps/${data.steps[0]!.id}/complete`);
       const answers = n === 1003 ? [{ selectedOptionId: 'bye' }, { selectedOptionId: 'hello' }]
         : [{ text: ' AM ' }, { pairs: [{ wordId: 'book', imageId: 'book-image' }, { wordId: 'cup', imageId: 'cup-image' }, { wordId: 'ball', imageId: 'ball-image' }] }];
       for (let i = 0; i < answers.length; i++) {
-        const result = await request<Awaited<ReturnType<LessonService['attempt']>>>(`${root}/steps/${data.steps[i + 1]!.id}/attempt`, answers[i]);
+        const result = await request<Awaited<ReturnType<LessonService['attempt']>>>(`${runRoot}/steps/${data.steps[i + 1]!.id}/attempt`, answers[i]);
         assert.equal(result.attempt.isCorrect, !(n === 1003 && i === 0));
+        if (n === 1003 && i === 0) {
+          const retry = await request<Awaited<ReturnType<LessonService['attempt']>>>(`${runRoot}/steps/${data.steps[1]!.id}/attempt`, { selectedOptionId: 'hello' });
+          assert.equal(retry.attempt.countsForLessonScore, false); assert.equal(retry.reinforcement.onCompletion, true);
+        }
+        if (i === answers.length - 1) { assert.equal(result.status, 'COMPLETED'); assert.equal(result.progress.percentage, 100); assert.ok(result.completion); }
       }
-      if (n === 1003) {
-        const retry = await request<Awaited<ReturnType<LessonService['attempt']>>>(`${root}/steps/${data.steps[1]!.id}/attempt`, { selectedOptionId: 'hello' });
-        assert.equal(retry.attempt.countsForLessonScore, false); assert.equal(retry.review.pending, true);
-      }
-      await request(`${root}/steps/${data.steps[3]!.id}/complete`);
-      const result = await request<Awaited<ReturnType<LessonService['complete']>>>(root + '/complete');
+      const result = await request<Awaited<ReturnType<LessonService['complete']>>>(runRoot + '/complete');
       assert.deepEqual(result.course, { id: demoId(1), title: 'Inglés A1', level: 'A1' });
       assert.deepEqual((await request<Awaited<ReturnType<LessonService['read']>>>(root, undefined, 'GET')).activityProgress, { completed: 2, total: 2 });
       assert.equal(result.result.correctAnswers, n === 1003 ? 1 : 2);
@@ -72,9 +74,21 @@ async function main() {
       assert.equal(result.result.isPerfect, n === 1004);
       if (n === 1004) { assert.equal(result.nextLesson?.lockReason, 'ACCESS'); assert.equal(result.nextLesson?.accessible, false); }
     }
+    // Completed lessons use only Replay checks and never create new runs.
+    const runCount = await prisma.lessonRun.count({ where: { userId } });
+    await lessons.replayCheck(demoId(1003), demoId(31003), userId, { selectedOptionId: 'bye' });
+    assert.equal(await prisma.lessonRun.count({ where: { userId } }), runCount);
     const path = await courses.roadmap(demoId(1), userId);
     assert.equal(path.progress.completedLessons, 4);
     assert.equal(path.topics.flatMap(t => t.lessons)[4]!.progression.lockReason, 'ACCESS');
+    seed('--reset', '--stale-run');
+    const stale = await prisma.lessonRun.findFirstOrThrow({ where: { userId, lessonId: demoId(1003), status: 'ACTIVE' } });
+    const fresh = await lessons.start(demoId(1003), userId, randomUUID());
+    assert.equal(fresh.progress.percentage, 0);
+    assert.notEqual(fresh.runId, stale.id);
+    assert.equal((await prisma.lessonRun.findUniqueOrThrow({ where: { id: stale.id } })).status, 'ABANDONED');
+    assert.equal(await prisma.lessonProgress.count({ where: { userId, lessonId: demoId(1003) } }), 0);
+    assert.equal(await prisma.reviewItem.count({ where: { userId, sourceLessonId: demoId(1003) } }), 0);
     seed('--reset'); assert.equal((await courses.roadmap(demoId(1), userId)).progress.completedLessons, 3);
     seed('--reset', '--lessons'); seed('--reset', '--lessons');
     assert.equal((await courses.roadmap(demoId(1), userId)).progress.completedLessons, 2);

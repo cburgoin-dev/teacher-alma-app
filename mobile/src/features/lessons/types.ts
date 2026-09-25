@@ -20,8 +20,8 @@ export type Block = { id: string } & (
   | { type: 'ACTIVITY'; activity: Activity }
 );
 export type Step = { id: string; type: 'CONTENT_STEP' | 'ACTIVITY_STEP' | 'SUMMARY_STEP'; required: boolean; blocks: Block[] };
-export type LessonStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
-export type LessonMode = 'NORMAL' | 'RESUME' | 'REPLAY';
+export type LessonStatus = 'NOT_STARTED' | 'COMPLETED';
+export type LessonMode = 'NORMAL_RUN' | 'REPLAY';
 export type LessonData = {
   lesson: { id: string; title: string; description: string | null; accessType: string;
     topic: { id: string; title: string }; course: { id: string; title: string; level: string | null };
@@ -31,11 +31,13 @@ export type LessonData = {
   activityProgress?: { completed: number; total: number };
 };
 export type StepProgress = { completedSteps: number; totalSteps: number; percentage: number };
-export type StartResponse = { lessonId: string; status: LessonStatus; currentStepId: string | null; progress: StepProgress };
-export type StepResponse = { lessonId: string; completedStepId: string; currentStepId: string | null; progress: StepProgress };
+export type StartResponse = { runId: string; lessonId: string; status: 'ACTIVE' | 'COMPLETED'; completion: LessonResult | null; firstStepId: string; currentStepId: string | null; progress: StepProgress; activityProgress: { completed: number; total: number } };
+export type StepResponse = { status: 'ACTIVE' | 'COMPLETED'; completion: LessonResult | null; runId: string; activityProgress: { completed: number; total: number }; lessonId: string; completedStepId: string; currentStepId: string | null; progress: StepProgress };
 export type AttemptResponse = {
+  status: 'ACTIVE' | 'COMPLETED'; completion: LessonResult | null;
+  runId: string; activityProgress: { completed: number; total: number };
   attempt: { id: string; attemptNumber: number; isCorrect: boolean; countsForLessonScore: boolean };
-  feedback: { message: string; correctAnswer?: unknown; explanation?: string }; review: { pending: boolean };
+  feedback: { message: string; correctAnswer?: unknown; explanation?: string }; reinforcement: { onCompletion: boolean };
   progress: StepProgress & { currentStepId: string | null };
 };
 export type LessonResult = {

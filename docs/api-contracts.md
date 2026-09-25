@@ -721,7 +721,7 @@ Stable rules:
 - Incorrect practice answers do not block lesson completion.
 - Score uses the first submitted attempt for each relevant activity.
 - Retries are stored but do not rewrite the first-attempt lesson score.
-- Incorrect attempts create/update Review data; an immediate retry does not silently resolve that Review item.
+- Incorrect attempts consolidate Review only when their run completes; immediate correct retries do not erase errors.
 - Exact coin rewards, streak changes and purchase flows remain outside Lessons v1.
 
 ## Step derivation
@@ -932,7 +932,7 @@ Required.
 }
 ```
 
-For an in-progress lesson, `currentStepId` identifies the step at whose beginning the client should resume.
+GET returns NOT_STARTED or COMPLETED and currentStepId is always null. ACTIVE runs are not exposed as Resume. GET activityProgress is durable history; normal UI uses counters from run mutations.
 
 For a completed lesson, Mobile starts a fresh local Replay from the first step. It ignores historical `currentStepId` and `activityProgress` for this session. GET itself does not clear completion or create a persisted scored run.
 
@@ -959,313 +959,72 @@ This endpoint must not create or update:
 
 ---
 
-## 6. POST /lessons/:lessonId/start
+## 6. POST /lessons/:lessonId/runs
 
-### Purpose
+Authenticated; validates published content, started course, prerequisite and access. Completed lesson returns 409 LESSON_ALREADY_COMPLETED (use Replay).
 
-Explicitly start or resume an accessible lesson.
+Body: `{ "requestKey": "unique-entry-request-key" }`. Required 16–100 ASCII letters/digits/underscore/hyphen. Mobile generates a new key per mounted entry and reuses it only for retries of that entry request. Invalid/missing key: 400 INVALID_RUN_REQUEST_KEY.
 
-### Preconditions
+Under user lock, a new key abandons previous ACTIVE runs and creates a fresh run at 0% when pedagogical requirements remain. Same key returns the same ACTIVE run; reusing an abandoned key returns 409 LESSON_RUN_NOT_ACTIVE. Unique request key and partial ACTIVE index prevent duplicate live runs. This transport retry rule is not Resume.
 
-The backend must verify:
+200 response:
+`{ runId, lessonId, status: "ACTIVE" | "COMPLETED", completion, firstStepId, currentStepId, progress: { completedSteps, totalSteps, percentage }, activityProgress: { completed, total } }`.
 
-1. Valid/authenticated user.
-2. Visible/published lesson.
-3. Parent course already has learner progress or is completed.
-4. Sequential prerequisite is satisfied.
-5. Commercial access is satisfied.
+Both counters belong to this run; a new run starts with zero completed steps/activities. Starting normally writes no durable lesson/block progress or Review; a nonempty lesson with no pedagogical requirements consolidates immediately.
 
-The endpoint must **not** create `course_progress` implicitly.
+## 7. POST /lessons/:lessonId/runs/:runId/steps/:stepId/complete
 
-### Success response
+Empty body. Authenticated owner, matching lesson, ACTIVE run, publication/access/prerequisite and step order required. Non-activity steps only (otherwise 409 ACTIVITY_REQUIRES_ATTEMPT). Stores block traversal against the run and derives the next required pointer. Repeating a completed content step is idempotent within the ACTIVE run.
 
-`200 OK`
+200: `{ status, completion, runId, lessonId, completedStepId, currentStepId, progress: { completedSteps, totalSteps, percentage }, activityProgress: { completed, total } }`.
 
-```json
-{
-  "lessonId": "lesson-uuid",
-  "status": "IN_PROGRESS",
-  "currentStepId": "step-opaque-id",
-  "progress": {
-    "completedSteps": 0,
-    "totalSteps": 4,
-    "percentage": 0
-  }
-}
-```
+Optional blocks do not block required progression. Historical durable blocks do not satisfy this run's traversal.
 
-### Idempotency and resume
+## 8. POST /lessons/:lessonId/runs/:runId/steps/:stepId/attempt
 
-- First successful start creates `lesson_progress`.
-- Repeating start for an `IN_PROGRESS` lesson returns its existing state and does not duplicate progress.
-- Resume occurs at the **start of the last meaningful pending/current step**.
-- Exact scroll offsets and video timestamps are intentionally not restored.
-- Starting an already completed lesson remains idempotent and does not erase original completion/score. Mobile does not start completed lessons: it uses local Replay and the dedicated read-only check below. If completion races with start, Mobile switches to fresh Replay.
+Same ownership/lifecycle/access/order checks; activity step required (409 STEP_IS_NOT_ACTIVITY).
 
-### Relevant failures
+Body by activity type:
 
-- `400 INVALID_LESSON_ID`
-- `401` unauthenticated
-- `403 LESSON_ACCESS_REQUIRED`
-- `404 LESSON_NOT_FOUND`
-- `409 COURSE_NOT_STARTED`
-- `409 LESSON_PREREQUISITE_REQUIRED`
-- `409 LESSON_HAS_NO_CONTENT`
-- `500` unexpected failure
+- Multiple choice / fill options: `{ selectedOptionId }`.
+- Fill text: `{ text }`.
+- Matching: `{ pairs: [{ wordId, imageId }] }`.
 
----
+Malformed answers: 400 INVALID_ANSWER, no writes. Valid submissions atomically append an attempt and mark the run's activity block complete. Numbering starts at 1 for each run/activity; concurrent submissions serialize. Retries are new submissions, not score replacements. Mobile gates double submit.
 
-## 7. POST /lessons/:lessonId/steps/:stepId/complete
+200:
+`{ status, completion, runId, attempt: { id, attemptNumber, isCorrect, countsForLessonScore }, feedback: { message, correctAnswer, explanation? }, reinforcement: { onCompletion }, progress: { completedSteps, totalSteps, percentage, currentStepId }, activityProgress: { completed, total } }`.
 
-### Purpose
+`reinforcement.onCompletion` means this activity has an incorrect submission in this run. It is prospective, not proof of a saved Review item. Non-final ACTIVE attempts never create/increment durable Review. The final pedagogical attempt consolidates completion and Review atomically. Private answer configuration remains excluded from GET; evaluated answer feedback is returned only after submission.
 
-Advance through a non-activity presentation step such as `CONTENT_STEP`. `SUMMARY_STEP` may also use this operation only to mark its content traversed; formal lesson completion still requires the dedicated lesson-complete operation.
+## 9. POST /lessons/:lessonId/runs/:runId/complete
 
-### Request body
+Idempotent confirmation/result endpoint; completion already occurs automatically on the final pedagogical mutation. Empty body. Requires ownership, access and all required pedagogical run blocks traversed, excluding Summary and including submitted required activities. Otherwise 409 LESSON_REQUIREMENTS_INCOMPLETE. ABANDONED is rejected. Repeated COMPLETED requests return the result without repeating writes (access still checked).
 
-None.
+Atomically sets COMPLETED with score snapshot; creates durable LessonProgress linked to this run; consolidates traversed blocks; consolidates Review; updates course completion when appropriate. Score is first submission per distinct lesson activity within this run; optional unanswered activities remain in the denominator, as before. Abandoned attempts are excluded. Every incorrect submission in the accepted run increments an ACTIVE Review item once (or creates one); correct retries do not resolve it. Any failure rolls back all consolidation.
 
-### Behavior
+200:
+`{ runId, lesson: { id, title }, course: { id, title, level }, result: { correctAnswers, totalActivities, isPerfect, pendingReviewCount }, courseProgress: { completedLessons, totalLessons, percentage, status }, nextLesson: { id, title, accessible, lockReason } | null }`.
 
-The service:
+Score is snapshotted on the run; course progress, pending Review and next lesson reflect current durable state. No rewards, billing or access grants.
 
-1. Resolves the current derived step structure.
-2. Validates that `stepId` belongs to the requested lesson.
-3. Rejects silent skipping of required future steps.
-4. Marks all blocks represented by that traversed step as completed where applicable.
-5. Advances the lesson's current step pointer to the next meaningful pending step.
-6. Returns updated lesson progress.
+## 10. POST /lessons/:lessonId/runs/:runId/abandon
 
-For a video-containing content step, pressing Continue is sufficient for traversal in MVP v1; no full-playback requirement applies.
+Empty body. Requires authentication and owned run belonging to this lesson. ACTIVE becomes ABANDONED with timestamp and null pointer; repeated ABANDONED succeeds without further effects. COMPLETED returns 409 LESSON_RUN_NOT_ACTIVE. Access/publication revocation does not prevent abandoning an owned run.
 
-### Success response
+200: `{ runId, status: "ABANDONED" }`.
 
-`200 OK`
+Retains run attempts/traversal but writes no durable learning state. Mobile sends this on confirmed exit and navigates immediately even when offline; the next new start safely abandons a stale ACTIVE.
 
-```json
-{
-  "lessonId": "lesson-uuid",
-  "completedStepId": "step-opaque-id",
-  "currentStepId": "next-step-opaque-id",
-  "progress": {
-    "completedSteps": 1,
-    "totalSteps": 4,
-    "percentage": 25
-  }
-}
-```
+### Shared run failures
 
-### Idempotency
+- 400 INVALID_LESSON_ID / INVALID_RUN_ID / INVALID_STEP_ID.
+- 401 unauthenticated; 404 LESSON_RUN_NOT_FOUND for missing/mismatched ownership or lesson.
+- 409 LESSON_RUN_NOT_ACTIVE for writes to completed/abandoned runs (except documented idempotent complete/abandon).
+- 404 STEP_NOT_FOUND; 409 STEP_NOT_AVAILABLE for skipping required predecessors.
+- Existing COURSE_NOT_STARTED, LESSON_PREREQUISITE_REQUIRED, LESSON_ACCESS_REQUIRED, LESSON_NOT_FOUND and LESSON_HAS_NO_CONTENT gates remain.
 
-Repeating completion for an already completed step must not duplicate progress or other side effects.
-
-### Relevant failures
-
-- `400 INVALID_LESSON_ID` / `INVALID_STEP_ID`
-- `401` unauthenticated
-- `403 LESSON_ACCESS_REQUIRED`
-- `404 LESSON_NOT_FOUND` / `STEP_NOT_FOUND`
-- `409 LESSON_NOT_STARTED`
-- `409 STEP_NOT_AVAILABLE`
-- `409 ACTIVITY_REQUIRES_ATTEMPT` when an activity step is incorrectly sent to this endpoint
-- `500` unexpected failure
-
----
-
-## 8. POST /lessons/:lessonId/steps/:stepId/attempt
-
-### Purpose
-
-Submit an answer for an `ACTIVITY_STEP`, persist the attempt, return immediate feedback, update block/lesson progression and create/update Review state when incorrect.
-
-### Request body
-
-The answer payload depends on activity type.
-
-Examples:
-
-```json
-{ "selectedOptionId": "a" }
-```
-
-```json
-{ "text": "am" }
-```
-
-```json
-{
-  "pairs": [
-    { "wordId": "w1", "imageId": "i1" }
-  ]
-}
-```
-
-The matching payload is identical for `TAP` and `DRAG`.
-
-### Atomic behavior
-
-A successful submission is one application operation:
-
-```text
-validate answer
-  -> create activity_attempt
-  -> derive attempt_number
-  -> mark ACTIVITY block traversed/completed
-  -> advance current step when appropriate
-  -> incorrect: create/update ACTIVE review_item
-  -> return feedback
-```
-
-These dependent writes should succeed/fail consistently.
-
-### Score and retries
-
-- The first submitted lesson-context attempt for an activity is its score-bearing result for that lesson.
-- Later retries are stored with higher `attemptNumber`.
-- A retry may return correct feedback but does not change the first-attempt lesson score.
-- Correct retry inside the lesson does not automatically resolve the active Review item created by the original error.
-
-### Success response
-
-`200 OK`
-
-```json
-{
-  "attempt": {
-    "id": "attempt-uuid",
-    "attemptNumber": 1,
-    "isCorrect": false,
-    "countsForLessonScore": true
-  },
-  "feedback": {
-    "message": "Casi. Con I usamos am.",
-    "correctAnswer": "am",
-    "explanation": "..."
-  },
-  "review": {
-    "pending": true
-  },
-  "progress": {
-    "currentStepId": "next-step-opaque-id",
-    "completedSteps": 2,
-    "totalSteps": 4,
-    "percentage": 50
-  }
-}
-```
-
-Correct-answer details are returned **after submission** as feedback when appropriate; they are not exposed by the lesson-read endpoint beforehand.
-
-### Relevant failures
-
-- `400 INVALID_LESSON_ID` / `INVALID_STEP_ID` / `INVALID_ANSWER`
-- `401` unauthenticated
-- `403 LESSON_ACCESS_REQUIRED`
-- `404 LESSON_NOT_FOUND` / `STEP_NOT_FOUND`
-- `409 LESSON_NOT_STARTED`
-- `409 STEP_NOT_AVAILABLE`
-- `409 STEP_IS_NOT_ACTIVITY`
-- `500` unexpected failure
-
----
-
-## 9. POST /lessons/:lessonId/complete
-
-### Purpose
-
-Formally complete a lesson after all required traversal/submission conditions are satisfied and return the data required by Lesson Result.
-
-### Completion validation
-
-The backend must verify:
-
-- every required non-activity content block/step has been traversed;
-- every required activity has at least one submitted attempt;
-- the required Summary step has been traversed;
-- the lesson is started and accessible.
-
-Correctness is **not** a completion condition.
-
-### Success response
-
-`200 OK`
-
-```json
-{
-  "lesson": {
-    "id": "lesson-uuid",
-    "title": "Nice to meet you!"
-  },
-  "result": {
-    "correctAnswers": 1,
-    "totalActivities": 2,
-    "isPerfect": false,
-    "pendingReviewCount": 1
-  },
-  "courseProgress": {
-    "completedLessons": 4,
-    "totalLessons": 8,
-    "percentage": 50,
-    "status": "IN_PROGRESS"
-  },
-  "nextLesson": {
-    "id": "next-lesson-uuid",
-    "title": "Verb to be",
-    "accessible": true,
-    "lockReason": null
-  }
-}
-```
-
-For Lesson v1:
-
-- `correctAnswers` is derived from the **first submitted attempt** of each relevant activity.
-- `totalActivities` counts relevant score-bearing activities in the lesson.
-- `isPerfect` means every relevant activity was correct on its first submitted attempt.
-- `pendingReviewCount` is derived from active Review items originating from this lesson.
-- Exact coin reward and streak payloads are intentionally omitted until Gamification v1 defines their rules.
-
-If no next lesson exists, `nextLesson` is `null`.
-
-If the next lesson exists but is commercially locked, it may be returned with `accessible: false` and `lockReason: "ACCESS"` so Result can adapt its CTA without violating access rules.
-
-### Side effects
-
-Allowed on first successful completion:
-
-- mark `lesson_progress = COMPLETED`;
-- set `completed_at`;
-- update/derive parent `course_progress`, including course completion when the last required lesson is completed.
-
-Not part of Lessons v1 completion:
-
-- granting entitlements;
-- creating purchases;
-- hardcoded coin rewards;
-- hardcoded streak mutation.
-
-Review items should already have been created by incorrect attempt operations rather than being reconstructed only at completion.
-
-### Idempotency
-
-Repeated successful completion calls must return the existing completed result without:
-
-- duplicating lesson completion;
-- duplicating Review items;
-- duplicating course-completion effects;
-- awarding future rewards more than once when Gamification is later integrated.
-
-### Relevant failures
-
-- `400 INVALID_LESSON_ID`
-- `401` unauthenticated
-- `403 LESSON_ACCESS_REQUIRED`
-- `404 LESSON_NOT_FOUND`
-- `409 LESSON_NOT_STARTED`
-- `409 LESSON_REQUIREMENTS_INCOMPLETE`
-- `500` unexpected failure
-
----
+Old implicit `/lessons/:lessonId/start`, `/steps/:stepId/complete`, `/steps/:stepId/attempt` and `/complete` routes are removed. Replay uses its dedicated endpoint below and creates no run.
 
 ## Authentication boundary for Lessons v1
 
@@ -1290,7 +1049,7 @@ Controllers remain thin. Services own decisions such as:
 - prerequisite eligibility;
 - commercial access;
 - step derivation/order;
-- resume/current-step selection;
+- run lifecycle and current-step selection;
 - activity validation;
 - attempt numbering;
 - Review-item creation/update;
@@ -1344,25 +1103,9 @@ Implementation should prefer extending JSONB-backed content/configuration and pu
 Content Contract v2 implementation: GET lesson now also returns `activityProgress` (completed/total ACTIVITY blocks, including optional, based on persisted user traversal). Completion Result now returns `course: { id, title, level }`. See the implementation notes in `docs/lesson-content-contract-v2.md` for nested allowlists, optional-field handling, media URL validation and compatibility. These additions do not alter required progression or first-attempt score.
 
 
-## Lessons Session Semantics v1 — accepted direction
+## Lessons Session Semantics v1
 
-`docs/lesson-session-semantics-v1.md` supersedes the earlier normal-lesson Resume contract.
-
-Normal incomplete lessons will move to an explicit `LessonRun` boundary:
-
-- start creates a fresh ACTIVE run and returns a run identifier;
-- any stale prior ACTIVE run for the same learner/lesson is abandoned/replaced;
-- run traversal and activity submissions belong to that run;
-- abandoning a run produces no durable score, Review, lesson/course progression or rewards;
-- completing a run atomically consolidates durable lesson/block/course state and Review signals;
-- the Mobile back/chevron action for a normal run is exit-with-confirmation, not previous-step navigation;
-- re-entering an unfinished lesson starts from 0%; there is no normal Resume UX.
-
-The implementation iteration may revise the existing normal lesson route shapes to carry an explicit run id. Exact request/response shapes should be finalized in code/docs together rather than preserving accidental Resume compatibility.
-
-Replay v1 remains a separate read-only flow for already-completed lessons and does not require a LessonRun.
-
----
+Implemented by the explicit run routes above. GET is read-only; normal entry is fresh and only completion consolidates durable state. See lesson-session-semantics-v1.md and database-schema.md.
 
 ## Lessons Replay Semantics v1 — POST /lessons/:lessonId/replay/steps/:stepId/check
 
@@ -1389,4 +1132,16 @@ Failures: 400 INVALID_LESSON_ID / INVALID_STEP_ID / INVALID_ANSWER; 401 unauthen
 
 The repository read transaction uses RepeatableRead and SET TRANSACTION READ ONLY. PostgreSQL rejects accidental writes; the service only reads and evaluates the answer. No ActivityAttempt, ReviewItem, LessonBlockProgress, LessonProgress, CourseProgress, LearningDay, coins or streak changes occur. No migration or replay session table.
 
-Replay finishes locally after all session steps; it never calls /complete. Normal/Resume continue using /start, /steps/:stepId/complete, /steps/:stepId/attempt and /complete unchanged. Legacy repeated calls to normal endpoints retain their existing persistence semantics; clients must explicitly choose Replay to get the read-only guarantee. Resume != Replay != future Review.
+Replay finishes locally after all session steps; it never calls run start, abandon, attempt or complete. NORMAL_RUN uses the explicit run routes above. Replay is separate from future Review.
+
+## Completion boundary: ACTIVE 0–99%, COMPLETED 100%
+
+A pedagogical requirement is a required block whose type is not SUMMARY; a required ACTIVITY also requires a valid submission in this run, regardless of correctness. Required-step counters exclude Summary and optional-only steps. ACTIVE percentage is capped at 99; only a successfully committed COMPLETED run returns 100.
+
+The mutation that satisfies the final requirement (content traversal or activity submission) also consolidates completion in that same transaction. Failure rolls back the final attempt/traversal and all durable effects. Responses include status and completion (the normal Result payload, or null while ACTIVE). A nonempty lesson with no required pedagogical blocks completes during start; empty lessons remain rejected.
+
+Summary is post-completion presentation, excluded from prerequisites and completion validation even if marked required in legacy content. Mobile shows the last feedback, then Summary and Result locally from the persisted completion payload. Neither requires a network call or further submission. Closing after 100% preserves COMPLETED and reopening enters Replay. Back after completion exits directly, without abandonment.
+
+An immediate retry offered on the final feedback is now post-completion: it uses the existing read-only replay check, leaves the run closed and cannot alter its first-attempt score or Review. Earlier retries within ACTIVE runs remain persisted and numbered normally. No new Practice/Review session is introduced.
+
+POST run complete remains an idempotent confirmation/result read for completed runs (and validates eligibility if ACTIVE); mobile does not rely on it to reach completion. Optional unanswered activities remain in the existing score denominator.

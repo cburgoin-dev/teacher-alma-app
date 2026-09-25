@@ -172,7 +172,8 @@ Conceptual fields:
 - `context`
 - `answer_data` (`JSONB`)
 - `is_correct`
-- `attempt_number`
+- `run_id` (nullable outside normal lessons)
+- `attempt_number` (scoped to run + activity)
 - `created_at`
 
 Useful contexts:
@@ -204,20 +205,20 @@ Absence of a row can represent `NOT_STARTED`.
 
 ### `lesson_progress`
 
-Tracks resume/completion for a lesson.
+Tracks consolidated completion for a lesson.
 
 Conceptual fields:
 
 - `id`
 - `user_id`
 - `lesson_id`
-- `status` (`IN_PROGRESS`, `COMPLETED`)
-- `current_block_id` (nullable)
+- `status` (`COMPLETED`)
+- `completed_run_id` (nullable for seeded completion)
 - `started_at`
 - `completed_at` (nullable)
 - `updated_at`
 
-`current_block_id` supports resuming an unfinished lesson. Correctness is not stored here; it belongs to activity attempts.
+Absence means no completed lesson. Temporary traversal belongs to LessonRun; the completed run holds its first-attempt score snapshot.
 
 ## Review
 
@@ -476,18 +477,10 @@ A future migration should only be introduced if actual querying, indexing, owner
 
 ## LessonRun session model
 
-The accepted normal-lesson session direction is defined in `docs/lesson-session-semantics-v1.md`.
+Implemented by migration `20260925000000_lesson_runs`.
 
-Introduce an explicit `LessonRun` aggregate for temporary normal lesson execution rather than overloading durable `LessonProgress` with active-session state.
-
-Conceptually:
-
-- `LessonRun`: learner, lesson, status `ACTIVE | COMPLETED | ABANDONED`, current run pointer and lifecycle timestamps.
-- normal `ActivityAttempt` rows belong to a run;
-- run traversal is represented explicitly where required (for example `LessonRunBlockProgress`);
-- `LessonProgress` / durable `LessonBlockProgress` represent consolidated learning state, not an unfinished session;
-- only a COMPLETED run contributes score/Review/progression;
-- ABANDONED run data may remain for integrity/analytics but has no durable pedagogical effect;
-- Replay v1 remains read-only and does not create LessonRun rows.
-
-This direction intentionally favors a clean pre-production model over preserving the earlier Resume-oriented implementation.
+- `LessonRun`: UUID id, userId, lessonId, requestKey, ACTIVE/COMPLETED/ABANDONED, nullable currentBlockId, startedAt/updatedAt/completedAt/abandonedAt, nullable correctAnswers/totalActivities snapshot.
+- `LessonRunBlockProgress`: composite (runId, lessonBlockId), completedAt. Required traversal is checked against these rows, never durable history.
+- Normal attempts carry runId; (runId, activityId, attemptNumber) is unique. First submission within the accepted run determines score.
+- The final required pedagogical mutation automatically completes the run and creates durable LessonProgress (completedRunId) and LessonBlockProgress. Every wrong submission in that run increments Review once; correct retries do not erase errors. Repeated complete has no duplicate effects.
+- Abandoned data remains isolated from durable learning. Replay creates no run or attempts.

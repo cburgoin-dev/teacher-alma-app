@@ -7,7 +7,7 @@ require.extensions['.ts'] = (module, filename) => module._compile(ts.transpileMo
 }).outputText, filename);
 const { LessonFlow } = require('../src/features/lessons/flow.ts');
 const { lessonsApi } = require('../src/features/lessons/api/lessons.ts');
-const { hasPendingReview, feedbackTitle } = require('../src/features/lessons/activityPresentation.ts');
+const { reinforcementOnCompletion, feedbackTitle } = require('../src/features/lessons/activityPresentation.ts');
 const lesson = { id: 'l3', title: 'Nice to meet you!', course: { id: 'c', title: 'Inglés A1', level: 'A1' } };
 const steps = ['CONTENT_STEP', 'ACTIVITY_STEP', 'ACTIVITY_STEP', 'SUMMARY_STEP'].map((type, i) => ({ id: String(i), type, required: i !== 2, blocks: [] }));
 const historical = { lesson, steps, state: { status: 'COMPLETED', currentStepId: '3' }, activityProgress: { completed: 99, total: 99 } };
@@ -24,10 +24,10 @@ test('Replay is fresh, retains local answers and high-water, includes optional a
   assert.equal(flow.snapshot().feedback, null); assert.equal(flow.snapshot().answer, null);
   assert.deepEqual(flow.snapshot().data.activityProgress, { completed: 0, total: 2 }); assert.equal(flow.back(), false);
   await flow.continueContent(); assert.equal(flow.snapshot().progress.percentage, 25);
-  assert.equal(flow.canContinueActivity(), false); flow.continueVisited(); assert.equal(flow.snapshot().stepId, '1');
+  await flow.continueContent(); assert.equal(flow.snapshot().stepId, '1');
   flow.rememberAnswer({ text: 'draft' }); flow.back(); await flow.continueContent();
   assert.deepEqual(flow.snapshot().answer, { text: 'draft' }); assert.equal(flow.snapshot().feedback, null);
-  await flow.submit({ text: 'wrong' }); assert.equal(flow.snapshot().progress.percentage, 50); assert.equal(hasPendingReview(flow.snapshot().feedback), false);
+  await flow.submit({ text: 'wrong' }); assert.equal(flow.snapshot().progress.percentage, 50); assert.equal(reinforcementOnCompletion(flow.snapshot().feedback), false);
   flow.retryAnswer(); await flow.submit({ text: 'correct' }); assert.equal(feedbackTitle(flow.snapshot().feedback), '¡Ahora sí!');
   flow.continueFeedback(); assert.equal(flow.snapshot().stepId, '2'); assert.equal(flow.snapshot().answer, null); assert.equal(flow.snapshot().feedback, null);
   flow.back(); assert.deepEqual(flow.snapshot().answer, { text: 'correct' }); assert.equal(flow.snapshot().feedback.isCorrect, true);
@@ -74,7 +74,7 @@ test('Replay gates concurrent taps and publishes ready feedback atomically; erro
 test('Matching retry clears cached pairs and feedback even after back', async () => {
   const { flow } = replay(); await flow.load(); await flow.continueContent(); await flow.submit({ pairs: [{ wordId: 'book', imageId: 'cup' }] });
   flow.retryAnswer(); flow.back(); await flow.continueContent();
-  assert.deepEqual(flow.snapshot().answer, { pairs: [] }); assert.equal(flow.snapshot().feedback, null); assert.equal(flow.canContinueActivity(), false);
+  assert.deepEqual(flow.snapshot().answer, { pairs: [] }); assert.equal(flow.snapshot().feedback, null);
 });
 test('Replay API uses a dedicated encoded route and unchanged Answer', async () => {
   const original = global.fetch, url = process.env.EXPO_PUBLIC_API_URL; process.env.EXPO_PUBLIC_API_URL = 'http://local.test'; let received;
@@ -85,10 +85,13 @@ test('Replay API uses a dedicated encoded route and unchanged Answer', async () 
     assert.deepEqual(checked, { isCorrect: false, feedback: { message: 'Incorrect' } });
   } finally { global.fetch = original; if (url === undefined) delete process.env.EXPO_PUBLIC_API_URL; else process.env.EXPO_PUBLIC_API_URL = url; }
 });
-test('NOT_STARTED stays NORMAL; completion between read and start switches to fresh Replay', async () => {
-  const normal = replay({ read: async () => ({ ...historical, state: { status: 'NOT_STARTED' } }), start: async () => ({ status: 'IN_PROGRESS', currentStepId: '0', progress: { percentage: 0 } }) }).flow;
-  await normal.load(); assert.equal(normal.snapshot().mode, 'NORMAL');
-  const raced = replay({ read: async () => ({ ...historical, state: { status: 'IN_PROGRESS' } }), start: async () => ({ status: 'COMPLETED', currentStepId: null, progress: { percentage: 100 } }) }).flow;
+test('incomplete starts NORMAL_RUN; completion racing with start switches to fresh Replay', async () => {
+  const normal = replay({ read: async () => ({ ...historical, state: { status: 'NOT_STARTED' } }), start: async () => ({ runId: 'r', status: 'ACTIVE', currentStepId: '0', progress: { percentage: 0 } }) }).flow;
+  await normal.load(); assert.equal(normal.snapshot().mode, 'NORMAL_RUN');
+  let reads = 0;
+  const { ApiError } = require('../src/services/api/client.ts');
+  const raced = replay({ read: async () => ++reads === 1 ? { ...historical, state: { status: 'NOT_STARTED' } } : historical,
+    start: async () => { throw new ApiError(409, 'LESSON_ALREADY_COMPLETED', 'Completed'); } }).flow;
   await raced.load(); assert.equal(raced.snapshot().mode, 'REPLAY'); assert.equal(raced.snapshot().progress.percentage, 0);
 });
 test('Roadmap targets current lesson 5 after replay of completed lesson 3', () => {
@@ -99,11 +102,12 @@ test('Roadmap targets current lesson 5 after replay of completed lesson 3', () =
 
 // Exercise the component output with native primitives/hook initialization stubbed.
 // This verifies conditional controls/copy, not Android layout or touch delivery.
-function component(relative) {
+function component(relative, overrides = {}) {
   const filename = require('node:path').resolve(__dirname, relative);
   const localRequire = require('node:module').createRequire(filename);
   const output = { exports: {} };
   const load = name => {
+    if (name in overrides) return overrides[name];
     if (name === 'react/jsx-runtime') return require(name);
     if (name === 'react') return { useState: initial => [initial, () => {}], useReducer: (_, initial) => [initial, () => {}] };
     if (name === 'react-native') return { View: 'View', Text: 'Text', ScrollView: 'ScrollView', Pressable: 'Pressable', TextInput: 'TextInput',
@@ -115,9 +119,11 @@ function component(relative) {
     if (name.endsWith('/lessonStyles')) return { lessonStyles: {} };
     if (name.endsWith('/LearningIcon')) return { LearningIcon: 'LearningIcon' };
     if (name.endsWith('/MatchingPairs')) return { MatchingPairs: 'MatchingPairs' };
+    if (name.endsWith('/ActivityStep')) return { ActivityStep: 'ActivityStep' };
     if (name.endsWith('/ContentBlocks')) return { LessonImage: 'LessonImage' };
     if (name.endsWith('/RichContent')) return { AudioButton: 'AudioButton', DialogueRow: 'DialogueRow' };
     if (name.endsWith('/accessInfo')) return { showAccessInfo() {} };
+    if (name.endsWith('/ContextualHeader')) return { ContextualHeader: 'ContextualHeader' };
     return localRequire(name);
   };
   const code = ts.transpileModule(fs.readFileSync(filename, 'utf8'), { compilerOptions: {
@@ -161,5 +167,32 @@ test('Replay Activity starts neutral without visited action; feedback never prom
     assert.doesNotMatch(rendered.filter(n => typeof n === 'string').join(' '), /Guardamos|Conservamos|reforzarlo|Responder de nuevo/);
     assert.equal(rendered.includes('Intentar de nuevo'), !isCorrect);
   }
-  assert.ok(nodes(ActivityStep({ ...props, onSkip() {} })).includes('Responder de nuevo'), 'Resume still offers the legitimate previous-activity action');
+  assert.ok(!nodes(ActivityStep(props)).includes('Responder de nuevo'), 'No historical visited action remains');
+  const normal = nodes(ActivityStep({ ...props, feedback: { runId: 'r', attempt: { isCorrect: false, attemptNumber: 1 }, reinforcement: { onCompletion: true }, feedback: {} } }));
+  assert.ok(normal.includes('Al terminar la lección guardaremos este ejercicio para reforzarlo.'));
+  assert.ok(!normal.includes('Guardamos este ejercicio para reforzarlo más adelante.'));
+});
+
+test('LessonScreen wires chevron and hardware Back to the same cancellable exit modal', async () => {
+  let hardwareBack, modal, abandoned = 0;
+  const { flow } = replay({ read: async () => ({ ...historical, lesson: { ...lesson, topic: { title: 'Topic' }, position: { lesson: 3, totalLessons: 8 } }, state: { status: 'NOT_STARTED' } }),
+    start: async () => ({ runId: 'r', currentStepId: '1', progress: { percentage: 25 } }), abandon: async () => { abandoned++; } });
+  await flow.load();
+  const overrides = {
+    '../flow': { LessonFlow: function () { return flow; } },
+    react: { useCallback: fn => fn, useMemo: fn => fn(), useRef: () => ({ current: null }), useSyncExternalStore: (_, snapshot) => snapshot(),
+      useEffect: (fn, deps) => { if (deps.length === 2 && deps[1] === flow) fn(); } },
+    'react-native': { StyleSheet: { create: s => s }, Platform: { OS: 'android' }, Alert: { alert: (...args) => { modal = args; } },
+      BackHandler: { addEventListener: (_, fn) => { hardwareBack = fn; return { remove() {} }; } } },
+    '@react-navigation/native': { useFocusEffect: fn => fn(), usePreventRemove() {} },
+  };
+  const { LessonScreen } = component('../src/features/lessons/screens/LessonScreen.tsx', overrides);
+  const props = { route: { params: { lessonId: 'l3', courseId: 'c' } }, navigation: { popTo() {}, replace() {} } };
+  const before = flow.snapshot();
+  nodes(LessonScreen(props)).find(n => n.type === 'ContextualHeader').props.onBack();
+  LessonScreen(props); assert.equal(modal[0], '¿Salir de la lección?');
+  assert.deepEqual(modal[2].map(b => b.text), ['Seguir aprendiendo', 'Salir']);
+  modal[2][0].onPress(); assert.deepEqual(flow.snapshot(), before);
+  assert.equal(hardwareBack(), true); LessonScreen(props); modal[2][1].onPress();
+  assert.equal(abandoned, 1); assert.equal(flow.snapshot().exited, true);
 });

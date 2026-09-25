@@ -216,20 +216,19 @@ Notes:
 
 ## lesson_progress
 
-Tracks overall progress/resume state for a lesson.
+Tracks consolidated completion for a lesson.
 
 - `id uuid primary key`
 - `user_id uuid not null references users(id) on delete cascade`
 - `lesson_id uuid not null references lessons(id) on delete restrict`
 - `status text not null`
-- `current_block_id uuid null references lesson_blocks(id) on delete restrict`
+- `completed_run_id uuid null unique references lesson_runs(id) on delete restrict`
 - `started_at timestamptz not null default now()`
 - `completed_at timestamptz null`
 - `updated_at timestamptz not null default now()`
 
 Statuses:
 
-- `IN_PROGRESS`
 - `COMPLETED`
 
 Constraints / indexes:
@@ -241,13 +240,13 @@ Constraints / indexes:
 Notes:
 
 - No row means `NOT_STARTED`.
-- `current_block_id` supports resume, but is not sufficient alone to prove lesson completion.
+- Only successful run completion writes this record.
 
 ---
 
 ## lesson_block_progress
 
-Tracks which required blocks a learner has traversed/completed. This table is necessary to avoid inferring completion only from the current block pointer.
+Tracks consolidated required and optional blocks from completed runs. This table is necessary to avoid inferring completion only from the current block pointer.
 
 - `id uuid primary key`
 - `user_id uuid not null references users(id) on delete cascade`
@@ -282,6 +281,7 @@ Stores attempts made in normal lesson/review contexts.
 - `user_id uuid not null references users(id) on delete cascade`
 - `activity_id uuid not null references activities(id) on delete restrict`
 - `lesson_id uuid null references lessons(id) on delete restrict`
+- `run_id uuid null references lesson_runs(id) on delete restrict`
 - `review_item_id uuid null`
 - `context text not null`
 - `answer_data jsonb not null`
@@ -808,17 +808,15 @@ Likewise, Summary activity-completion counts and Result course metadata should b
 Only introduce new tables/columns later if real operational requirements justify them.
 
 
-## Planned LessonRun schema evolution
+## LessonRun schema and migration
 
-The accepted session model in `docs/lesson-session-semantics-v1.md` requires an explicit migration before implementation is considered complete.
+`20260925000000_lesson_runs` creates:
 
-Expected relational direction:
+- `lesson_runs`: UUID PK; user/lesson FKs; text request_key/status; nullable block FK; timestamptz started_at, updated_at, completed_at, abandoned_at; nullable integer correct_answers/total_activities.
+- Unique (user_id, lesson_id, request_key) deduplicates one entry request. A PostgreSQL partial unique index on (user_id, lesson_id) WHERE status = 'ACTIVE' enforces one live run. User-row locking serializes mutations.
+- Lifecycle CHECK enforces ACTIVE with no outcome, COMPLETED with timestamp and score/no pointer, ABANDONED with abandoned timestamp/no score/no pointer. Score CHECK requires 0 <= correct_answers <= total_activities.
+- `lesson_run_block_progress`: composite PK (run_id, lesson_block_id), completed_at; run FK cascades, block FK restricts.
+- `activity_attempts.run_id`: nullable FK with delete restrict; unique (run_id, activity_id, attempt_number); non-null run requires LESSON context and lesson_id. New normal submissions always supply run_id; other contexts remain nullable.
+- `lesson_progress.completed_run_id`: nullable unique FK with delete restrict. Status CHECK allows only COMPLETED. The old current_block_id is removed.
 
-- add `lesson_runs` with user, lesson, lifecycle status, current run pointer and lifecycle timestamps;
-- associate normal lesson `activity_attempts` with the originating run;
-- persist run-specific block traversal separately when required for required/optional-step correctness;
-- keep durable `lesson_progress` / `lesson_block_progress` as consolidated learner state rather than transient run state.
-
-An ABANDONED run must not contribute to durable score, Review, progression or rewards. A COMPLETED run is consolidated atomically and idempotently.
-
-The exact constraints/indexes and migration/backfill strategy are implementation details to finalize in the Lessons Session Semantics v1 coding iteration. Replay v1 remains read-only and does not require a run row.
+Backfill is transactional: one legacy run per user/lesson found in progress, LESSON attempts or block traversal. Completed progress becomes a COMPLETED run with a first-attempt score snapshot; unfinished history becomes ABANDONED. Attempts are attached and renumbered per run/activity in original attempt/created/id order. Traversal is copied into run rows. Only unfinished durable progress/block rows are removed; completed records remain linked. Legacy Review is preserved because its provenance cannot be reconstructed reliably; it is not retroactively decremented. New ACTIVE/ABANDONED runs never produce Review. No database reset is used by the migration.

@@ -8,13 +8,15 @@ export function lessonError(error: unknown) {
       LESSON_PREREQUISITE_REQUIRED: 'Completa primero las lecciones anteriores de la ruta.',
       COURSE_NOT_STARTED: 'Comienza el curso desde su detalle antes de abrir esta lección.',
       LESSON_NOT_FOUND: 'Esta lección ya no está disponible.', LESSON_HAS_NO_CONTENT: 'Esta lección todavía no tiene contenido disponible.',
-      STEP_NOT_AVAILABLE: 'Hay un paso anterior pendiente. Vuelve a la ruta y reanuda la lección.',
+      STEP_NOT_AVAILABLE: 'Hay un paso anterior pendiente. Vuelve a la ruta y inicia la lección de nuevo.',
       LESSON_REQUIREMENTS_INCOMPLETE: 'Quedan pasos pendientes. Vuelve a la ruta para continuar.',
+      LESSON_RUN_NOT_ACTIVE: 'Esta sesión terminó. Vuelve a la ruta para empezar de nuevo.',
+      LESSON_RUN_NOT_FOUND: 'Esta sesión no está disponible. Vuelve a la ruta.',
       INVALID_ANSWER: 'Revisa tu respuesta antes de enviarla.',
     };
     return messages[error.code] ?? 'No pudimos completar esta acción. Inténtalo nuevamente.';
   }
-  return 'No pudimos confirmar la respuesta del servidor. Comprueba tu conexión. Si enviaste una respuesta, puede haberse guardado; vuelve a la ruta para reanudar.';
+  return 'No pudimos confirmar la respuesta del servidor. Comprueba tu conexión. Si enviaste una respuesta, puede haberse guardado; vuelve a la ruta para empezar de nuevo.';
 }
 export function pairSelection(pairs: Pair[], wordId: string, imageId: string): Pair[] {
   return [...pairs.filter(p => p.wordId !== wordId && p.imageId !== imageId), { wordId, imageId }];

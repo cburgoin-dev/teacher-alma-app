@@ -1,3 +1,5 @@
+> Referencia vigente: sección «Lessons Session Semantics v1» al final. Las secciones V2–V5 documentan iteraciones visuales históricas; sus antiguos recorridos Resume ya no aplican.
+
 # Mobile Lessons v2 — UX y prueba Android
 
 V2 conserva el cliente/API y flujo local de V1. No cambia scoring, Review, resume, completion ni acceso. No añade dependencias. Las capturas Android suministradas son el punto de partida V1; los mockups versionados son dirección visual.
@@ -53,7 +55,7 @@ Usar la interfaz LAN compartida con el teléfono; comprobar `$lan` si hay VPN. B
 12. Summary → Finalizar. Result de lección 4: **0/2 correctas al primer intento**, **2 ejercicios para reforzar**, curso **4/8**. Haber acertado en retry no sustituye las primeras respuestas.
 13. Próxima: «Mi familia», Contenido Premium / Requiere acceso, Obtener acceso. Pulsarlo solo muestra información; no abre contenido ni compra. Volver a la ruta debe mostrar la quinta dorada cerca de la posición inicial y las posteriores grises. Salir al catálogo y reabrir A1 también debe llevar cerca de esa quinta lección.
 14. Para PERFECT, resetear con --reset --lessons y acertar desde el principio: Nice to meet you!, Hello; después am; Book → libro y Cup → taza. Cada Result muestra **2/2**, sin Review pendiente, misma progresión real.
-15. Resume: cerrar/reabrir tras enviar una actividad; entrar a la lección. Debe reanudar el siguiente required del backend, sin restart. GET no trae respuestas históricas: volver a actividades anteriores permite Continuar sin reenviar o Responder de nuevo explícitamente. Una lección completada abre ahora Replay fresco: ver la sección Replay Semantics v1 al final. Sus checks no persisten attempts ni Review.
+15. Entrada normal y Replay: usar el recorrido Session Semantics v1 al final.
 16. Comprobar pantalla estrecha, fuente ampliada, teclado, safe area, scroll, doble toque y red desconectada. No hay reintentos automáticos. Si se perdió la respuesta de un attempt, salir/reanudar antes de reenviar. El estado de curso completo usa la última lección completada: no requiere ni introduce un escenario de acceso falso.
 
 Para restaurar el dataset Courses habitual **A1 3/8 + A2 sin iniciar**:
@@ -172,7 +174,7 @@ Esta sección sustituye las observaciones visuales V2/V3 anteriores. V4 usa el C
 
 ## Contador de Summary y Continue
 
-GET es la fuente del contador de actividades. Tras un attempt exitoso se invalida el contador anterior y se solicita una lectura independiente, sin bloquear feedback ni Continue. Se publica solo activityProgress de esa lectura: nunca su pointer/status. Mientras llega, o si falla, se omite el contador. No se inventa a partir de score, índices o progreso requerido. Una versión de lectura descarta respuestas anteriores tras otro attempt/reload; dispose cancela/ignora pendientes. Resume usa el contador de su GET inicial.
+El contador normal usa activityProgress de las respuestas del run. GET solo expone histórico durable; Replay calcula su contador local. El feedback y Continue no esperan un GET secundario.
 
 La primera publicación de feedback sigue ocurriendo atómicamente con busy=false. La lectura de metadata no cambia attempts, first-attempt score, Review, required progression ni completion.
 
@@ -327,85 +329,56 @@ Abrir desde el navegador del teléfono `http://<IP-PC>:3001/greeting.png` y veri
 - Android export final: PASS, 1014 módulos y bundle Hermes de 2,2 MB en `mobile/dist/lessons-v5-check` (ignorado por Git).
 - `git diff --check`: PASS; solo advertencias de conversión LF/CRLF propias de Windows.
 
-## Lessons Replay Semantics v1
+## Lessons Session Semantics v1 — implementación actual
 
-Esta sección reemplaza el antiguo recorrido histórico de lecciones COMPLETED. V5 visual se conserva; no es V6.
+NORMAL_RUN reemplaza NORMAL/RESUME. GET incompleto inicia un run nuevo a 0%; COMPLETED abre Replay local sin crear run. La barra y el contador de actividades normales proceden de las respuestas del run. Los endpoints normales requieren runId. El requestKey se conserva solo para reintentar el start de la misma entrada, no entre montajes.
 
-- NORMAL: GET `NOT_STARTED`, start explícito y progreso del backend.
-- RESUME: GET `IN_PROGRESS`, start devuelve el frontier del backend. Conserva attempts y progreso significativo; GET no reconstruye respuestas históricas. Por eso sigue siendo legítimo ofrecer «Responder de nuevo» al volver a una actividad previa en este modo.
-- REPLAY: GET `COMPLETED`, sesión nueva en memoria desde primer step/0%. No start ni escritura de traversal. Ignora el contador y pointer históricos; visita todos los steps, también opcionales. No permite saltar actividades mediante estado visited.
-- Cada check usa exclusivamente `POST /lessons/:lessonId/replay/steps/:stepId/check`, con tipo `ReplayCheckResponse`. El backend impone acceso, estado COMPLETED y transacción PostgreSQL READ ONLY.
-- El porcentaje cuenta steps completados en esta sesión y nunca disminuye con back. Summary cuenta ACTIVITY_STEP completados localmente. El primer check exitosamente recibido de cada actividad fija su resultado; retry no sustituye esa precisión.
-- Back conserva borradores/respuestas/feedback locales mientras la sesión esté montada. Matching retry limpia pairs y palabra seleccionada, también la caché local. Salir desde el primer step vuelve a Roadmap; reabrir crea otra sesión a 0%, sin AsyncStorage.
-- Replay no crea/incrementa/resuelve Review ni cambia score original, completion, progreso de curso, acceso o gamification. Su feedback no promete guardar errores.
-- Finalización local, sin `/complete`: «¡Repaso completado!», PRECISIÓN y primer intento de esta repetición. Sin Course Progress, Review histórico ni Siguiente lección. Una sola acción «Continuar mi ruta» usa el `popTo('Roadmap')` existente.
-- Roadmap no necesita cambios: focus reinicia el posicionamiento, recarga datos y `roadmapTarget()` elige `progression.isCurrent`. Repetir 3 con 1–4 completadas vuelve al frontier 5, incluso si requiere acceso Premium.
+Chevron, hardware Back y salida de navegación muestran «¿Salir de la lección?». «Seguir aprendiendo» conserva run, step, respuesta y feedback. «Salir» envía abandon y vuelve inmediatamente a la ruta, sin esperar una red caída. El siguiente start abandona cualquier ACTIVE stale. No hay AsyncStorage ni navegación al step anterior en NORMAL_RUN. Al llegar a completion, Back sale directamente y no abandona. Replay conserva su navegación local.
 
-### Preparación y aceptación Android: Replay
+Los attempts ACTIVE no crean Review ni progreso durable. El feedback dice que se guardará al terminar. Complete consolida score del primer intento de cada actividad en ese run, Review y progreso de forma atómica e idempotente. Los errores de un run abandonado no afectan el siguiente. Replay sigue usando replay/check read-only, precisión local y frontier real al volver.
 
-Con PostgreSQL local `teacher_alma_dev:5433`, `NODE_ENV=development` y el `DEV_AUTH_USER_ID` de demo existente, ejecutar desde backend:
+### Preparación y recorrido Android
+
+Reutilizar backend/Metro existentes. Si no están activos, usar los comandos de arranque al principio de este documento (mismo API LAN y Expo SDK).
+
+Desde backend:
 
 ```powershell
-Set-Location C:\software-development\projects\teacher-alma-app\backend
-node --import tsx scripts/seed-courses-demo.ts --reset --access-boundary
+node --import tsx scripts/seed-courses-demo.ts --reset --lessons
+node --import tsx scripts/seed-courses-demo.ts --check
 ```
 
-Es la preparación determinista existente: reemplaza solo el progreso del usuario demo en los cursos demo, dejando A1 1–4 COMPLETED y 5 current. No depende de attempts/traversal anteriores. No es un reset de Git. El guard rechaza usuarios con entitlements activos; usar el usuario de desarrollo sin grants previsto por el demo. No se revocan accesos. La quinta lección es Premium y continúa mostrando su bloqueo comercial legítimo.
+1. Confirmar A1 2/8, lección 3 actual, 4 incompleta y A2 no iniciado.
+2. Abrir lección 3: 0%, respuestas vacías.
+3. Avanzar y enviar al menos una actividad incorrecta; probar retry.
+4. Hardware Back: aparece el modal, no el step anterior.
+5. Seguir aprendiendo: mismo punto, selección y feedback.
+6. Chevron → Salir: vuelve a la ruta (también con red desconectada).
+7. Reabrir con red: 0%, respuestas limpias; el error anterior no afecta este run.
+8. Enviar la última actividad: 100% ya implica completion. Cerrar/reabrir aquí debe abrir Replay aunque no se haya visto Summary.
+9. Confirmar Result normal, precisión del primer intento de este run y ruta 3/8.
+10. En una ejecución continua, pasar del feedback a Summary y Ver resultado sin escritura adicional; reabrir 3 inicia Repaso a 0%.
+11. Volver a la ruta: frontier real en 4.
 
-Reiniciar el backend si no usa watch y recargar Expo para usar el endpoint/cliente nuevos. Reutilizar backend/Metro existentes; para iniciarlos, en terminales separadas:
-
-```powershell
-# Backend
-Set-Location C:\software-development\projects\teacher-alma-app\backend
-node --import tsx src/server.ts
-```
-
-```powershell
-# Metro: escoger la interfaz LAN compartida con Android (sin VPN).
-Set-Location C:\software-development\projects\teacher-alma-app\mobile
-$replayLan = Get-NetIPConfiguration | Where-Object { $_.IPv4DefaultGateway -and $_.NetAdapter.Status -eq 'Up' } | Select-Object -First 1
-$env:EXPO_PUBLIC_API_URL = 'http://' + $replayLan.IPv4Address.IPAddress + ':3000'
-node node_modules/expo/bin/cli start --host lan --port 8081 --clear
-```
-
-La imagen contextual reutiliza la configuración/servidor V5; no es requisito para comprobar Replay y su fallback continúa disponible. No se modifica .env ni infraestructura de assets.
-
-1. Abrir Courses → Inglés A1 → ruta: current 5 y 4/8 completadas.
-2. Abrir completed 3 «Nice to meet you!»: chip «Inglés A1 · Repaso», barra visible 0%, Content/Dialogue/Video desde el principio.
-3. Continuar: primera actividad sin selección, sin feedback y sin «Responder de nuevo», barra 25%.
-4. Elegir Goodbye! → Comprobar: feedback incorrecto, 50%, sin promesa de Review. Intentar de nuevo → Nice to meet you! → Comprobar: ¡Ahora sí!; precisión local conserva el primer error.
-5. Continuar: Fill Blank sin selección. Elegir Hello → Verificar → Continuar. Summary: 75%, **2 actividades completadas** de esta sesión.
-6. Volver atrás: barra no baja; respuestas y feedback se mantienen. Volver al Summary → Finalizar repaso.
-7. Result: ¡Repaso completado!, PRECISIÓN **50%**, 1 de 2 al primer intento de esta repetición; sin Review histórico, progreso de curso ni Siguiente lección.
-8. Continuar mi ruta: auto-posicionamiento hacia current 5, curso sigue 4/8. Reabrir 3: vuelve a 0%, sin respuestas. Acertar ambas desde el inicio produce **100%**.
-9. Repetir 4 para Matching: empieza con cero conexiones; fallar y tocar Intentar de nuevo limpia todas las conexiones y selección. Regresar tras back también conserva el estado neutral del retry.
-10. Probar red desconectada y taps rápidos: un check pendiente no habilita Continue, no duplica submissions; un fallo no completa actividad ni altera precisión. El feedback aparece listo para Continue al recibir la respuesta.
-
-### Segundo caso: Resume determinista
-
-```powershell
-Set-Location C:\software-development\projects\teacher-alma-app\backend
-node --import tsx scripts/seed-courses-demo.ts --reset --resume
-```
-
-Deja 1–2 COMPLETED y 3 IN_PROGRESS, después de Content/Example/Video. Recargar la app y abrir 3: reanuda Multiple Choice a **25%**, sin chip Repaso. Fallar, Continuar y salir usando back hasta la ruta; al reabrir reanuda Fill Blank a **50%**. La primera respuesta incorrecta sigue guardada y conserva Review. Volver a la actividad anterior permite Continuar o Responder de nuevo explícitamente. Terminar produce el Result normal y progreso persistido. Para volver a Replay/current 5, ejecutar otra vez la preparación `--reset --access-boundary`.
+Stale/crash reproducible: ejecutar `node --import tsx scripts/seed-courses-demo.ts --reset --stale-run`. Deja un ACTIVE con error y traversal, sin Review/progreso durable. Abrir 3 debe reemplazarlo y mostrar 0%. También se puede matar la app durante un run y reabrir. Restablecer finalmente `--reset --lessons` para dejar 2/8.
 
 ### Validación reproducible
 
-```powershell
-Set-Location C:\software-development\projects\teacher-alma-app\backend
-node node_modules/typescript/bin/tsc --noEmit
-node node_modules/typescript/bin/tsc -p scripts/tsconfig.json
-$env:RUN_LESSONS_DB_TESTS = '1'
-try { node --import tsx --test src/modules/lessons/*.test.ts } finally { Remove-Item Env:RUN_LESSONS_DB_TESTS }
-Set-Location ..\mobile
-node node_modules/typescript/bin/tsc --noEmit
-node --test tests/*.test.cjs
-node node_modules/expo/bin/cli export --platform android --output-dir dist/lessons-replay-check
-Set-Location ..
-git diff --check
-```
+Backend: Prisma validate/generate, migrate deploy, TypeScript; `RUN_LESSONS_DB_TESTS=1` con `node --import tsx --test src/modules/lessons/*.test.ts`; `node --import tsx scripts/check-lessons-demo.ts --run` (restaura 2/8 al terminar).
+Mobile: `node node_modules/typescript/bin/tsc --noEmit`; `node --test tests/*.test.cjs`; `node node_modules/expo/bin/cli export --platform android --output-dir dist/lessons-session-check`.
 
-Los tests de PostgreSQL usan usuarios/filas temporales y comparan filas completas antes/después (incluidos timestamps y contadores de Review), además de probar que una escritura accidental en `repository.read` falla. Los tests de UI inspeccionan controles/copy con primitivas nativas simuladas; no sustituyen la prueba táctil física Android. Replay es efímero y online; no incluye restauración de sesión, Review sessions, audio, cambios V6 ni nuevas recompensas.
+La exportación no sustituye la aceptación física de gestos/modal/red. Sin V6 visual ni cambio de provider/dependencias.
 
-Validación realizada: TypeScript mobile/backend/scripts PASS; Mobile **42/42**; backend Lessons **34/34**, incluyendo **18** casos HTTP/PostgreSQL; export Android PASS (**1014 módulos**, Hermes **2,2 MB**) en `mobile/dist/lessons-replay-check`. tsx y Expo necesitaron ejecución fuera del sandbox por errores de permisos del entorno, sin cambios de dependencias para ocultarlos. Se probó `--reset --resume` con servicio real (IN_PROGRESS, primer ejercicio, 25%) y después `--reset --access-boundary` (4/8, current 5, lección 3 COMPLETED). El demo quedó en este último estado. Un check incorrecto de Replay sobre esa lección devolvió feedback y mantuvo **0 attempts**, aunque su activityProgress histórico era 0/2. Pendiente prueba física Android; no se afirma aceptación táctil. Sin commit/push/merge.
+## Completion boundary: ACTIVE 0–99%, COMPLETED 100%
+
+A pedagogical requirement is a required block whose type is not SUMMARY; a required ACTIVITY also requires a valid submission in this run, regardless of correctness. Required-step counters exclude Summary and optional-only steps. ACTIVE percentage is capped at 99; only a successfully committed COMPLETED run returns 100.
+
+The mutation that satisfies the final requirement (content traversal or activity submission) also consolidates completion in that same transaction. Failure rolls back the final attempt/traversal and all durable effects. Responses include status and completion (the normal Result payload, or null while ACTIVE). A nonempty lesson with no required pedagogical blocks completes during start; empty lessons remain rejected.
+
+Summary is post-completion presentation, excluded from prerequisites and completion validation even if marked required in legacy content. Mobile shows the last feedback, then Summary and Result locally from the persisted completion payload. Neither requires a network call or further submission. Closing after 100% preserves COMPLETED and reopening enters Replay. Back after completion exits directly, without abandonment.
+
+An immediate retry offered on the final feedback is now post-completion: it uses the existing read-only replay check, leaves the run closed and cannot alter its first-attempt score or Review. Earlier retries within ACTIVE runs remain persisted and numbered normally. No new Practice/Review session is introduced.
+
+POST run complete remains an idempotent confirmation/result read for completed runs (and validates eligibility if ACTIVE); mobile does not rely on it to reach completion. Optional unanswered activities remain in the existing score denominator.
+
+Validación final (2026-09-25): Prisma validate/generate y migrate status PASS; migración aplicada a teacher_alma_dev; TypeScript backend/mobile/scripts PASS; Lessons PostgreSQL + unitarios + backfill aislado 30/30; mobile 37/37; export Android PASS (1014 módulos, Hermes 2,2 MB) en dist/lessons-session-check; seed/check y git diff --check PASS. Baseline final A1 2/8, lección 3 actual/incompleta, 4 incompleta, A2 sin iniciar, sin runs ACTIVE ni attempts/Review demo. Pendiente aceptación física Android; no se afirma validación táctil.

@@ -72,15 +72,15 @@ Current provisional direction:
 
 ## Lessons Replay Semantics v1
 
-- `NOT_STARTED` opens in NORMAL; `IN_PROGRESS` opens in RESUME at the backend frontier; `COMPLETED` opens in REPLAY.
-- Resume preserves persisted attempts and meaningful progress. Replay is a fresh, ephemeral full-lesson session. Future Review is a separate vertical for saved errors; Replay is neither Review nor activity-only Practice.
+- Incomplete lessons open a fresh NORMAL_RUN; COMPLETED opens REPLAY.
+- Normal run state is temporary until completion. Replay is a fresh, ephemeral full-lesson session. Future Review is a separate vertical for saved errors; Replay is neither Review nor activity-only Practice.
 - Replay starts at the first step and 0%, traverses every step including optional content, examples, video, activities and Summary, and ends at 100%. Going back never lowers the session's completed-step percentage.
 - Replay starts with no historical answers, feedback or activity count. Back navigation retains this session's answers/feedback while mounted; leaving and reopening starts fresh. No Replay storage/table is introduced.
 - Each activity's first successful check submission in this session fixes its local correctness for accuracy; an incorrect answer can continue, and retries do not replace the first result. A failed network check is not a submitted result.
 - Replay answer checks are read-only. They do not create attempts, create/increment/resolve Review, change original score, block/lesson/course completion, access, learning days, coins or streaks.
 - Replay Summary uses the session's completed activity count. Replay Result shows local first-attempt accuracy and “¡Repaso completado!”, without historical Review, rewards, course progress or a newly unlocked next lesson.
 - “Continuar mi ruta” returns to the existing current frontier, not the replayed lesson. Completed paid lessons still require current access.
-- Normal/Resume completion and first-attempt scoring remain unchanged. Their previous-activity “Responder de nuevo” action remains available where answers are not returned by GET; Replay never uses historical visited/skip state.
+- Normal runs are linear; header Back asks to abandon. Replay keeps its existing local previous-step behavior.
 
 ## Lesson model and completion
 
@@ -93,7 +93,7 @@ Current provisional direction:
 - Conceptual content blocks can include text, video, image, example, activity and summary.
 - Blocks have an order and may be required or optional.
 - Optional blocks do not prevent lesson completion.
-- The learner may revisit previous content within an active lesson.
+- Normal run navigation is linear. Replay may revisit previous content.
 - Required future content should not be skipped when sequential progression applies.
 
 ### Lesson sessions and abandonment
@@ -106,12 +106,12 @@ The accepted normal-lesson direction is defined in `docs/lesson-session-semantic
 - Confirmed exit abandons the current run. Re-entering starts a new run at the first step and 0%.
 - If an ACTIVE run is left behind because the app/process dies, the next explicit start replaces/abandons it and starts fresh. Correctness must not depend on a client cleanup callback.
 - Attempts and traversal may be stored against the run for correctness/analytics, but an ABANDONED run does not consolidate score, Review, durable lesson/block progress, course progression or rewards.
-- Only a COMPLETED run consolidates durable learning state.
+- Only a COMPLETED run consolidates durable learning state. Every incorrect submission in that run increments Review incorrectAttempts exactly once; correct retries do not resolve it. ACTIVE/ABANDONED attempts contribute nothing.
 - Completed lessons continue to use Replay v1; Replay is separate from normal LessonRun, future Review and future Practice.
 
 ### Completion rule
 
-- A lesson is completed when all required content/steps have been traversed and all required activities have been submitted at least once.
+- A lesson completes atomically with its final required pedagogical block/submission; Summary and Result do not gate completion.
 - **Correctness is not the same as completion.** A learner can complete a required activity after an incorrect submitted attempt.
 - Incorrect answers do not by themselves block lesson completion or progression unless the client later defines an explicit assessment/passing rule.
 - Incorrect attempts should be preserved for Review.
@@ -233,7 +233,7 @@ Shared rules:
 - Example distinction:
   - Score: 8/10 correct answers.
   - Gamification: coins, streak and achievements.
-- For normal Lesson v1 scoring, each relevant activity contributes **one score result based on the learner's first submitted attempt for that activity in the lesson**.
+- For normal Lesson v1 scoring, each relevant activity contributes **one score result based on the learner's first submitted attempt for that activity within the completed run**.
 - Retries are learning support: later attempts are stored and may produce immediate feedback, but they do not rewrite the lesson's first-attempt score.
 - An incorrect first attempt may therefore remain represented in Review even if the learner succeeds on an immediate retry. Review resolution belongs to the Review flow rather than silently erasing the original learning signal inside the lesson.
 - This scoring rule does not affect completion: an incorrect submitted attempt can still satisfy the activity-completion requirement.
@@ -445,3 +445,15 @@ Still to be finalized before implementation:
 - how subscription products and permanent course purchases are represented and restored across platforms.
 
 Do not hard-code mockup prices or illustrative paid benefits as contractual product requirements until they are validated with Alma.
+
+## Completion boundary: ACTIVE 0–99%, COMPLETED 100%
+
+A pedagogical requirement is a required block whose type is not SUMMARY; a required ACTIVITY also requires a valid submission in this run, regardless of correctness. Required-step counters exclude Summary and optional-only steps. ACTIVE percentage is capped at 99; only a successfully committed COMPLETED run returns 100.
+
+The mutation that satisfies the final requirement (content traversal or activity submission) also consolidates completion in that same transaction. Failure rolls back the final attempt/traversal and all durable effects. Responses include status and completion (the normal Result payload, or null while ACTIVE). A nonempty lesson with no required pedagogical blocks completes during start; empty lessons remain rejected.
+
+Summary is post-completion presentation, excluded from prerequisites and completion validation even if marked required in legacy content. Mobile shows the last feedback, then Summary and Result locally from the persisted completion payload. Neither requires a network call or further submission. Closing after 100% preserves COMPLETED and reopening enters Replay. Back after completion exits directly, without abandonment.
+
+An immediate retry offered on the final feedback is now post-completion: it uses the existing read-only replay check, leaves the run closed and cannot alter its first-attempt score or Review. Earlier retries within ACTIVE runs remain persisted and numbered normally. No new Practice/Review session is introduced.
+
+POST run complete remains an idempotent confirmation/result read for completed runs (and validates eligibility if ACTIVE); mobile does not rely on it to reach completion. Optional unanswered activities remain in the existing score denominator.

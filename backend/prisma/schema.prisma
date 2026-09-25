@@ -1,5 +1,5 @@
 // Source: docs/database-schema.md. Text statuses intentionally avoid native enums.
-// CHECK constraints and partial unique indexes live in the initial SQL migration.
+// CHECK constraints and partial unique indexes live in the SQL migrations.
 
 generator client {
   provider     = "prisma-client"
@@ -20,6 +20,7 @@ model User {
   createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  lessonRuns          LessonRun[]
   courseProgress      CourseProgress[]      @relation("CourseProgress_userId")
   lessonProgress      LessonProgress[]      @relation("LessonProgress_userId")
   lessonBlockProgress LessonBlockProgress[] @relation("LessonBlockProgress_userId")
@@ -87,6 +88,7 @@ model Lesson {
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  lessonRuns       LessonRun[]
   topic            Topic             @relation("Lesson_topicId", fields: [topicId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   lessonBlocks     LessonBlock[]     @relation("LessonBlock_lessonId")
   lessonProgress   LessonProgress[]  @relation("LessonProgress_lessonId")
@@ -130,7 +132,8 @@ model LessonBlock {
 
   lesson              Lesson                @relation("LessonBlock_lessonId", fields: [lessonId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   activity            Activity?             @relation("LessonBlock_activityId", fields: [activityId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  lessonProgress      LessonProgress[]      @relation("LessonProgress_currentBlockId")
+  currentRuns         LessonRun[] @relation("LessonRun_currentBlockId")
+  runBlockProgress    LessonRunBlockProgress[]
   lessonBlockProgress LessonBlockProgress[] @relation("LessonBlockProgress_lessonBlockId")
 
   @@unique([lessonId, position])
@@ -162,19 +165,18 @@ model LessonProgress {
   userId         String    @map("user_id") @db.Uuid
   lessonId       String    @map("lesson_id") @db.Uuid
   status         String    @db.Text
-  currentBlockId String?   @map("current_block_id") @db.Uuid
+  completedRunId String?   @unique @map("completed_run_id") @db.Uuid
   startedAt      DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
   completedAt    DateTime? @map("completed_at") @db.Timestamptz(6)
   updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   user         User         @relation("LessonProgress_userId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   lesson       Lesson       @relation("LessonProgress_lessonId", fields: [lessonId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  currentBlock LessonBlock? @relation("LessonProgress_currentBlockId", fields: [currentBlockId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  completedRun LessonRun? @relation(fields: [completedRunId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([userId, lessonId])
   @@index([userId, status])
   @@index([lessonId])
-  @@index([currentBlockId])
   @@map("lesson_progress")
 }
 
@@ -195,11 +197,49 @@ model LessonBlockProgress {
   @@map("lesson_block_progress")
 }
 
+model LessonRun {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  lessonId String @map("lesson_id") @db.Uuid
+  requestKey String @map("request_key") @db.Text
+  status String @default("ACTIVE") @db.Text
+  currentBlockId String? @map("current_block_id") @db.Uuid
+  startedAt DateTime @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+  abandonedAt DateTime? @map("abandoned_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  correctAnswers Int? @map("correct_answers")
+  totalActivities Int? @map("total_activities")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Restrict)
+  currentBlock LessonBlock? @relation("LessonRun_currentBlockId", fields: [currentBlockId], references: [id], onDelete: Restrict)
+  blocks LessonRunBlockProgress[]
+  attempts ActivityAttempt[]
+  durableProgress LessonProgress?
+  @@unique([userId, lessonId, requestKey])
+  @@index([lessonId])
+  @@index([currentBlockId])
+  @@map("lesson_runs")
+}
+
+model LessonRunBlockProgress {
+  runId String @map("run_id") @db.Uuid
+  lessonBlockId String @map("lesson_block_id") @db.Uuid
+  completedAt DateTime @default(now()) @map("completed_at") @db.Timestamptz(6)
+  run LessonRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  lessonBlock LessonBlock @relation(fields: [lessonBlockId], references: [id], onDelete: Restrict)
+  @@id([runId, lessonBlockId])
+  @@index([lessonBlockId])
+  @@map("lesson_run_block_progress")
+}
+
 model ActivityAttempt {
   id            String   @id @default(uuid()) @db.Uuid
   userId        String   @map("user_id") @db.Uuid
   activityId    String   @map("activity_id") @db.Uuid
   lessonId      String?  @map("lesson_id") @db.Uuid
+  runId         String? @map("run_id") @db.Uuid
+  run           LessonRun? @relation(fields: [runId], references: [id], onDelete: Restrict)
   reviewItemId  String?  @map("review_item_id") @db.Uuid
   context       String   @db.Text
   answerData    Json     @map("answer_data") @db.JsonB
@@ -212,6 +252,7 @@ model ActivityAttempt {
   lesson     Lesson?     @relation("ActivityAttempt_lessonId", fields: [lessonId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   reviewItem ReviewItem? @relation("ActivityAttempt_reviewItemId", fields: [reviewItemId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
+  @@unique([runId, activityId, attemptNumber])
   @@index([userId, activityId, createdAt(sort: Desc)])
   @@index([lessonId])
   @@index([activityId])

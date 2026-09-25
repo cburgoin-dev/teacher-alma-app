@@ -1,6 +1,6 @@
 # Lessons Session Semantics v1
 
-Status: accepted product/domain direction, pending implementation.
+Status: implemented with automatic pedagogical completion — pending physical Android acceptance.
 
 This document defines the lifecycle of a normal lesson session after the Replay v1 split. It supersedes the earlier MVP assumption that an unfinished lesson should resume from persisted traversal.
 
@@ -22,8 +22,9 @@ The desired UX is therefore:
 
 ```text
 not completed lesson
-  -> NORMAL RUN (0% -> 100%)
-      -> complete -> consolidate durable learning state
+  -> NORMAL RUN (0–99%)
+      -> last pedagogical requirement + atomic consolidation -> 100%
+      -> Summary / Result (presentation only)
       -> abandon -> discard pedagogical effects
 
 completed lesson
@@ -135,7 +136,7 @@ At completion, atomically:
 - derive run score from first submissions in that run;
 - mark durable `LessonProgress` completed;
 - materialize/merge durable `LessonBlockProgress` as needed;
-- create/update Review items from incorrect score-bearing learning signals in the completed run;
+- create/update Review items from all incorrect submissions in the completed run;
 - update course progress;
 - later, when Gamification is implemented, award completion effects exactly once.
 
@@ -184,7 +185,7 @@ After completing a normal run:
 
 ## API direction
 
-The implementation should evolve the existing normal lesson endpoints around an explicit run id.
+The implemented REST boundary uses explicit run ids; see docs/api-contracts.md.
 
 Exact route shape may be adapted to the existing REST style, but the contract should make the run boundary explicit.
 
@@ -228,3 +229,23 @@ This iteration does not add:
 - analytics dashboards.
 
 The model should merely avoid blocking those future features.
+
+## Implementation decisions
+
+Start requires a requestKey unique to the mounted entry. Retrying that same request returns its ACTIVE run; a new entry uses a new key and abandons any prior ACTIVE. A user lock plus partial unique index protects concurrency.
+
+Confirmed exit sends abandon and navigates immediately, even if the request is offline or hangs. No completion is claimed; the next start performs server-side stale cleanup. No timeout or persistent client resume state is involved.
+
+Review increments by every wrong submission within the completed run, once. Migration/backfill details and preserved legacy Review provenance are documented in database-schema.md.
+
+## Completion boundary: ACTIVE 0–99%, COMPLETED 100%
+
+A pedagogical requirement is a required block whose type is not SUMMARY; a required ACTIVITY also requires a valid submission in this run, regardless of correctness. Required-step counters exclude Summary and optional-only steps. ACTIVE percentage is capped at 99; only a successfully committed COMPLETED run returns 100.
+
+The mutation that satisfies the final requirement (content traversal or activity submission) also consolidates completion in that same transaction. Failure rolls back the final attempt/traversal and all durable effects. Responses include status and completion (the normal Result payload, or null while ACTIVE). A nonempty lesson with no required pedagogical blocks completes during start; empty lessons remain rejected.
+
+Summary is post-completion presentation, excluded from prerequisites and completion validation even if marked required in legacy content. Mobile shows the last feedback, then Summary and Result locally from the persisted completion payload. Neither requires a network call or further submission. Closing after 100% preserves COMPLETED and reopening enters Replay. Back after completion exits directly, without abandonment.
+
+An immediate retry offered on the final feedback is now post-completion: it uses the existing read-only replay check, leaves the run closed and cannot alter its first-attempt score or Review. Earlier retries within ACTIVE runs remain persisted and numbered normally. No new Practice/Review session is introduced.
+
+POST run complete remains an idempotent confirmation/result read for completed runs (and validates eligibility if ACTIVE); mobile does not rely on it to reach completion. Optional unanswered activities remain in the existing score denominator.
