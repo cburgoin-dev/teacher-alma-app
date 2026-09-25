@@ -26,7 +26,7 @@ try {
   $tail = [System.Drawing.Point[]]@([System.Drawing.Point]::new(348,120), [System.Drawing.Point]::new(335,153), [System.Drawing.Point]::new(387,130))
   $draw.FillPolygon($white, $tail)
   $font = [System.Drawing.Font]::new('Arial', 34, [System.Drawing.FontStyle]::Bold)
-  $draw.DrawString('Hi!', $font, $ink, 366, 52)
+  $draw.DrawString('Hello!', $font, $ink, 328, 52)
   $draw.FillRectangle($white, 160, 270, 116, 48)
   $nameFont = [System.Drawing.Font]::new('Arial', 20, [System.Drawing.FontStyle]::Bold)
   $draw.DrawString('Sofía', $nameFont, $ink, 178, 278)

@@ -1,4 +1,4 @@
-> Referencia vigente: «Lessons Mobile V6» al final para arranque y aceptación; «Lessons Session Semantics v1» para reglas. V2–V5 son historial y sus recorridos/servidor de media separado no aplican.
+> Referencia vigente: «Lessons Mobile V7» al final para arranque y aceptación; «Lessons Session Semantics v1» para reglas. V2–V6 son historial. V7 reproduce audio dentro de la app.
 
 # Mobile Lessons v2 — UX y prueba Android
 
@@ -453,3 +453,55 @@ Abrir Expo Go compatible SDK 57. Si ya existe Metro, recargar la app. Imagen: ht
 - ADB: cero dispositivos. Pendientes aceptación física, reproducción externa real en Android, fuente ampliada, teclado y TalkBack. Pruebas de componentes verifican props/interacciones con primitives stubbed; no prueban layout/touch nativo.
 
 Deuda explícita: reproductor embebido, grabaciones/imagen/video definitivos y aceptación visual V6; DRAG, Review/Practice, settings, rewards y pagos continúan fuera de alcance. La foto del mockup no se reemplaza por una fotografía inventada. No se tocó dominio backend ni se ejecutó commit/push/merge/reset.
+
+## Lessons Mobile V7 — Polish, Audio Playback & Demo Quality
+
+V6 fue aceptada físicamente y versionada. V7 parte de working tree limpio en feature/lessons-v1 y conserva dominio, contratos, LessonRun, completion, score, Review, access/progression y Matching. No migrations, gamification, video hosting final ni git commit/push/merge/reset.
+
+### Cambios y archivos
+
+- AudioButton.tsx + lessonAudio.ts: expo-audio ~57.0.5, única dependencia directa nueva (Expo SDK 57). Un propietario activo, loading/playing/replay/error; tocar el activo lo detiene, tocar otro reemplaza el anterior. Cancela starts pendientes, ignora eventos obsoletos, libera listener/player al terminar o salir/cambiar source/step/lesson. AppState/focus detienen el audio; timeout 15 s permite reintentar carga fallida. Sin Linking, browser, micrófono, lockscreen ni background playback. app.json deshabilita explícitamente permisos de grabación y servicios de background del plugin. Mantiene audioUrl HTTP(S) como abstracción.
+- RichContent: cada turno es una card completa con badge circular integrado, inglés dominante, traducción secundaria y audio azul filled. MC usa ancho disponible y badge mayor; no se alteran opciones/feedback de MC.
+- ActivityStep + fillPresentation: una raya explícita se sustituye visualmente por la opción elegida; Fill TEXT tiene un único input dentro de la oración. No se infieren respuestas; solo se reconoce un único marcador de underscores. Prompts legacy sin marcador único conservan fallback. Selección azul, feedback verde/rojo, retry vuelve a la raya y deshabilita CTA. flow.ts solo limpia draft de respuesta en retry para evitar que reaparezca al revisitar en Replay; no cambia semántica de sesión.
+- ContentBlocks: section heading 20/700 > key phrase 17/600 > traducción 14/20. Result agrupa chip de curso + «3 de 8» con flexWrap para fallback vertical, manteniendo label accesible completo.
+- MatchingPairs/matchingDraft no se modificaron. Se mantienen tests de TAP bidireccional, replacement, connectors y retry neutral.
+- Fixtures: lección 3 conserva Content/VIDEO, Dialogue A/B y ambas key phrases ahora con audio; traducciones «¡Mucho gusto!»/«¡El gusto es mío!». Tercera actividad: Fill TEXT «Nice to meet you _____!» → too.
+- Lección 4: concepto I am/It is con KEY, ejemplos completos de estudiante/libro/taza/pelota, takeaways y dos key phrases con audio («I am a student.»/«It is a book.»). Tercera actividad MC IMAGE: elegir «It is a ball.». No se agrega VIDEO ni diálogo artificial. Cada demo tiene 3 actividades; esto no es una regla de producto.
+- greeting.png se regenera desde su fuente editable generate-greeting.ps1: «Hello!», mismo cartoon/layout. WAV adicionales pregenerados localmente con generate-audio.ps1; no TTS en runtime. Media sigue en /demo-media de la API de desarrollo, allowlist de archivos exactos y soporte de rangos. No proceso 3001.
+
+### Preparación
+
+Backend existente + Expo, mismas instrucciones LAN de V6. Los fixtures quedaron configurados para http://192.168.1.64:3000 (usar IP actual de la PC si cambia). Reiniciar Metro tras instalar la dependencia; Expo Go compatible SDK 57 incluye expo-audio. Un development build previo necesita reconstrucción nativa para incorporar expo-audio y la configuración de permisos. Exportar JS no reconstruye un development build.
+
+```powershell
+# Backend, solo si no está activo:
+Set-Location C:\software-development\projects\teacher-alma-app\backend
+npm run dev
+# En otra terminal:
+Set-Location C:\software-development\projects\teacher-alma-app\mobile
+$env:EXPO_PUBLIC_API_URL = 'http://192.168.1.64:3000'
+node node_modules/expo/bin/cli start --host lan --port 8081 --clear
+```
+
+Tras autorización explícita del usuario se ejecutó el check HTTP que restablece el usuario demo. Baseline final: A1 2/8, lección 3 actual/incompleta, 4 incompleta, A2 no iniciado, cero ACTIVE/attempts/Review demo; 13 bloques y 6 actividades. Para reaplicar URLs sin borrar aprendizaje: configurar LESSONS_DEMO_ASSET_BASE_URL con el origen API y usar seed-courses-demo.ts --apply. Para volver al baseline después de aceptación: reset demo --reset --lessons, nunca git reset.
+
+### Recorrido físico V7
+
+1. A1 2/8 → lección 3 a 0%. Revisar Content, cards A/B y traducciones. Reproducir A y tocar B antes de terminar: solo B continúa, sin salir de Expo. Al acabar repetir; probar salir de pantalla/background durante audio. VIDEO conserva preview neutral.
+2. MC: contexto D con más presencia y audio. Antes de completar probar Back → Seguir aprendiendo y chevron → Salir; reabrir fresh. Luego enviar Goodbye! incorrecto → retry correcto, para un resultado non-perfect.
+3. Fill: imagen «Hello!», elegir Hello y ver «Hello, I’m Sofía.» inmediatamente. Tercera actividad: escribir too dentro de la oración. Tras verificar llega a 100%; Summary muestra 3 actividades, heading dominante y dos audios. Ver resultado: 67% (2/3 al primer intento), Review y curso 3/8; no 50%, porque esta fixture ahora tiene tres actividades. Los tests de Result 50% siguen vigentes.
+4. Volver a ruta, reabrir 3 como Replay: 0%, sin respuestas/feedback previo. Acertar las tres → Result Replay 100%, sin Review histórico ni falso unlock. Continuar mi ruta enfoca 4.
+5. Lección 4: revisar concepto KEY y ejemplos. Fill inline am; Matching en ambos sentidos, reemplazo antes de enviar, wrong/retry con conexiones/selección limpias; tercera MC elegir It is a ball. Comprobar Summary enriquecido, dos audios y contador 3. Result conserva primer intento (67% si solo falló Matching); curso 4/8 y próximo acceso Premium.
+6. Pasada estrecha/fuente 1.3–1.5: wrapping del diálogo, input y Summary, teclado/scroll, targets audio/TalkBack y metadata Result que se apila si no cabe. Desconectar red antes de tocar un audio nuevo: error recuperable y retry; ninguna carga bloquea progression. Para perfecto normal, usar baseline de nuevo y acertar cada primer envío.
+
+### Validación y deuda
+
+- TypeScript mobile, backend y scripts PASS.
+- Tests mobile Lessons: 36/36 PASS. Incluyen exclusividad/async cancel/timeout/interrupción/replay/cleanup de audio, metadata/controls nativos, Fill inline/typed/retry, jerarquía Summary y regresiones Matching, Replay, Back/modal, completion→Summary/Result y precisión 50/100.
+- Tests fixture/media: 5/5 PASS. Cada demo tiene tres actividades, v2 validado, v1 fallback conservado, WAV/PNG bytes exactos, MIME/ranges y allowlist solo development.
+- check-lessons-demo.ts --run PASS en PostgreSQL real: seis actividades vía HTTP, incorrect/retry, perfect, Review, access, Replay y baseline final. seed --check PASS. Sin suites backend ajenas.
+- Android export PASS: 1029 módulos, Hermes 2.2 MB, mobile/dist/lessons-v7-check (ignorado). Esto valida bundle, no reproducción/touch nativos.
+- git diff --check PASS. Sin cambios .env ni archivos de dominio/migración.
+- ADB sin dispositivos: pendiente aceptación física V7, audio nativo/reconexión, wrapping y teclado. Se revisó la imagen regenerada «Hello!»; no se presentan capturas sintéticas como evidencia Android.
+
+Antes de cerrar Lessons solo queda confirmar esta aceptación y corregir bugs concretos que aparezcan. Voz/imagen/video definitivos siguen siendo contenido futuro; no se añadieron Review UI, Practice, DRAG, settings ni rewards.

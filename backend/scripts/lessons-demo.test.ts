@@ -12,8 +12,8 @@ test('two existing free A1 lessons contain four safe activity types in short rea
   const courses = demoCourses();
   assert.ok(blocks.some(b => b.type === 'VIDEO' && b.required === false));
   assert.ok(!JSON.stringify(blocks).includes('Contenido demo'));
-  assert.equal(blocks.length, 11);
-  assert.equal(new Set(blocks.map(b => b.id)).size, 11);
+  assert.equal(blocks.length, 13);
+  assert.equal(new Set(blocks.map(b => b.id)).size, 13);
   assert.equal(new Set(activities.map(a => a.type)).size, 4);
   const text = publicContent('TEXT', blocks[0]!.content);
   assert.ok(text.body && JSON.stringify(text.segments).includes('KEY'));
@@ -26,7 +26,7 @@ test('two existing free A1 lessons contain four safe activity types in short rea
   for (const id of [demoId(1003), demoId(1004)]) {
     assert.equal(courses[0]!.topics.flatMap(t => t.lessons).find(l => l.id === id)?.accessType, 'FREE');
     const steps = deriveSteps(blocks.filter(b => b.lessonId === id).map(b => ({ ...b, id: b.id!, required: true })));
-    assert.deepEqual(steps.map(s => s.type), ['CONTENT_STEP', 'ACTIVITY_STEP', 'ACTIVITY_STEP', 'SUMMARY_STEP']);
+    assert.deepEqual(steps.map(s => s.type), ['CONTENT_STEP', 'ACTIVITY_STEP', 'ACTIVITY_STEP', 'ACTIVITY_STEP', 'SUMMARY_STEP']);
   }
   for (const activity of activities) {
     const dto = publicActivity({ ...activity, status: 'ACTIVE', createdAt: new Date(), updatedAt: new Date() } as Activity);
@@ -53,18 +53,38 @@ test('V6 Fill Blank IMAGE is safe public HTTP metadata, with v1 fallbacks retain
   assert.ok(fill.instruction);
   const summary = publicContent('SUMMARY', blocks[4]!.content);
   assert.ok(summary.points && summary.takeaways && summary.subtitle);
-  assert.ok(!('takeaways' in publicContent('SUMMARY', blocks[9]!.content)), 'lesson 4 still exercises v1 Summary');
+  assert.ok('takeaways' in publicContent('SUMMARY', blocks[9]!.content));
+  assert.deepEqual(publicContent('SUMMARY', { points: ['Legacy'] }), { points: ['Legacy'] });
 });
 
-test('V6 Summary has static playable audio metadata; missing audio stays absent', () => {
+test('V7 dialogue and Summary publish both demo audios', () => {
   const { blocks } = lessonsDemoData();
   const summary = publicContent('SUMMARY', blocks[4]!.content);
   const phrases = summary.keyPhrases as { audioUrl?: string; audioAlt?: string }[];
   assert.equal(new URL(phrases[0]!.audioUrl!).pathname, '/demo-media/nice-to-meet-you.wav');
   assert.equal(phrases[0]!.audioAlt, 'Nice to meet you!');
-  assert.equal(phrases[1]!.audioUrl, undefined);
+  assert.equal(new URL(phrases[1]!.audioUrl!).pathname, '/demo-media/nice-to-meet-you-too.wav');
   const dialogue = publicContent('EXAMPLE', blocks[1]!.content);
   const turns = dialogue.turns as { audioUrl?: string }[];
   assert.equal(new URL(turns[0]!.audioUrl!).pathname, '/demo-media/sofia-greeting.wav');
-  assert.equal(turns[1]!.audioUrl, undefined);
+  assert.equal(new URL(turns[1]!.audioUrl!).pathname, '/demo-media/daniel-greeting.wav');
+});
+
+test('V7 lessons each have three distinct pedagogical activities and enriched Lesson 4 content', () => {
+  const { blocks, activities } = lessonsDemoData();
+  for (const id of [demoId(1003), demoId(1004)]) {
+    const lesson = blocks.filter(b => b.lessonId === id);
+    const exercises = lesson.filter(b => b.type === 'ACTIVITY');
+    assert.equal(exercises.length, 3);
+    assert.equal(new Set(exercises.map(b => b.activityId)).size, 3);
+    const summary = publicContent('SUMMARY', lesson.find(b => b.type === 'SUMMARY')!.content);
+    assert.equal((summary.keyPhrases as unknown[]).length, 2);
+    assert.equal((summary.takeaways as unknown[]).length, 3);
+    assert.ok((summary.keyPhrases as { audioUrl: string }[]).every(p => p.audioUrl.startsWith('http')));
+  }
+  const text = publicContent('TEXT', blocks[5]!.content);
+  assert.match(JSON.stringify(text.segments), /KEY/);
+  assert.ok(!blocks.some(b => b.lessonId === demoId(1004) && b.type === 'VIDEO'));
+  assert.equal((activities[4]!.config as { acceptedAnswers: string[] }).acceptedAnswers[0], 'too');
+  assert.equal((activities[5]!.config as { correctOptionId: string }).correctOptionId, 'ball');
 });

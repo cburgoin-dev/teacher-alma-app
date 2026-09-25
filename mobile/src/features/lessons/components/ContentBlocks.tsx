@@ -39,7 +39,7 @@ export function SummaryContent({ block }: { block: Extract<Block, { type: 'SUMMA
     {block.keyPhrases?.length ? <View style={[local.card, local.example]}>
       <View style={local.row}><LearningIcon kind="chat" rose /><View style={local.flex}><Text style={s.heading}>Frases clave de la lección</Text><Text style={s.caption}>Practica y memoriza estas frases clave.</Text></View></View>
       {block.keyPhrases.map((phrase, i) => <View key={i} style={[local.bubble, local.row, { marginLeft: indent }]}>
-        <View style={local.flex}><Text style={[s.heading, local.blue]}>{phrase.text}</Text>
+        <View style={local.flex}><Text style={local.keyPhrase}>{phrase.text}</Text>
           {phrase.translation ? <Text style={s.caption}>{phrase.translation}</Text> : null}</View>
         <AudioButton {...phrase} />
       </View>)}
@@ -80,6 +80,7 @@ export function ContentBlocks({ blocks }: { blocks: Block[] }) {
   })}</>;
 }
 const local = StyleSheet.create({
+  keyPhrase: { color: '#0062E9', fontSize: 17, lineHeight: 24, fontWeight: '600' },
   card: { padding: 16, borderRadius: 18, borderWidth: 1, borderColor: '#DFEAFA', backgroundColor: '#F0F6FF', gap: 14 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 }, flex: { flex: 1 }, blue: { color: '#0062E9' },
   concept: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 }, conceptText: { flex: 1, gap: 8 },

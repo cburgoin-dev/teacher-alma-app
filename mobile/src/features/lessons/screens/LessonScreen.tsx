@@ -14,12 +14,15 @@ import { ActivityStep } from '../components/ActivityStep';
 import { LearningIcon } from '../components/LearningIcon';
 import { ContextualHeader } from '../../../components/ContextualHeader';
 import { courseLabel } from '../contentPresentation';
+import { lessonAudio } from '../components/AudioButton';
 import { lessonStyles as s } from '../components/lessonStyles';
 
 export function LessonScreen({ route, navigation }: NativeStackScreenProps<CoursesStackParamList, 'Lesson'>) {
   const { lessonId, courseId } = route.params;
   const flow = useMemo(() => new LessonFlow(lessonId), [lessonId]);
   const state = useSyncExternalStore(flow.subscribe, flow.snapshot);
+  useEffect(() => () => lessonAudio.stop(), [lessonId, state.stepId]);
+  useFocusEffect(useCallback(() => () => lessonAudio.stop(), []));
   const insets = useSafeAreaInsets();
   const scroll = useRef<ScrollView>(null);
   useEffect(() => { void flow.load(); return () => flow.dispose(); }, [flow]);

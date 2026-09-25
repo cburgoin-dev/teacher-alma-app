@@ -36,12 +36,12 @@ async function main() {
     }
     seed('--apply'); seed('--apply');
     assert.equal((await courses.roadmap(demoId(1), userId)).progress.completedLessons, 2, 'apply preserves scenario progress');
-    assert.equal(await prisma.lessonBlock.count({ where: { lessonId: { in: [demoId(1003), demoId(1004)] } } }), 11);
+    assert.equal(await prisma.lessonBlock.count({ where: { lessonId: { in: [demoId(1003), demoId(1004)] } } }), 13);
     for (const n of [1003, 1004]) {
       const root = `/lessons/${demoId(n)}`;
       const data = await request<Awaited<ReturnType<LessonService['read']>>>(root, undefined, 'GET');
-      assert.equal(data.steps.length, 4);
-      assert.deepEqual(data.activityProgress, { completed: 0, total: 2 });
+      assert.equal(data.steps.length, 5);
+      assert.deepEqual(data.activityProgress, { completed: 0, total: 3 });
       const publicJson = JSON.stringify(data);
       for (const key of ['correctOptionId', 'acceptedAnswers', '"pairs"', 'privateKey']) assert.ok(!publicJson.includes(key));
       if (n === 1003) {
@@ -55,8 +55,8 @@ async function main() {
       const opened = await request<Awaited<ReturnType<LessonService['start']>>>(root + '/runs', { requestKey: randomUUID() });
       const runRoot = root + '/runs/' + opened.runId;
       await request(`${runRoot}/steps/${data.steps[0]!.id}/complete`);
-      const answers = n === 1003 ? [{ selectedOptionId: 'bye' }, { selectedOptionId: 'hello' }]
-        : [{ text: ' AM ' }, { pairs: [{ wordId: 'book', imageId: 'book-image' }, { wordId: 'cup', imageId: 'cup-image' }, { wordId: 'ball', imageId: 'ball-image' }] }];
+      const answers = n === 1003 ? [{ selectedOptionId: 'bye' }, { selectedOptionId: 'hello' }, { text: 'too' }]
+        : [{ text: ' AM ' }, { pairs: [{ wordId: 'book', imageId: 'book-image' }, { wordId: 'cup', imageId: 'cup-image' }, { wordId: 'ball', imageId: 'ball-image' }] }, { selectedOptionId: 'ball' }];
       for (let i = 0; i < answers.length; i++) {
         const result = await request<Awaited<ReturnType<LessonService['attempt']>>>(`${runRoot}/steps/${data.steps[i + 1]!.id}/attempt`, answers[i]);
         assert.equal(result.attempt.isCorrect, !(n === 1003 && i === 0));
@@ -68,8 +68,8 @@ async function main() {
       }
       const result = await request<Awaited<ReturnType<LessonService['complete']>>>(runRoot + '/complete');
       assert.deepEqual(result.course, { id: demoId(1), title: 'Inglés A1', level: 'A1' });
-      assert.deepEqual((await request<Awaited<ReturnType<LessonService['read']>>>(root, undefined, 'GET')).activityProgress, { completed: 2, total: 2 });
-      assert.equal(result.result.correctAnswers, n === 1003 ? 1 : 2);
+      assert.deepEqual((await request<Awaited<ReturnType<LessonService['read']>>>(root, undefined, 'GET')).activityProgress, { completed: 3, total: 3 });
+      assert.equal(result.result.correctAnswers, n === 1003 ? 2 : 3);
       assert.equal(result.result.pendingReviewCount, n === 1003 ? 1 : 0);
       assert.equal(result.result.isPerfect, n === 1004);
       if (n === 1004) { assert.equal(result.nextLesson?.lockReason, 'ACCESS'); assert.equal(result.nextLesson?.accessible, false); }
@@ -92,9 +92,9 @@ async function main() {
     seed('--reset'); assert.equal((await courses.roadmap(demoId(1), userId)).progress.completedLessons, 3);
     seed('--reset', '--lessons'); seed('--reset', '--lessons');
     assert.equal((await courses.roadmap(demoId(1), userId)).progress.completedLessons, 2);
-    assert.equal(await prisma.activityAttempt.count({ where: { userId, activityId: { in: [30001, 30002, 30003, 30004].map(demoId) } } }), 0);
-    assert.equal(await prisma.reviewItem.count({ where: { userId, activityId: { in: [30001, 30002, 30003, 30004].map(demoId) } } }), 0);
-    console.log('PASS: real HTTP flow, 4 activities, incorrect/retry, PERFECT, Review, ACCESS, idempotent apply/reset. Ready: A1 2/8, A2 unstarted.');
+    assert.equal(await prisma.activityAttempt.count({ where: { userId, activityId: { in: [30001, 30002, 30003, 30004, 30005, 30006].map(demoId) } } }), 0);
+    assert.equal(await prisma.reviewItem.count({ where: { userId, activityId: { in: [30001, 30002, 30003, 30004, 30005, 30006].map(demoId) } } }), 0);
+    console.log('PASS: real HTTP flow, 6 activities, incorrect/retry, PERFECT, Review, ACCESS, idempotent apply/reset. Ready: A1 2/8, A2 unstarted.');
   } finally {
     await new Promise<void>(resolve => { server.close(() => resolve()); server.closeAllConnections(); });
     await prisma.$disconnect();

@@ -9,5 +9,16 @@ try {
   $demoVoice.SetOutputToWaveFile((Join-Path $PSScriptRoot 'nice-to-meet-you.wav'))
   $demoVoice.Speak('Nice to meet you!')
   $demoVoice.SetOutputToWaveFile((Join-Path $PSScriptRoot 'sofia-greeting.wav'))
-  $demoVoice.Speak('Hi, I am Sofia. Nice to meet you!')
+  $demoVoice.Speak("Hi, I'm Sofia. Nice to meet you!")
+  $clips = @{
+    'daniel-greeting' = "Hello, I'm Daniel. Nice to meet you too!"
+    'daniel-intro' = "Hi, I'm Daniel."
+    'nice-to-meet-you-too' = 'Nice to meet you too!'
+    'i-am-a-student' = 'I am a student.'
+    'it-is-a-book' = 'It is a book.'
+  }
+  foreach ($clip in $clips.GetEnumerator()) {
+    $demoVoice.SetOutputToWaveFile((Join-Path $PSScriptRoot ($clip.Key + '.wav')))
+    $demoVoice.Speak($clip.Value)
+  }
 } finally { $demoVoice.Dispose() }

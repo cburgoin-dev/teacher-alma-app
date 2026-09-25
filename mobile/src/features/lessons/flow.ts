@@ -153,8 +153,9 @@ export class LessonFlow {
       this.feedbackByStep.delete(this.state.stepId);
       const answer = this.answersByStep.get(this.state.stepId);
       if (answer && 'pairs' in answer) this.answersByStep.set(this.state.stepId, { pairs: [] });
+      else this.answersByStep.delete(this.state.stepId);
     }
-    this.set({ feedback: null, error: null });
+    this.set({ feedback: null, error: null, answer: null });
   };
   private postCompletionStep() {
     const steps = this.state.data?.steps ?? [];

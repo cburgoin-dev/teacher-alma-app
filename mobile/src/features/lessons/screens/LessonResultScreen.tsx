@@ -64,8 +64,10 @@ export function LessonResultScreen({ route, navigation }: NativeStackScreenProps
       <View style={local.track} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: courseProgress.percentage }} accessibilityLabel="Progreso de lecciones obligatorias">
         <View style={[local.fill, { width: `${Math.max(0, Math.min(100, courseProgress.percentage))}%` }]} />
       </View>
-      {courseLabel(course) ? <Text style={s.chip}>{courseLabel(course)}</Text> : null}
-      <Text style={s.caption}>{courseProgress.completedLessons} de {courseProgress.totalLessons} lecciones completadas</Text>
+      <View style={local.courseMetadata}>
+        {courseLabel(course) ? <Text style={s.chip}>{courseLabel(course)}</Text> : null}
+        <Text accessibilityLabel={`${courseProgress.completedLessons} de ${courseProgress.totalLessons} lecciones completadas`} style={s.caption}>{courseProgress.completedLessons} de {courseProgress.totalLessons}</Text>
+      </View>
     </View>
     {result.pendingReviewCount > 0 ? <View style={local.review}>
       <LearningIcon kind="pencil" rose /><View style={{ flex: 1 }}>
@@ -90,6 +92,7 @@ const local = StyleSheet.create({
   content: { gap: 14 }, center: { textAlign: 'center' },
   hero: { alignItems: 'center', gap: 8 }, art: { width: 260, maxWidth: '100%', height: 150 },
   identity: { gap: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  courseMetadata: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', columnGap: 12, rowGap: 8 },
   progressHeading: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   track: { height: 12, borderRadius: 6, overflow: 'hidden', backgroundColor: '#DEE8F5' },
   fill: { height: '100%', borderRadius: 6, backgroundColor: '#0878F8' },

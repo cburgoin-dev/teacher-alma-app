@@ -121,6 +121,7 @@ function component(relative, overrides = {}) {
     if (name.endsWith('/MatchingPairs')) return { MatchingPairs: 'MatchingPairs' };
     if (name.endsWith('/ActivityStep')) return { ActivityStep: 'ActivityStep' };
     if (name.endsWith('/ContentBlocks')) return { LessonImage: 'LessonImage' };
+    if (name.endsWith('/AudioButton')) return { AudioButton: 'AudioButton', lessonAudio: { stop() {} } };
     if (name.endsWith('/RichContent')) return { AudioButton: 'AudioButton', DialogueRow: 'DialogueRow' };
     if (name.endsWith('/accessInfo')) return { showAccessInfo() {} };
     if (name.endsWith('/ContextualHeader')) return { ContextualHeader: 'ContextualHeader' };
@@ -230,4 +231,64 @@ test('V6 normal Result names the course once and retains first-attempt score for
     assert.doesNotMatch(copy, /obligatorias/);
     assert.match(copy, correctAnswers === 2 ? /¡Excelente trabajo!/ : /¡Lección completada!/);
   }
+});
+
+test('V7 Fill choice appears in sentence immediately; retry clears selection and typed answer is the single inline input', () => {
+  const values = []; let cursor = 0, retried = 0;
+  const hooks = { useState: initial => { const i = cursor++; if (!(i in values)) values[i] = initial; return [values[i], v => { values[i] = v; }]; }, useReducer: (_, initial) => [initial, () => {}] };
+  const { ActivityStep } = component('../src/features/lessons/components/ActivityStep.tsx', { react: hooks });
+  const activity = { type: 'FILL_BLANK_OPTIONS', prompt: '_____, I’m Sofía.', options: [{ id: 'hello', text: 'Hello' }], hint: 'Saluda' };
+  const props = { activity, feedback: null, busy: false, onSubmit() {}, onContinue() {}, onRetry() { retried++; }, onAnswerChange() {} };
+  const render = extra => { cursor = 0; return nodes(ActivityStep({ ...props, ...extra })); };
+  let tree = render(); assert.ok(tree.includes('_____'));
+  tree.find(n => n.type === 'Pressable' && n.props.accessibilityRole === 'radio').props.onPress();
+  tree = render(); assert.ok(!tree.includes('_____')); assert.ok(tree.includes('Hello')); assert.ok(tree.includes(', I’m Sofía.'));
+  tree = render({ feedback: { attempt: { isCorrect: false }, feedback: {} } });
+  tree.find(n => n.type === 'Pressable' && nodes(n).includes('Intentar de nuevo')).props.onPress();
+  assert.equal(retried, 1); tree = render(); assert.ok(tree.includes('_____'));
+  assert.equal(tree.find(n => n.type === 'Button').props.disabled, true);
+  values.length = 0;
+  tree = render({ activity: { type: 'FILL_BLANK_TEXT', prompt: 'I _____ a student.' } });
+  assert.equal(tree.filter(n => n.type === 'TextInput').length, 1);
+  tree.find(n => n.type === 'TextInput').props.onChangeText('am');
+  tree = render({ activity: { type: 'FILL_BLANK_TEXT', prompt: 'I _____ a student.' } });
+  assert.equal(tree.find(n => n.type === 'TextInput').props.value, 'am');
+  assert.ok(tree.includes('I ')); assert.ok(tree.includes(' a student.'));
+});
+
+test('V7 Audio hides missing URLs, renders native control and cleans up on source unmount/background', async () => {
+  const cleanups = []; let background, played = 0, removed = 0, status;
+  const { AudioButton } = component('../src/features/lessons/components/AudioButton.tsx', {
+    react: { useState: () => ['idle', s => { status = s; }], useRef: value => ({ current: value }), useEffect: fn => cleanups.push(fn()) },
+    'expo-audio': { setAudioModeAsync: async mode => { assert.equal(mode.shouldPlayInBackground, false); assert.equal(mode.allowsRecording, false); },
+      createAudioPlayer: () => ({ play() { played++; }, pause() {}, remove() { removed++; }, addListener: () => ({ remove() {} }) }) },
+    'react-native': { View: 'View', Text: 'Text', Pressable: 'Pressable', ActivityIndicator: 'Loading', StyleSheet: { create: s => s },
+      AppState: { addEventListener: (_, fn) => { background = fn; return { remove() {} }; } } },
+    'lucide-react-native/icons/volume-2': { default: 'Volume' }, 'lucide-react-native/icons/square': { default: 'Stop' }, 'lucide-react-native/icons/rotate-ccw': { default: 'Replay' },
+  });
+  for (const audioUrl of [undefined, '', 'file:///clip.wav', 'https://user:pass@example.org/a.wav']) assert.equal(AudioButton({ audioUrl }), null);
+  const child = AudioButton({ audioUrl: 'https://example.org/a.wav', audioAlt: 'Hello' });
+  assert.equal(child.key, 'https://example.org/a.wav');
+  const tree = nodes(child.type(child.props)); const button = tree.find(n => n.type === 'Pressable');
+  assert.equal(button.props.accessibilityRole, 'button'); assert.match(button.props.accessibilityLabel, /Reproducir audio: Hello/);
+  button.props.onPress(); await Promise.resolve(); await Promise.resolve(); assert.equal(played, 1);
+  background('background'); assert.equal(removed, 1); assert.equal(status, 'idle');
+  button.props.onPress(); await Promise.resolve(); await Promise.resolve(); cleanups.forEach(fn => fn()); assert.equal(removed, 2);
+});
+
+test('V7 Summary phrases stay below heading hierarchy and audio is driven by metadata', () => {
+  const { SummaryContent } = component('../src/features/lessons/components/ContentBlocks.tsx', {
+    './lessonStyles': { lessonStyles: { heading: { fontSize: 20, fontWeight: '700' }, caption: { fontSize: 14 } } },
+    './RichContent': { AudioButton: 'AudioButton', RichText: 'RichText', DialogueRow: 'DialogueRow' },
+  });
+  const tree = nodes(SummaryContent({ block: { type: 'SUMMARY', points: ['Legacy point'], keyPhrases: [
+    { text: 'Nice to meet you!', translation: '¡Mucho gusto!', audioUrl: 'https://example.org/a.wav' },
+    { text: 'Optional audio' },
+  ] } }));
+  const heading = tree.find(n => n.type === 'Text' && n.props.children === 'Frases clave de la lección');
+  const phrase = tree.find(n => n.type === 'Text' && n.props.children === 'Nice to meet you!');
+  assert.ok(phrase.props.style.fontSize < heading.props.style.fontSize);
+  assert.ok(Number(phrase.props.style.fontWeight) < Number(heading.props.style.fontWeight));
+  assert.equal(tree.filter(n => n.type === 'AudioButton')[0].props.audioUrl, 'https://example.org/a.wav');
+  assert.equal(tree.filter(n => n.type === 'AudioButton')[1].props.audioUrl, undefined);
 });

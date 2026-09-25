@@ -4,6 +4,7 @@ import { Button } from '../../courses/components/ui';
 import { colors } from '../../../theme';
 import type { Activity, Answer, ActivityFeedback } from '../types';
 import { expectedAnswer } from '../presentation';
+import { fillParts } from '../fillPresentation';
 import { matchingDraft } from '../matchingDraft';
 import { feedbackCorrect, reinforcementOnCompletion, feedbackTitle } from '../activityPresentation';
 import { MatchingPairs } from './MatchingPairs';
@@ -28,6 +29,9 @@ export function ActivityStep({ activity, feedback, busy, onSubmit, onRetry, onCo
   const fill = activity.type === 'FILL_BLANK_OPTIONS' || activity.type === 'FILL_BLANK_TEXT';
   const matching = activity.type === 'MATCH_WORD_IMAGE';
   const presentation = activityPresentation(activity);
+  const blank = fill ? fillParts(activity.prompt) : null;
+  const fillValue = activity.type === 'FILL_BLANK_OPTIONS' ? activity.options.find(item => item.id === option)?.text ?? '' : text;
+  const fillColor = feedback ? feedbackCorrect(feedback) ? '#13874C' : '#B34436' : colors.blue;
   const correctAnswer = feedback ? expectedAnswer(activity, feedback.feedback.correctAnswer) : '';
   const matchingCorrection = matching && feedback && !feedbackCorrect(feedback) && correctAnswer;
   const answer: Answer | null = 'options' in activity ? option ? { selectedOptionId: option } : null
@@ -44,13 +48,22 @@ export function ActivityStep({ activity, feedback, busy, onSubmit, onRetry, onCo
         : activity.context.type === 'TEXT' ? <View style={local.contextText}><Text style={[s.body, { flex: 1 }]}>{activity.context.text}</Text><AudioButton {...activity.context} /></View>
           : <><LessonImage wide url={activity.context.url} alt={activity.context.alt} />{activity.context.caption ? <Text style={s.caption}>{activity.context.caption}</Text> : null}</>}
     </View> : null}
-    {presentation.showPrompt ? !matching ? <View style={[local.prompt, !fill && { backgroundColor: colors.pale }]}><Text style={[s.heading, fill && local.sentence]}>{activity.prompt}</Text></View> : <Text style={s.body}>{activity.prompt}</Text> : null}
+    {blank ? activity.type === 'FILL_BLANK_TEXT' ? <View style={local.inlineSentence}>
+      {blank.before ? <Text style={[local.sentence, { paddingVertical: 0 }]}>{blank.before}</Text> : null}
+      <TextInput accessibilityLabel={activity.prompt + ' Escribe la palabra que falta'} placeholder="_____" placeholderTextColor={colors.muted}
+        value={text} onChangeText={value => { setText(value); onAnswerChange?.({ text: value }); }} editable={!disabled}
+        autoCapitalize="none" autoCorrect={false} multiline scrollEnabled={false}
+        style={[local.inlineInput, { color: fillColor, borderColor: fillColor, minWidth: 64 * Math.min(fontScale, 2) }]}
+        returnKeyType="done" blurOnSubmit onSubmitEditing={() => Keyboard.dismiss()} />
+      {blank.after ? <Text style={[local.sentence, { paddingVertical: 0 }]}>{blank.after}</Text> : null}
+    </View> : <Text style={local.sentence}>{blank.before}<Text style={{ color: fillValue ? fillColor : colors.ink, textDecorationLine: fillValue ? 'underline' : 'none' }}>{fillValue || '_____'}</Text>{blank.after}</Text> : null}
+    {!blank && presentation.showPrompt ? !matching ? <View style={[local.prompt, !fill && { backgroundColor: colors.pale }]}><Text style={[s.heading, fill && local.sentence]}>{activity.prompt}</Text></View> : <Text style={s.body}>{activity.prompt}</Text> : null}
     {'options' in activity ? <View style={fill ? local.bank : { gap: 10 }}>{activity.options.map(item => <Pressable key={item.id} accessibilityRole="radio" accessibilityState={{ selected: option === item.id, disabled }} disabled={disabled}
       onPress={() => { setOption(item.id); onAnswerChange?.({ selectedOptionId: item.id }); }} style={[local.option, fill ? { flexGrow: 1, flexBasis: 92 * Math.min(fontScale, 1.5), paddingHorizontal: 10 } : local.choice, option === item.id && local.selected]}>
       {!fill ? <View style={[local.radio, option === item.id && { borderColor: colors.blue }]}>{option === item.id ? <View style={local.radioDot} /> : null}</View> : null}
       <Text style={[s.body, { flexShrink: 1, fontSize: 17, lineHeight: 24, color: option === item.id ? colors.blue : colors.ink, textAlign: fill ? 'center' : 'left', fontWeight: option === item.id ? '700' : '500' }]}>{item.text}</Text>
     </Pressable>)}</View> : null}
-    {activity.type === 'FILL_BLANK_TEXT' ? <TextInput accessibilityLabel="Escribe tu respuesta" placeholder="Escribe tu respuesta"
+    {activity.type === 'FILL_BLANK_TEXT' && !blank ? <TextInput accessibilityLabel="Escribe tu respuesta" placeholder="Escribe tu respuesta"
       placeholderTextColor={colors.muted} value={text} onChangeText={value => { setText(value); onAnswerChange?.({ text: value }); }} editable={!disabled} autoCapitalize="none" autoCorrect={false}
       style={[local.option, s.body, { color: colors.ink, minHeight: 68, fontSize: 19, textAlign: 'center', borderColor: text ? colors.blue : colors.border }]} returnKeyType="done" onSubmitEditing={() => Keyboard.dismiss()} /> : null}
     {matching ? <MatchingPairs activity={activity} pairs={pairs} word={draft.word} image={draft.image} feedback={feedback} disabled={disabled} onSelect={word => { const next = matchingDraft(draft, { type: 'select', word }); dispatch({ type: 'select', word }); onAnswerChange?.({ pairs: next.pairs }); }} onConnect={image => { const next = matchingDraft(draft, { type: 'connect', image }); dispatch({ type: 'connect', image }); onAnswerChange?.({ pairs: next.pairs }); }} /> : null}
@@ -65,7 +78,7 @@ export function ActivityStep({ activity, feedback, busy, onSubmit, onRetry, onCo
         {!feedbackCorrect(feedback) && correctAnswer ? <Text style={s.body}>{matching ? 'Respuesta correcta:\n' : 'Respuesta esperada: '}{correctAnswer}</Text> : null}
         {reinforcementOnCompletion(feedback) ? <Text style={s.caption}>{'completion' in feedback && feedback.completion ? 'Guardamos este ejercicio para reforzarlo. Tu primer intento sigue contando para la precisión.' : feedbackCorrect(feedback) ? 'Lo resolviste. El primer intento cuenta para la precisión de esta sesión; al terminar guardaremos este ejercicio para reforzarlo.' : 'Al terminar la lección guardaremos este ejercicio para reforzarlo.'}</Text> : null}
         <Button title="Continuar" arrow onPress={onContinue} busy={busy} />
-        {!feedbackCorrect(feedback) ? <Pressable accessibilityRole="button" disabled={busy} onPress={() => { if (busy) return; if (matching) dispatch({ type: 'retry' }); onRetry(); }}><Text style={s.link}>Intentar de nuevo</Text></Pressable> : null}
+        {!feedbackCorrect(feedback) ? <Pressable accessibilityRole="button" disabled={busy} onPress={() => { if (busy) return; if (matching) dispatch({ type: 'retry' }); if (fill) { setOption(null); setText(''); } onRetry(); }}><Text style={s.link}>Intentar de nuevo</Text></Pressable> : null}
       </View>}
   </View>;
 }
@@ -75,10 +88,12 @@ const local = StyleSheet.create({
   heading: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   title: { fontSize: 27, lineHeight: 33, fontWeight: '800', color: colors.ink },
   context: { backgroundColor: '#F0F6FF', borderRadius: 18, borderWidth: 1, borderColor: '#DBE9FD', padding: 12, gap: 8 },
-  dialogueContext: { borderWidth: 0, padding: 8, backgroundColor: '#F1F7FF', borderRadius: 18, alignSelf: 'flex-start', maxWidth: '100%' },
+  dialogueContext: { borderWidth: 0, padding: 10, backgroundColor: '#F1F7FF', borderRadius: 18, alignSelf: 'stretch' },
   contextText: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   feedback: { padding: 18, borderRadius: 20, borderWidth: 1, gap: 14 },
-  prompt: { padding: 14, borderRadius: 20 }, sentence: { fontSize: 29, lineHeight: 40, textAlign: 'center', paddingVertical: 14, color: colors.ink },
+  prompt: { padding: 14, borderRadius: 20 }, sentence: { fontSize: 29, fontWeight: '700', lineHeight: 40, textAlign: 'center', paddingVertical: 14, color: colors.ink },
+  inlineSentence: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', paddingVertical: 14 },
+  inlineInput: { fontSize: 29, lineHeight: 40, fontWeight: '700', borderBottomWidth: 2, padding: 4, minHeight: 48, maxWidth: '100%', textAlign: 'center' },
   bank: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   option: { padding: 18, minHeight: 72, justifyContent: 'center', borderRadius: 18, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.white },
   choice: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 14 },
