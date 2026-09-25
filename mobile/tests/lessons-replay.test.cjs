@@ -196,3 +196,38 @@ test('LessonScreen wires chevron and hardware Back to the same cancellable exit 
   assert.equal(hardwareBack(), true); LessonScreen(props); modal[2][1].onPress();
   assert.equal(abandoned, 1); assert.equal(flow.snapshot().exited, true);
 });
+
+test('V6 Matching images are tappable first, selected on either side, and locked only during submit/feedback', () => {
+  const { MatchingPairs } = component('../src/features/lessons/components/MatchingPairs.tsx');
+  const activity = { words: [{ id: 'book', text: 'Book' }], images: [{ id: 'book-image', alt: 'Libro', url: 'book.png' }] };
+  const tapped = [];
+  for (const selected of [{ word: 'book', image: null }, { word: null, image: 'book-image' }, { word: null, image: null }]) {
+    const tree = nodes(MatchingPairs({ activity, pairs: [], ...selected, disabled: false, feedback: null,
+      onSelect: id => tapped.push(id), onConnect: id => tapped.push(id) }));
+    const buttons = tree.filter(n => n.type === 'Pressable');
+    assert.ok(buttons.every(n => n.props.disabled === false));
+    assert.deepEqual(buttons.map(n => n.props.accessibilityState.selected), [!!selected.word, !!selected.image]);
+    buttons[1].props.onPress(); buttons[0].props.onPress();
+    assert.ok(tree.some(n => n.props?.pointerEvents === 'none'), 'connectors cannot intercept taps');
+  }
+  assert.deepEqual(tapped, ['book-image', 'book', 'book-image', 'book', 'book-image', 'book']);
+  const locked = nodes(MatchingPairs({ activity, pairs: [], word: null, image: null, disabled: true, feedback: null }));
+  assert.ok(locked.filter(n => n.type === 'Pressable').every(n => n.props.disabled));
+});
+
+test('V6 normal Result names the course once and retains first-attempt score for perfect/non-perfect', () => {
+  const { LessonResultScreen } = component('../src/features/lessons/screens/LessonResultScreen.tsx');
+  for (const correctAnswers of [1, 2]) {
+    const tree = nodes(LessonResultScreen({ route: { params: { courseId: 'c', result: {
+      mode: 'NORMAL_RUN', lesson: { title: 'Nice to meet you!' }, course: { title: 'Inglés A1', level: 'A1' },
+      result: { totalActivities: 2, correctAnswers, isPerfect: correctAnswers === 2, pendingReviewCount: correctAnswers === 1 ? 1 : 0 },
+      courseProgress: { completedLessons: 3, totalLessons: 8, percentage: 37.5, status: 'IN_PROGRESS' }, nextLesson: null,
+    } } }, navigation: { popTo() {} } }));
+    assert.equal(tree.filter(n => n === 'Inglés A1').length, 1);
+    assert.ok(tree.includes(correctAnswers * 50));
+    const copy = tree.filter(n => typeof n === 'string').join(' ');
+    assert.match(copy, /primer intento/);
+    assert.doesNotMatch(copy, /obligatorias/);
+    assert.match(copy, correctAnswers === 2 ? /¡Excelente trabajo!/ : /¡Lección completada!/);
+  }
+});

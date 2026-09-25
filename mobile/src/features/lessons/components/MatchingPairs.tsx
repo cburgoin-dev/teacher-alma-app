@@ -6,9 +6,9 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { connectionPath, pairFeedback } from '../activityPresentation';
 import { LessonImage } from './ContentBlocks';
 import { lessonStyles as s } from './lessonStyles';
-export function MatchingPairs({ activity, pairs, word, disabled, feedback, onSelect, onConnect }: {
+export function MatchingPairs({ activity, pairs, word, image, disabled, feedback, onSelect, onConnect }: {
   activity: Extract<Activity, { type: 'MATCH_WORD_IMAGE' }>; pairs: Pair[]; disabled: boolean;
-  feedback: ActivityFeedback | null; word: string | null; onSelect: (wordId: string) => void; onConnect: (imageId: string) => void;
+  feedback: ActivityFeedback | null; word: string | null; image: string | null; onSelect: (wordId: string) => void; onConnect: (imageId: string) => void;
 }) {
   const [width, setWidth] = useState(0);
   const [rightX, setRightX] = useState(0);
@@ -21,16 +21,16 @@ export function MatchingPairs({ activity, pairs, word, disabled, feedback, onSel
       const pair = pairs.find(p => p.wordId === item.id), correct = pairFeedback(pair, feedback);
       return <Pressable key={item.id} onLayout={e => record('w:' + item.id, e.nativeEvent.layout)} disabled={disabled}
         accessibilityRole="button" accessibilityState={{ selected: word === item.id, disabled }} accessibilityLabel={`${item.text}${pair ? ', conectada' : ''}`}
-        onPress={() => onSelect(item.id)} style={[local.card, (pair || word === item.id) && { borderColor: word === item.id ? '#0062E9' : tint(pair), backgroundColor: surface(pair) }]}>
+        onPress={() => onSelect(item.id)} style={[local.card, (pair || word === item.id) && { borderColor: word === item.id ? '#0062E9' : tint(pair), backgroundColor: surface(pair) }, word === item.id && local.selected]}>
         <Text style={[s.heading, { textAlign: 'center' }]}>{item.text}</Text>
         {correct !== null ? <Text style={[s.caption, { color: tint(pair), textAlign: 'center' }]}>{correct ? '✓ Correcto' : '× Revisar'}</Text> : null}
       </Pressable>;
     })}</View>
     <View style={local.column} onLayout={e => setRightX(e.nativeEvent.layout.x)}>{activity.images.map(item => {
       const pair = pairs.find(p => p.imageId === item.id);
-      return <Pressable key={item.id} onLayout={e => record('i:' + item.id, e.nativeEvent.layout)} disabled={disabled || !word}
-        accessibilityRole="button" accessibilityState={{ disabled: disabled || !word, selected: !!pair }} accessibilityLabel={`${item.alt}${pair ? ', conectada con ' + activity.words.find(w => w.id === pair.wordId)?.text : ''}`}
-        onPress={() => { if (word) onConnect(item.id); }} style={[local.card, { padding: 6 }, pair && { borderColor: tint(pair), backgroundColor: surface(pair) }]}>
+      return <Pressable key={item.id} onLayout={e => record('i:' + item.id, e.nativeEvent.layout)} disabled={disabled}
+        accessibilityRole="button" accessibilityState={{ disabled, selected: image === item.id }} accessibilityLabel={`${item.alt}${pair ? ', conectada con ' + activity.words.find(w => w.id === pair.wordId)?.text : ''}`}
+        onPress={() => onConnect(item.id)} style={[local.card, { padding: 6 }, (pair || image === item.id) && { borderColor: image === item.id ? '#0062E9' : tint(pair), backgroundColor: surface(pair) }]}>
         <LessonImage url={item.url} alt={item.alt} />
       </Pressable>;
     })}</View>
@@ -44,13 +44,14 @@ export function MatchingPairs({ activity, pairs, word, disabled, feedback, onSel
           const left = key.startsWith('w:');
           const id = key.slice(2);
           const pair = pairs.find(p => left ? p.wordId === id : p.imageId === id);
-          return <Circle key={key} cx={left ? rect.x + rect.width : rightX + rect.x} cy={rect.y + rect.height / 2} r={7} fill={left && word === id ? '#0062E9' : tint(pair)} stroke="#FFF" strokeWidth={2} />;
+          return <Circle key={key} cx={left ? rect.x + rect.width : rightX + rect.x} cy={rect.y + rect.height / 2} r={7} fill={(left ? word === id : image === id) ? '#0062E9' : tint(pair)} stroke="#FFF" strokeWidth={2} />;
         }) : null}
       </Svg>
     </View>
   </View>;
 }
 const local = StyleSheet.create({
-  grid: { flexDirection: 'row', gap: 48 }, column: { flex: 1, gap: 16 },
+  grid: { flexDirection: 'row', gap: 40 }, column: { flex: 1, gap: 14 },
+  selected: { borderWidth: 2.5, backgroundColor: '#DCEBFF' },
   card: { minHeight: 112, borderRadius: 17, borderWidth: 1.5, borderColor: '#DFEAF8', backgroundColor: '#FFF', padding: 10, justifyContent: 'center', gap: 8 },
 });

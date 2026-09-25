@@ -21,7 +21,7 @@ export function ActivityStep({ activity, feedback, busy, onSubmit, onRetry, onCo
   const stackedActions = width < 350 || fontScale > 1.3;
   const [option, setOption] = useState<string | null>(initialAnswer && 'selectedOptionId' in initialAnswer ? initialAnswer.selectedOptionId : null);
   const [text, setText] = useState(initialAnswer && 'text' in initialAnswer ? initialAnswer.text : '');
-  const [draft, dispatch] = useReducer(matchingDraft, { pairs: initialAnswer && 'pairs' in initialAnswer ? initialAnswer.pairs : [], word: null });
+  const [draft, dispatch] = useReducer(matchingDraft, { pairs: initialAnswer && 'pairs' in initialAnswer ? initialAnswer.pairs : [], word: null, image: null });
   const { pairs } = draft;
   const [hint, setHint] = useState(false);
   const disabled = busy || feedback !== null;
@@ -53,7 +53,7 @@ export function ActivityStep({ activity, feedback, busy, onSubmit, onRetry, onCo
     {activity.type === 'FILL_BLANK_TEXT' ? <TextInput accessibilityLabel="Escribe tu respuesta" placeholder="Escribe tu respuesta"
       placeholderTextColor={colors.muted} value={text} onChangeText={value => { setText(value); onAnswerChange?.({ text: value }); }} editable={!disabled} autoCapitalize="none" autoCorrect={false}
       style={[local.option, s.body, { color: colors.ink, minHeight: 68, fontSize: 19, textAlign: 'center', borderColor: text ? colors.blue : colors.border }]} returnKeyType="done" onSubmitEditing={() => Keyboard.dismiss()} /> : null}
-    {matching ? <MatchingPairs activity={activity} pairs={pairs} word={draft.word} feedback={feedback} disabled={disabled} onSelect={word => dispatch({ type: 'select', word })} onConnect={image => { const next = matchingDraft(draft, { type: 'connect', image }); dispatch({ type: 'connect', image }); onAnswerChange?.({ pairs: next.pairs }); }} /> : null}
+    {matching ? <MatchingPairs activity={activity} pairs={pairs} word={draft.word} image={draft.image} feedback={feedback} disabled={disabled} onSelect={word => { const next = matchingDraft(draft, { type: 'select', word }); dispatch({ type: 'select', word }); onAnswerChange?.({ pairs: next.pairs }); }} onConnect={image => { const next = matchingDraft(draft, { type: 'connect', image }); dispatch({ type: 'connect', image }); onAnswerChange?.({ pairs: next.pairs }); }} /> : null}
     {hint && activity.hint && !feedback ? <Text accessibilityLiveRegion="polite" style={[s.body, local.hint]}>{activity.hint}</Text> : null}
     </View>
     {!feedback ? <View style={[local.actions, stackedActions && { flexDirection: 'column', alignItems: 'stretch' }]}>
@@ -63,19 +63,19 @@ export function ActivityStep({ activity, feedback, busy, onSubmit, onRetry, onCo
         <View style={local.contextText}><LearningIcon kind={feedbackCorrect(feedback) ? 'completion' : 'pencil'} rose={!feedbackCorrect(feedback)} /><Text style={[s.heading, { flex: 1, fontSize: 21, lineHeight: 28, color: feedbackCorrect(feedback) ? '#13874C' : '#A33C25' }]}>{feedbackTitle(feedback)}</Text></View>
         {matchingCorrection ? <Text style={s.body}>Revisa las conexiones marcadas en rojo.</Text> : feedback.feedback.explanation ? <Text style={s.body}>{feedback.feedback.explanation}</Text> : null}
         {!feedbackCorrect(feedback) && correctAnswer ? <Text style={s.body}>{matching ? 'Respuesta correcta:\n' : 'Respuesta esperada: '}{correctAnswer}</Text> : null}
-        {reinforcementOnCompletion(feedback) ? <Text style={s.caption}>{'completion' in feedback && feedback.completion ? 'Guardamos este ejercicio para reforzarlo. La precisión de la lección ya está guardada.' : feedbackCorrect(feedback) ? 'Lo resolviste. El primer intento cuenta para la precisión de esta sesión; al terminar guardaremos este ejercicio para reforzarlo.' : 'Al terminar la lección guardaremos este ejercicio para reforzarlo.'}</Text> : null}
+        {reinforcementOnCompletion(feedback) ? <Text style={s.caption}>{'completion' in feedback && feedback.completion ? 'Guardamos este ejercicio para reforzarlo. Tu primer intento sigue contando para la precisión.' : feedbackCorrect(feedback) ? 'Lo resolviste. El primer intento cuenta para la precisión de esta sesión; al terminar guardaremos este ejercicio para reforzarlo.' : 'Al terminar la lección guardaremos este ejercicio para reforzarlo.'}</Text> : null}
         <Button title="Continuar" arrow onPress={onContinue} busy={busy} />
         {!feedbackCorrect(feedback) ? <Pressable accessibilityRole="button" disabled={busy} onPress={() => { if (busy) return; if (matching) dispatch({ type: 'retry' }); onRetry(); }}><Text style={s.link}>Intentar de nuevo</Text></Pressable> : null}
       </View>}
   </View>;
 }
 const local = StyleSheet.create({
-  activity: { gap: 22, paddingBottom: 8 },
-  exercise: { gap: 18 },
+  activity: { gap: 18, paddingBottom: 8 },
+  exercise: { gap: 16 },
   heading: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   title: { fontSize: 27, lineHeight: 33, fontWeight: '800', color: colors.ink },
-  context: { backgroundColor: '#F0F6FF', borderRadius: 18, borderWidth: 1, borderColor: '#DBE9FD', padding: 16, gap: 10 },
-  dialogueContext: { borderWidth: 0, padding: 10, backgroundColor: '#F1F7FF', borderRadius: 24 },
+  context: { backgroundColor: '#F0F6FF', borderRadius: 18, borderWidth: 1, borderColor: '#DBE9FD', padding: 12, gap: 8 },
+  dialogueContext: { borderWidth: 0, padding: 8, backgroundColor: '#F1F7FF', borderRadius: 18, alignSelf: 'flex-start', maxWidth: '100%' },
   contextText: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   feedback: { padding: 18, borderRadius: 20, borderWidth: 1, gap: 14 },
   prompt: { padding: 14, borderRadius: 20 }, sentence: { fontSize: 29, lineHeight: 40, textAlign: 'center', paddingVertical: 14, color: colors.ink },

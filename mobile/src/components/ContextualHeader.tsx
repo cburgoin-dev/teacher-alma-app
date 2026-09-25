@@ -3,13 +3,13 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import ChevronLeft from 'lucide-react-native/icons/chevron-left';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export function ContextualHeader({ title, position, onBack, disabled = false, safeTop = false, children }: {
-  title: string; position?: string; onBack: () => void; disabled?: boolean; safeTop?: boolean; children?: ReactNode;
+export function ContextualHeader({ title, position, onBack, disabled = false, safeTop = false, backLabel = 'Volver', children }: {
+  title: string; position?: string; onBack: () => void; disabled?: boolean; safeTop?: boolean; backLabel?: string; children?: ReactNode;
 }) {
   const insets = useSafeAreaInsets();
   return <View style={[s.surface, safeTop && { paddingTop: insets.top }]}><View style={s.content}>
     <View style={s.row}>
-      <Pressable onPress={onBack} disabled={disabled} accessibilityRole="button" accessibilityLabel="Volver"
+      <Pressable onPress={onBack} disabled={disabled} accessibilityRole="button" accessibilityLabel={backLabel}
         accessibilityState={{ disabled }} style={({ pressed }) => [s.back, { opacity: disabled ? .4 : pressed ? .6 : 1 }]}>
         <ChevronLeft size={31} color="#0062E9" strokeWidth={2.8} />
       </Pressable>

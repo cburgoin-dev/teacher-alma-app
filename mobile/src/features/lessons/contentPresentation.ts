@@ -19,7 +19,7 @@ export function activityPresentation(activity: Activity) {
   const matching = activity.type === 'MATCH_WORD_IMAGE';
   return {
     title: fill ? 'Completa la oración' : matching ? 'Relaciona las palabras' : '¿Qué responderías?',
-    instruction: activity.instruction ?? (fill ? activity.type === 'FILL_BLANK_TEXT' ? 'Escribe la palabra que falta.' : 'Elige la palabra que falta.' : matching ? 'Toca una palabra y después una imagen.' : 'Elige la mejor respuesta.'),
+    instruction: activity.instruction ?? (fill ? activity.type === 'FILL_BLANK_TEXT' ? 'Escribe la palabra que falta.' : 'Elige la palabra que falta.' : matching ? 'Toca una palabra y su imagen, en el orden que prefieras.' : 'Elige la mejor respuesta.'),
     showPrompt: activity.type !== 'MULTIPLE_CHOICE' || activity.context?.type !== 'DIALOGUE',
   };
 }

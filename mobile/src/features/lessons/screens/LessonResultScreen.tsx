@@ -51,7 +51,7 @@ export function LessonResultScreen({ route, navigation }: NativeStackScreenProps
       {result.isPerfect ? <Text style={[s.body, local.center]}>Has completado la lección con éxito.</Text> : null}
     </View>
     <View style={local.identity}>
-      {courseLabel(course) ? <Text style={[s.caption, local.courseTitle, local.center]}>{courseLabel(course)}</Text> : null}
+
       <Text style={[s.heading, local.center, { fontSize: 22, lineHeight: 29 }]}>{response.lesson.title}</Text>
     </View>
     {result.totalActivities > 0 ? <View style={[local.score, result.isPerfect && local.positive]}>
@@ -64,7 +64,8 @@ export function LessonResultScreen({ route, navigation }: NativeStackScreenProps
       <View style={local.track} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: courseProgress.percentage }} accessibilityLabel="Progreso de lecciones obligatorias">
         <View style={[local.fill, { width: `${Math.max(0, Math.min(100, courseProgress.percentage))}%` }]} />
       </View>
-      <Text style={s.caption}>{courseLabel(course) ? courseLabel(course) + ' · ' : ''}{courseProgress.completedLessons} de {courseProgress.totalLessons} lecciones obligatorias completadas</Text>
+      {courseLabel(course) ? <Text style={s.chip}>{courseLabel(course)}</Text> : null}
+      <Text style={s.caption}>{courseProgress.completedLessons} de {courseProgress.totalLessons} lecciones completadas</Text>
     </View>
     {result.pendingReviewCount > 0 ? <View style={local.review}>
       <LearningIcon kind="pencil" rose /><View style={{ flex: 1 }}>

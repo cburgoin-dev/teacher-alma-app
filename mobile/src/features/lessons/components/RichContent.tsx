@@ -31,10 +31,10 @@ export function DialogueRow({ turn, alternate = false, showTranslation = true }:
 const local = StyleSheet.create({
   key: { color: '#0062E9', fontWeight: '700' },
   audio: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#E8F2FF', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  row: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  speaker: { minWidth: 38, minHeight: 38, borderRadius: 22, padding: 8, backgroundColor: '#197AF3', alignItems: 'center', justifyContent: 'center', marginTop: 10, flexShrink: 0, maxWidth: '28%' },
-  rose: { backgroundColor: '#F52A46' }, label: { fontSize: 18, fontWeight: '700', color: '#FFF' },
-  bubble: { flexShrink: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: '#FFF', padding: 14, borderRadius: 22 },
-  tail: { position: 'absolute', left: -5, top: 24, width: 12, height: 12, backgroundColor: '#FFF', transform: [{ rotate: '45deg' }] },
-  words: { flexShrink: 1, gap: 5 }, phrase: { fontSize: 17, lineHeight: 24, color: '#101B4D' },
+  row: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  speaker: { minWidth: 32, minHeight: 32, borderRadius: 22, padding: 6, backgroundColor: '#197AF3', alignItems: 'center', justifyContent: 'center', marginTop: 8, flexShrink: 0, maxWidth: '28%' },
+  rose: { backgroundColor: '#F52A46' }, label: { fontSize: 16, fontWeight: '700', color: '#FFF' },
+  bubble: { flexShrink: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: '#FFF', padding: 10, borderRadius: 16 },
+  tail: { position: 'absolute', left: -5, top: 18, width: 12, height: 12, backgroundColor: '#FFF', transform: [{ rotate: '45deg' }] },
+  words: { flexShrink: 1, gap: 3 }, phrase: { fontSize: 17, lineHeight: 24, color: '#101B4D' },
 });

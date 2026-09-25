@@ -42,16 +42,29 @@ test('two existing free A1 lessons contain four safe activity types in short rea
   assert.deepEqual(lessonsDemoData(), { blocks, activities });
 });
 
-test('V5 Fill Blank IMAGE is safe public HTTP metadata, with v1 fallbacks retained', () => {
+test('V6 Fill Blank IMAGE is safe public HTTP metadata, with v1 fallbacks retained', () => {
   const { activities, blocks } = lessonsDemoData();
   const fill = publicActivity({ ...activities[1], status: 'ACTIVE', createdAt: new Date(), updatedAt: new Date() } as Activity);
   assert.equal(fill.context?.type, 'IMAGE');
   if (fill.context?.type !== 'IMAGE') throw new Error('Expected IMAGE');
   assert.ok(['http:', 'https:'].includes(new URL(fill.context.url).protocol));
-  assert.equal(new URL(fill.context.url).pathname, '/greeting.png');
+  assert.equal(new URL(fill.context.url).pathname, '/demo-media/greeting.png');
   assert.ok(fill.context.alt.length > 10);
   assert.ok(fill.instruction);
   const summary = publicContent('SUMMARY', blocks[4]!.content);
   assert.ok(summary.points && summary.takeaways && summary.subtitle);
   assert.ok(!('takeaways' in publicContent('SUMMARY', blocks[9]!.content)), 'lesson 4 still exercises v1 Summary');
+});
+
+test('V6 Summary has static playable audio metadata; missing audio stays absent', () => {
+  const { blocks } = lessonsDemoData();
+  const summary = publicContent('SUMMARY', blocks[4]!.content);
+  const phrases = summary.keyPhrases as { audioUrl?: string; audioAlt?: string }[];
+  assert.equal(new URL(phrases[0]!.audioUrl!).pathname, '/demo-media/nice-to-meet-you.wav');
+  assert.equal(phrases[0]!.audioAlt, 'Nice to meet you!');
+  assert.equal(phrases[1]!.audioUrl, undefined);
+  const dialogue = publicContent('EXAMPLE', blocks[1]!.content);
+  const turns = dialogue.turns as { audioUrl?: string }[];
+  assert.equal(new URL(turns[0]!.audioUrl!).pathname, '/demo-media/sofia-greeting.wav');
+  assert.equal(turns[1]!.audioUrl, undefined);
 });

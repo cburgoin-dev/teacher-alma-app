@@ -1,4 +1,4 @@
-> Referencia vigente: sección «Lessons Session Semantics v1» al final. Las secciones V2–V5 documentan iteraciones visuales históricas; sus antiguos recorridos Resume ya no aplican.
+> Referencia vigente: «Lessons Mobile V6» al final para arranque y aceptación; «Lessons Session Semantics v1» para reglas. V2–V5 son historial y sus recorridos/servidor de media separado no aplican.
 
 # Mobile Lessons v2 — UX y prueba Android
 
@@ -382,3 +382,74 @@ An immediate retry offered on the final feedback is now post-completion: it uses
 POST run complete remains an idempotent confirmation/result read for completed runs (and validates eligibility if ACTIVE); mobile does not rely on it to reach completion. Optional unanswered activities remain in the existing score denominator.
 
 Validación final (2026-09-25): Prisma validate/generate y migrate status PASS; migración aplicada a teacher_alma_dev; TypeScript backend/mobile/scripts PASS; Lessons PostgreSQL + unitarios + backfill aislado 30/30; mobile 37/37; export Android PASS (1014 módulos, Hermes 2,2 MB) en dist/lessons-session-check; seed/check y git diff --check PASS. Baseline final A1 2/8, lección 3 actual/incompleta, 4 incompleta, A2 sin iniciar, sin runs ACTIVE ni attempts/Review demo. Pendiente aceptación física Android; no se afirma validación táctil.
+
+## Lessons Mobile V6 — Final Fidelity / Interaction Polish
+
+V6 conserva Session Semantics v1: no cambios en flow, dominio, schema, migraciones, scoring, Review, access o progression. Working tree inicialmente limpio en feature/lessons-v1. Sin commit, push, merge ni git reset.
+
+### Presentación frente a V5
+
+- RichContent: speaker más compacto (32 mínimo), burbuja con padding 10/radio 16 y tail alineado; traducción 14/20, frase 17/24 y audio de 44 px a la derecha. No se infieren contenido ni speakers. Se conserva body 16/24.
+- ActivityStep: contexto MC se ajusta al contenido, padding 8 y radio 18; contextos generales padding 12. Menos distancia entre heading, contexto y opciones, manteniendo targets. Fill IMAGE usa la fixture original, ahora servida por API.
+- ContentBlocks: preview VIDEO horizontal menos alto, sin play ficticio; Summary reduce padding vertical de takeaways y phrase cards. Traducción secundaria 14/20. En teléfonos menores de 390 o fuente >1.15 las frases recuperan todo el ancho. KEY y fallbacks v1 intactos.
+- MatchingPairs/matchingDraft: palabra→imagen e imagen→palabra equivalentes; tocar el elemento seleccionado cancela selección. Una sola selección, reemplazo sin duplicados, borde seleccionado más fuerte y anchors de ambos lados. Gap entre columnas 40 permite imágenes algo mayores. Conectores medidos, capa sin taps, feedback y retry se conservan; retry elimina pares, ambas selecciones, feedback y draft cacheado.
+- LessonResultScreen: el curso normal aparece una sola vez como chip en progreso; «3 de 8 lecciones completadas». Se preserva el denominador real del backend. Hero, PRECISIÓN, primer intento, Review informativo y siguiente acción permanecen. Replay conserva su identidad, precisión local, «primer intento de esta repetición» y Continuar mi ruta, sin progreso/Review histórico.
+- ContextualHeader/LessonScreen: mismo chevron, safe areas, topic/posición y progreso; etiqueta accesible «Salir de la lección» en NORMAL_RUN. Modal ACTIVE y salida directa tras completion intactos. Summary sigue mostrando Ver resultado y contador de esta sesión; no se vuelve a implementar completion ni navegación anterior.
+
+La mejora propuesta de fidelidad está en densidad de conversación/contexto, ancho de frases y jerarquía de Result. No se acredita fidelidad física por exportación: aún no hay capturas V6. Se conservaron intencionalmente iconos, hero, tamaños body/caption, controles de feedback y semántica de sesión. No se replica el engranaje flotante de las capturas ni el diseño de Duolingo.
+
+### Media demo y arranque (solo backend + Expo)
+
+La API monta `/demo-media` solo con NODE_ENV=development y sirve únicamente greeting.png, sofia-greeting.wav y nice-to-meet-you.wav. El resto responde 404; producción no expone fixtures. Soporta HEAD/ranges con sendFile. No se sirve el directorio entero ni scripts. Tanto src/shared como dist/shared resuelven backend/scripts/assets.
+
+Los WAV están versionados: no requieren generación durante seed ni playback. Son voz sintética local de Windows pregenerada para demo, no voz definitiva de Alma. Regeneración opcional: Windows PowerShell con System.Speech y voz en-US, ejecutando backend/scripts/assets/generate-audio.ps1. No hay provider ni TTS en tiempo real.
+
+Audio disponible en turno A de Content y primera key phrase de Summary. El segundo turno y la segunda phrase prueban ausencia del control. El botón conserva apertura externa vía Linking, con label/hint accesible y error recuperable; volver a Expo conserva la sesión montada. La reproducción embebida sigue pendiente.
+
+Ya se actualizó la fixture con --apply usando http://192.168.1.64:3000. El baseline existente se conservó, sin reset de DB: A1 2/8, 3/4 incompletas, A2 sin iniciar, cero ACTIVE/attempts/Review demo. La revisión automática rechazó el reset; la alternativa no destructiva --apply fue autorizada y ejecutada después de verificar el baseline con consultas.
+
+Si cambia la IP LAN, actualizar la fixture (no usar localhost para Android):
+
+```powershell
+# Terminal backend; usar la IP de Wi-Fi compartida con el teléfono.
+Set-Location C:\software-development\projects\teacher-alma-app\backend
+$env:LESSONS_DEMO_ASSET_BASE_URL = 'http://192.168.1.64:3000'
+node --import tsx scripts/seed-courses-demo.ts --apply
+node --import tsx scripts/seed-courses-demo.ts --check
+npm run dev
+```
+
+Reutilizar backend activo o reiniciarlo si no usa watch. No arrancar serve-lesson-assets.mjs/3001. --apply conserva aprendizaje existente; no restaura automáticamente 2/8 después de probar.
+
+```powershell
+# Terminal Expo; usar la misma IP.
+Set-Location C:\software-development\projects\teacher-alma-app\mobile
+$env:EXPO_PUBLIC_API_URL = 'http://192.168.1.64:3000'
+node node_modules/expo/bin/cli start --host lan --port 8081
+```
+
+Abrir Expo Go compatible SDK 57. Si ya existe Metro, recargar la app. Imagen: http://192.168.1.64:3000/demo-media/greeting.png. Audio: /demo-media/sofia-greeting.wav y /demo-media/nice-to-meet-you.wav en el mismo origen. La LAN/firewall solo necesita la API y Metro; no un tercer proceso.
+
+### Un recorrido físico compacto
+
+1. Roadmap: confirmar A1 2/8, lección 3 actual, 4 incompleta y A2 sin iniciar. Abrir 3: 0%, Content con Inglés A1, título/descripción, KEY, diálogo compacto. Abrir audio del turno A, escucharlo y volver a Expo; turno B sin botón. VIDEO es preview neutral sin control muerto.
+2. MC: elegir Goodbye! → Comprobar → incorrecto. Hardware Back → Seguir aprendiendo conserva respuesta/feedback; chevron → Salir vuelve a Roadmap. Reabrir 3 empieza a 0% fresh. Repetir MC wrong → retry → Nice to meet you! → Continuar. El primer intento continúa siendo incorrecto.
+3. Fill: imagen de Sofía visible sin puerto 3001. Probar Pista; elegir Hello al primer envío. Verificar llega a 100% real antes de Summary. Continuar → Summary: KEY, frases, audio en la primera, 2 actividades completadas y Ver resultado. Ya no hay advertencia de pérdida al salir tras 100%.
+4. Result normal: 50%, 1 de 2 correctas al primer intento, un ejercicio para reforzar, curso 38%/3 de 8 e Inglés A1 una sola vez. Volver a la ruta enfoca lección 4.
+5. Abrir 3 completada: Inglés A1 · Repaso, primer step, 0%, respuestas/feedback vacíos. Acertar MC/Fill desde el primer envío → Summary → Result Replay 100%, ¡Repaso completado!, copy de primer intento de esta repetición, sin Review histórico ni falso unlock. Continuar mi ruta vuelve al frontier 4. También cubre presentación de precisión perfecta sin reset.
+6. Lección 4: Content legacy, Fill TEXT; escribir am, comprobar teclado/scroll y continuar. Matching: Book→taza (word→image), libro→Cup (image→word), Ball→pelota. Antes de enviar probar cambio/cancelación de selección y reemplazo sin duplicados; dejar dos pares mal y comprobar rojo/verde.
+7. Retry final: cero conexiones/selecciones/feedback, Comprobar deshabilitado. Reconstruir libro→Book, Cup→taza, pelota→Ball; comprobar y continuar. Summary → Result sigue 50%/1 de 2, curso 4/8; el retry post-completion no reescribe score ni Review. Próxima Mi familia muestra acceso Premium informativo.
+8. Repetir las pantallas más densas con fuente 1.3–1.5/ancho estrecho y TalkBack: scroll completo, safe areas, labels, controles de audio y conectores unidos a anchors. Para PERFECT normal, en una pasada separada y con autorización para borrar aprendizaje demo, usar el reset documentado --reset --lessons y acertar todos los primeros envíos (Nice to meet you!, Hello, am y los tres pares correctos). No se ejecutó este reset en V6.
+
+### Validación V6 (2026-09-25)
+
+- TypeScript mobile, backend y scripts: PASS.
+- Mobile: 41/41 PASS; nuevos casos de Matching bidireccional/toggle/reemplazo/reset, imágenes habilitadas primero y bloqueo/taps, audio ausente/inseguro/presente y acción externa, Result normal con metadata única. Regresiones existentes: Replay fresh, retry/draft, 100% antes de Summary/Result, retry final read-only y modal/Back.
+- Fixtures/media: 4/4 PASS (3 fixture + 1 HTTP), bytes exactos PNG/WAV, rangos 206, content types, ausencia en producción y rutas fuera de allowlist. tsx requirió ejecución fuera del sandbox por uv_os_get_passwd ENOMEM.
+- Seed --apply / --check: PASS; resetUserProgress=false. Baseline verificado sin mutación de aprendizaje.
+- API local en ejecución: health, greeting.png y ambos WAV = 200. GET lesson 3 publica las tres URLs /demo-media y no contiene :3001.
+- Android export final: PASS, 1014 módulos, Hermes 2.2 MB, mobile/dist/lessons-v6-check (ignorado por Git). Expo requirió ejecución fuera del sandbox por EPERM al crear la salida.
+- git diff --check: PASS. Sin nuevas dependencias ni cambios de .env.
+- ADB: cero dispositivos. Pendientes aceptación física, reproducción externa real en Android, fuente ampliada, teclado y TalkBack. Pruebas de componentes verifican props/interacciones con primitives stubbed; no prueban layout/touch nativo.
+
+Deuda explícita: reproductor embebido, grabaciones/imagen/video definitivos y aceptación visual V6; DRAG, Review/Practice, settings, rewards y pagos continúan fuera de alcance. La foto del mockup no se reemplaza por una fotografía inventada. No se tocó dominio backend ni se ejecutó commit/push/merge/reset.

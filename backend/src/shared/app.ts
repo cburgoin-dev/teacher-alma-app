@@ -1,6 +1,7 @@
 import express from 'express';
 import type { RequestHandler } from 'express';
 import cors from 'cors';
+import { demoMedia } from './demo-media.js';
 import { courseRoutes } from '../modules/courses/course.routes.js';
 import type { CourseService } from '../modules/courses/course.service.js';
 import { errorHandler } from './http-error.js';
@@ -12,6 +13,7 @@ export function createApp(courses: CourseService, auth: RequestHandler, lessons?
   const app = express();
   app.use(cors());
   app.use(express.json());
+  app.use('/demo-media', demoMedia(process.env.NODE_ENV));
   app.get('/health', (_request, response) => { response.json({ status: 'ok' }); });
   app.use('/courses', auth, courseRoutes(courses));
   if (lessons) app.use('/lessons', auth, lessonRoutes(lessons));

@@ -27,7 +27,7 @@ function Example({ block }: { block: Extract<Block, { type: 'EXAMPLE' }> }) {
 }
 export function SummaryContent({ block }: { block: Extract<Block, { type: 'SUMMARY' }> }) {
   const { width, fontScale } = useWindowDimensions();
-  const indent = width >= 360 && fontScale <= 1.3 ? 54 : 0;
+  const indent = width >= 390 && fontScale <= 1.15 ? 54 : 0;
   return <>
     {block.subtitle ? <Text style={[s.body, { marginTop: -8 }]}>{block.subtitle}</Text> : null}
     <View style={[local.card, { gap: 0 }]}>
@@ -40,7 +40,7 @@ export function SummaryContent({ block }: { block: Extract<Block, { type: 'SUMMA
       <View style={local.row}><LearningIcon kind="chat" rose /><View style={local.flex}><Text style={s.heading}>Frases clave de la lección</Text><Text style={s.caption}>Practica y memoriza estas frases clave.</Text></View></View>
       {block.keyPhrases.map((phrase, i) => <View key={i} style={[local.bubble, local.row, { marginLeft: indent }]}>
         <View style={local.flex}><Text style={[s.heading, local.blue]}>{phrase.text}</Text>
-          {phrase.translation ? <Text style={s.body}>{phrase.translation}</Text> : null}</View>
+          {phrase.translation ? <Text style={s.caption}>{phrase.translation}</Text> : null}</View>
         <AudioButton {...phrase} />
       </View>)}
     </View> : null}
@@ -84,11 +84,11 @@ const local = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 }, flex: { flex: 1 }, blue: { color: '#0062E9' },
   concept: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 }, conceptText: { flex: 1, gap: 8 },
   example: { backgroundColor: '#FFF8F9', borderColor: '#FFF8F9' },
-  bubble: { backgroundColor: '#FFF', borderRadius: 14, borderWidth: 1, borderColor: '#E0EAF8', padding: 14, gap: 10 },
+  bubble: { backgroundColor: '#FFF', borderRadius: 14, borderWidth: 1, borderColor: '#E0EAF8', padding: 12, gap: 6 },
   mediaRow: { flexDirection: 'row', gap: 12, alignItems: 'center' },
   preview: { width: '57%', borderRadius: 12, overflow: 'hidden', backgroundColor: '#E0EDFA' },
-  mediaText: { flex: 1, gap: 6 }, poster: { aspectRatio: 4 / 3, alignItems: 'center', justifyContent: 'center' },
-  point: { flexDirection: 'row', gap: 14, paddingVertical: 14, alignItems: 'flex-start' },
+  mediaText: { flex: 1, gap: 6 }, poster: { aspectRatio: 16 / 10, alignItems: 'center', justifyContent: 'center' },
+  point: { flexDirection: 'row', gap: 14, paddingVertical: 10, alignItems: 'flex-start' },
   divider: { borderTopWidth: 1, borderTopColor: '#DCE8F9' },
   number: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#DCEBFF', alignItems: 'center', justifyContent: 'center' },
   numberText: { fontSize: 22, fontWeight: '800', color: '#0062E9' },

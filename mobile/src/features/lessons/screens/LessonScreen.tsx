@@ -56,7 +56,7 @@ export function LessonScreen({ route, navigation }: NativeStackScreenProps<Cours
   const step = data.steps.find(item => item.id === state.stepId);
   const activity = step?.blocks.find(block => block.type === 'ACTIVITY');
   return <KeyboardAvoidingView style={[s.page, { paddingTop: insets.top }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-    <ContextualHeader title={data.lesson.topic.title} position={`${data.lesson.position.lesson} de ${data.lesson.position.totalLessons}`} onBack={back} disabled={state.busy}>
+    <ContextualHeader title={data.lesson.topic.title} position={`${data.lesson.position.lesson} de ${data.lesson.position.totalLessons}`} onBack={back} backLabel={state.mode === 'NORMAL_RUN' ? 'Salir de la lección' : 'Volver'} disabled={state.busy}>
       {state.progress ? <ProgressBar percentage={state.progress.percentage} /> : null}
     </ContextualHeader>
     <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" contentContainerStyle={[s.content, { flexGrow: 1, paddingBottom: Math.max(24, insets.bottom + 12) }]}>
@@ -76,7 +76,7 @@ export function LessonScreen({ route, navigation }: NativeStackScreenProps<Cours
           </View> : null}
           <Button title={step.type === 'SUMMARY_STEP' ? state.mode === 'REPLAY' ? 'Finalizar repaso' : 'Ver resultado' : 'Continuar'} arrow busy={state.busy}
             onPress={step.type === 'SUMMARY_STEP' ? flow.finish : flow.continueContent} />
-        </> : <View style={s.card}><Text style={s.body}>Ya recorriste los pasos requeridos. Finaliza para ver tu resultado.</Text><Button title="Ver resultado" busy={state.busy} onPress={flow.finish} /></View>}
+        </> : <View style={s.card}><Text style={s.body}>Ya completaste la lección. Consulta tu resultado.</Text><Button title="Ver resultado" busy={state.busy} onPress={flow.finish} /></View>}
     </ScrollView>
   </KeyboardAvoidingView>;
 }

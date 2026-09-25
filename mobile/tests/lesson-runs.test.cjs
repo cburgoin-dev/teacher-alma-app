@@ -74,8 +74,8 @@ test('attempt gates double taps and publishes ready feedback atomically', async 
 
 });
 test('Matching retry remains neutral and does not alter first submission semantics', () => {
-  const reset = matchingDraft({ pairs: [{ wordId: 'w', imageId: 'i' }], word: 'w' }, { type: 'retry' });
-  assert.deepEqual(reset, { pairs: [], word: null });
+  const reset = matchingDraft({ pairs: [{ wordId: 'w', imageId: 'i' }], word: 'w', image: null }, { type: 'retry' });
+  assert.deepEqual(reset, { pairs: [], word: null, image: null });
 });
 
 test('100% carries durable completion before Summary; retry is read-only, exit cannot abandon and Result needs no network', async () => {
