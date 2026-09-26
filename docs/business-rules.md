@@ -457,3 +457,20 @@ Summary is post-completion presentation, excluded from prerequisites and complet
 An immediate retry offered on the final feedback is now post-completion: it uses the existing read-only replay check, leaves the run closed and cannot alter its first-attempt score or Review. Earlier retries within ACTIVE runs remain persisted and numbered normally. No new Practice/Review session is introduced.
 
 POST run complete remains an idempotent confirmation/result read for completed runs (and validates eligibility if ACTIVE); mobile does not rely on it to reach completion. Optional unanswered activities remain in the existing score denominator.
+
+## Review Semantics v1
+
+The accepted Review rules are defined in `docs/review-semantics-v1.md`.
+
+Business-rule summary:
+- Only incorrect submissions from COMPLETED normal LessonRuns create/reactivate Review; Replay and abandoned runs do not.
+- One user/activity has one Review lifecycle: ACTIVE <-> RESOLVED through Review resolution and later qualifying lesson errors.
+- Review is a short verification flow: no Pista and no immediate retry.
+- Maximum batch size is 5, with no minimum beyond one eligible pending item.
+- Global priority is never-reviewed first, then least-recently-reviewed, with stable creation/id tie-breakers.
+- The initial implemented entry point is Lesson Result. It prefers eligible errors from the just-completed lesson and fills remaining batch slots from the global queue.
+- Home and Progress remain planned entry points to the same Review vertical.
+- A new batch requires current commercial access to its source content. Access is frozen for that already-started batch so an entitlement expiring mid-flow does not interrupt it; the next batch revalidates access.
+- Leaving an in-progress Review asks for lightweight confirmation. Submitted answers remain durable; there is no resumable persisted ReviewSession.
+- Review cannot change lesson/course progression, historical score, Replay, rewards or gamification state.
+

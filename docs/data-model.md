@@ -484,3 +484,15 @@ Implemented by migration `20260925000000_lesson_runs`.
 - Normal attempts carry runId; (runId, activityId, attemptNumber) is unique. First submission within the accepted run determines score.
 - The final required pedagogical mutation automatically completes the run and creates durable LessonProgress (completedRunId) and LessonBlockProgress. Every wrong submission in that run increments Review once; correct retries do not erase errors. Repeated complete has no duplicate effects.
 - Abandoned data remains isolated from durable learning. Replay creates no run or attempts.
+
+## Review v1 model clarifications
+
+`docs/review-semantics-v1.md` is the accepted lifecycle source of truth.
+
+- `review_items` represents one lifecycle per `(user_id, activity_id)`, not one row per mistake episode. Review implementation should enforce that pair as unique.
+- A RESOLVED item can reactivate after a later qualifying error from a completed normal LessonRun; `resolved_at` is then cleared.
+- `incorrect_attempts` is historical difficulty/error data, not a pending-item multiplicity.
+- Review answers use `activity_attempts.context = REVIEW`, set `review_item_id`, normally retain `source_lesson_id` in `lesson_id`, and have no LessonRun.
+- Review v1 intentionally adds no persisted `review_sessions` or `review_session_items` entity. The active batch is ephemeral and represented to Mobile by an opaque short-lived batch authorization token.
+- Review submissions require durable idempotency. The implementation may add the smallest request-key field/constraint necessary to ActivityAttempt or an equivalent persistence boundary; do not model a full session solely for this purpose.
+

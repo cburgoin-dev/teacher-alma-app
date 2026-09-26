@@ -287,3 +287,17 @@ Important direction:
 - The primary action region should be predictable without adding arbitrary empty space merely to fill the viewport.
 
 The current answer/retry/Review semantics remain unchanged.
+
+## Review v1 accepted semantics
+
+The accepted Review behavior is now defined in `docs/review-semantics-v1.md`, which supersedes the earlier provisional Review notes above where they differ.
+
+Key frozen rules for v1:
+- Review reuses the activity engine but is a separate saved-error flow.
+- No hints and no immediate retry in Review.
+- Correct resolves the ReviewItem; incorrect leaves it ACTIVE and advances after feedback.
+- A batch contains 1-5 eligible items and has stable traversal progress.
+- Review uses Topic for grouping until real concept/skill metadata exists.
+- Review attempts are durable with `context = REVIEW` and never affect lesson score/progression.
+- Replay and future free Practice remain separate semantics.
+

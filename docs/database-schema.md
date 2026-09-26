@@ -820,3 +820,18 @@ Only introduce new tables/columns later if real operational requirements justify
 - `lesson_progress.completed_run_id`: nullable unique FK with delete restrict. Status CHECK allows only COMPLETED. The old current_block_id is removed.
 
 Backfill is transactional: one legacy run per user/lesson found in progress, LESSON attempts or block traversal. Completed progress becomes a COMPLETED run with a first-attempt score snapshot; unfinished history becomes ABANDONED. Attempts are attached and renumbered per run/activity in original attempt/created/id order. Traversal is copied into run rows. Only unfinished durable progress/block rows are removed; completed records remain linked. Legacy Review is preserved because its provenance cannot be reconstructed reliably; it is not retroactively decremented. New ACTIVE/ABANDONED runs never produce Review. No database reset is used by the migration.
+
+## Review v1 schema adjustments required before implementation
+
+The accepted semantics are defined in `docs/review-semantics-v1.md`.
+
+The earlier recommendation of a partial unique index for only ACTIVE ReviewItems is superseded for Review v1. Review reuses/reactivates the same lifecycle row, therefore the implementation should enforce:
+
+- unique `(user_id, activity_id)` on `review_items`.
+
+This prevents a RESOLVED historical row and a new ACTIVE duplicate for the same user/activity.
+
+Review submissions also require durable request idempotency. Add the smallest schema support necessary so one logical Review submission request cannot create two `activity_attempts` or apply the ReviewItem transition twice after a transport retry. The final field/index shape should remain scoped to Review attempts and must not weaken the existing LessonRun attempt uniqueness.
+
+No `review_sessions` or `review_session_items` table is required for Review v1. A Review batch is short-lived and authorized by an opaque token returned at batch start.
+

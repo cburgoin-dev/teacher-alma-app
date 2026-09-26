@@ -816,3 +816,37 @@ The high-fidelity Result should feel more celebratory and vertically balanced:
 - contextual next lesson/access state.
 
 `Ver mi progreso` remains deferred until the real Progress destination is implemented.
+
+## Review v1
+
+Functional semantics are defined in `docs/review-semantics-v1.md`. Mockups remain visual direction, not fixed counts/content rules.
+
+### Initial entry
+
+For the first implementation, Lesson Result is the only required functional entry point. When the completed lesson has pending Review, Result shows a lesson-local reinforcement count and a `Repasar ahora` action. Home and Progress remain documented future entry points to the same Review flow.
+
+### READY
+
+Shows the current globally eligible pending count, grouped by real Topic data, and `Empezar repaso`. The session size is derived from the selected batch (maximum 5), not from mockup sample numbers.
+
+### IN_PROGRESS
+
+Focused chrome similar to Lesson activities but with Review-specific context:
+- title `Repaso`;
+- position such as `2 de 5` and a traversal progress bar;
+- optional compact Topic label;
+- reused Activity presentation/feedback;
+- no hints/Pista;
+- no immediate retry;
+- global bottom navigation hidden.
+
+Back opens a small confirmation modal to avoid accidental exit. Confirmed exit preserves already submitted answers and leaves unseen items unchanged; it does not create a resumable Review session.
+
+### RESULT
+
+Summarizes the just-traversed batch: items corrected/resolved, answered items still pending and reviewed Topics. It may also show the current eligible pending total when useful. For the initial Lesson Result entry, the main exit returns to the learning route/current course context.
+
+### EMPTY
+
+A lightweight positive state when there are no currently eligible ACTIVE items. Do not expose commercially blocked ReviewItems as actionable pending work.
+
