@@ -359,3 +359,15 @@ test('V8 AudioButton completion restores speaker and the next tap starts a new p
   const button = render().find(n => n.type === 'Pressable'); assert.equal(button.props.accessibilityLabel, 'Escuchar esta frase');
   button.props.onPress(); await Promise.resolve(); await Promise.resolve(); assert.equal(created, 2); cleanup();
 });
+
+test('V10 only video posters use cover; activity images keep contain and Play remains over the poster', () => {
+  const { ContentBlocks, LessonImage } = component('../src/features/lessons/components/ContentBlocks.tsx');
+  const tree = nodes(ContentBlocks({ blocks: [{ id: 'v', type: 'VIDEO', posterUrl: 'https://example.org/wave.png', title: 'Presentarte en inglés', caption: 'Una explicación para practicar cómo presentarte.' }] }));
+  const poster = tree.find(n => n.type === LessonImage);
+  assert.equal(poster.props.cover, true);
+  assert.equal(LessonImage(poster.props).props.resizeMode, 'cover');
+  assert.equal(LessonImage({ url: 'https://example.org/wave.png', alt: 'Saludo', wide: true }).props.resizeMode, 'contain');
+  const preview = tree.find(n => n.type === 'View' && Array.isArray(n.props.style) && n.props.style[0]?.overflow === 'hidden');
+  assert.ok(preview); assert.ok(nodes(preview).some(n => n.props?.pointerEvents === 'none'));
+  assert.equal(tree.filter(n => n.type === 'Button').length, 0);
+});

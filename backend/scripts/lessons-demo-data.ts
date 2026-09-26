@@ -11,7 +11,7 @@ export function lessonsDemoData() {
     { id: demoId(30001), type: 'MULTIPLE_CHOICE', prompt: 'Alguien dice: “Hi, I’m Daniel.” ¿Qué responderías?', explanation: 'Nice to meet you expresa que te alegra conocer a alguien.',
       config: { instruction: 'Elige la mejor opción para continuar la conversación.', options: [{ id: 'hello', text: 'Nice to meet you!' }, { id: 'bye', text: 'Goodbye!' }, { id: 'night', text: 'Good night!' }], correctOptionId: 'hello', context: { type: 'DIALOGUE', speakerLabel: 'D', text: 'Hi, I’m Daniel.', translation: 'Hola, soy Daniel.', audioUrl: media('daniel-intro.wav'), audioAlt: 'Hi, I’m Daniel.' } } },
     { id: demoId(30002), type: 'FILL_BLANK_OPTIONS', prompt: '_____, I’m Sofía.', explanation: 'Hello es un saludo para iniciar una conversación.',
-      config: { instruction: 'Observa la escena y elige el saludo para presentarte.', context: { type: 'IMAGE', url: media('greeting-hello-v9.png'), alt: 'Sofía saluda con la mano a otra persona antes de presentarse.' }, options: [{ id: 'please', text: 'Please' }, { id: 'hello', text: 'Hello' }, { id: 'bye', text: 'Goodbye' }], correctOptionId: 'hello', hint: 'Empieza con un saludo.' } },
+      config: { instruction: 'Observa la escena y elige el saludo para presentarte.', context: { type: 'IMAGE', url: media('greeting-wave-v10.png'), alt: 'Sofía saluda con la mano a otra persona antes de presentarse.' }, options: [{ id: 'please', text: 'Please' }, { id: 'hello', text: 'Hello' }, { id: 'bye', text: 'Goodbye' }], correctOptionId: 'hello', hint: 'Empieza con un saludo.' } },
     { id: demoId(30003), type: 'FILL_BLANK_TEXT', prompt: 'I _____ a student.', explanation: 'Con I usamos am: I am a student.',
       config: { instruction: 'Escribe la palabra que falta.', context: { type: 'TEXT', text: 'Preséntate como estudiante.' }, acceptedAnswers: ['am'], caseSensitive: false, hint: 'Usa la forma de to be que acompaña a I.' } },
     { id: demoId(30004), type: 'MATCH_WORD_IMAGE', prompt: 'Relaciona cada palabra con su imagen.', explanation: 'Book significa libro, cup significa taza y ball significa pelota.',
@@ -31,7 +31,7 @@ export function lessonsDemoData() {
     { id: demoId(31009), lessonId: demoId(1004), position: 4, type: 'ACTIVITY', activityId: demoId(30004) },
     { id: demoId(31010), lessonId: demoId(1004), position: 6, type: 'SUMMARY', content: { title: 'Resumen de la lección', points: ['I am: yo soy / estoy.', 'Book: libro. Cup: taza.', 'It is introduce un objeto.'] } },
   ];
-  blocks.push({ id: demoId(31011), lessonId: demoId(1003), position: 3, type: 'VIDEO', required: false, content: { title: 'Presentarte en inglés', posterUrl: media('greeting-hello-v9.png'), caption: 'Una explicación para practicar cómo presentarte.' } });
+  blocks.push({ id: demoId(31011), lessonId: demoId(1003), position: 3, type: 'VIDEO', required: false, content: { title: 'Presentarte en inglés', posterUrl: media('greeting-wave-v10.png'), caption: 'Una explicación para practicar cómo presentarte.' } });
   // Explicit v2 semantics, with v1 text retained for existing mobile clients.
   Object.assign(blocks[0]!.content as Prisma.JsonObject, { segments: [
     { text: 'Usa “' }, { text: 'Nice to meet you!', emphasis: 'KEY' },
@@ -52,7 +52,7 @@ export function lessonsDemoData() {
   });
   activities.push(
     { id: demoId(30005), type: 'FILL_BLANK_TEXT', prompt: 'Nice to meet you _____!', explanation: 'Añade too para responder que también te alegra conocer a la otra persona.',
-      config: { instruction: 'Responde a alguien que te dice «Nice to meet you!».', context: { type: 'IMAGE', url: media('greeting-hello-v9.png'), alt: 'Dos personas se saludan y se presentan.' }, acceptedAnswers: ['too'], caseSensitive: false, hint: 'La palabra significa «también».' } },
+      config: { instruction: 'Responde a alguien que te dice «Nice to meet you!».', context: { type: 'IMAGE', url: media('greeting-response-v10.png'), alt: 'Sofía y Daniel conversan sonrientes después de presentarse.' }, acceptedAnswers: ['too'], caseSensitive: false, hint: 'La palabra significa «también».' } },
     { id: demoId(30006), type: 'MULTIPLE_CHOICE', prompt: '¿Cómo nombras este objeto en inglés?', explanation: 'It is a ball significa «Es una pelota». Usamos It is para nombrar un objeto.',
       config: { instruction: 'Elige la oración que describe la imagen.', context: { type: 'IMAGE', url: media('ball.png'), alt: 'Una pelota de colores.' },
         options: [{ id: 'student', text: 'I am a student.' }, { id: 'ball', text: 'It is a ball.' }, { id: 'cup', text: 'It is a cup.' }], correctOptionId: 'ball' } },

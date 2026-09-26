@@ -8,11 +8,11 @@ import { AudioButton, DialogueRow, RichText } from './RichContent';
 import { LearningIcon } from './LearningIcon';
 import { lessonStyles as s } from './lessonStyles';
 
-export function LessonImage({ url, alt, wide = false }: { url: string; alt: string; wide?: boolean }) {
+export function LessonImage({ url, alt, wide = false, cover = false }: { url: string; alt: string; wide?: boolean; cover?: boolean }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   return failedUrl === url ? <Text style={s.body}>{alt} · Imagen no disponible</Text> :
-    <Image source={{ uri: url }} accessibilityLabel={alt} accessible resizeMode="contain"
-      style={{ width: '100%', aspectRatio: wide ? 16 / 9 : 4 / 3, borderRadius: 14 }} onError={() => setFailedUrl(url)} />;
+    <Image source={{ uri: url }} accessibilityLabel={alt} accessible resizeMode={cover ? "cover" : "contain"}
+      style={{ width: '100%', aspectRatio: cover ? 16 / 10 : wide ? 16 / 9 : 4 / 3, borderRadius: cover ? 0 : 14 }} onError={() => setFailedUrl(url)} />;
 }
 function Example({ block }: { block: Extract<Block, { type: 'EXAMPLE' }> }) {
   return <View style={[local.card, local.example]}>
@@ -62,7 +62,7 @@ export function ContentBlocks({ blocks }: { blocks: Block[] }) {
     if (block.type === 'VIDEO') return <View key={block.id} style={[local.card, { padding: 12 }]}>
       <View style={[local.mediaRow, stacked && { flexDirection: 'column', alignItems: 'stretch' }]}>
         <View style={[local.preview, stacked && { width: '100%' }]}>
-          {block.posterUrl ? <LessonImage url={block.posterUrl} alt={block.title ?? 'Video de la lección'} /> :
+          {block.posterUrl ? <LessonImage cover url={block.posterUrl} alt={block.title ?? 'Video de la lección'} /> :
             <View style={local.poster} accessible accessibilityLabel="Vista previa de video"><LearningIcon kind="video" plain size={42} color="#73A1CC" /></View>}
         {block.posterUrl ? <View pointerEvents="none" accessible={false} style={local.playOverlay}><View style={local.playDisc}><Play size={24} color="#0062E9" fill="#0062E9" /></View></View> : null}
         </View>

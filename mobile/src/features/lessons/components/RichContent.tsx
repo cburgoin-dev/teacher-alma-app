@@ -25,7 +25,7 @@ const local = StyleSheet.create({
   contextSpeaker: { minWidth: 50, minHeight: 50, borderRadius: 25 },
   contextLabel: { fontSize: 23, fontWeight: '800' },
   tail: { position: 'absolute', left: -5, top: 25, width: 12, height: 12, backgroundColor: '#FFF', transform: [{ rotate: '45deg' }] },
-  contextBubble: { flex: 0, flexShrink: 1, paddingHorizontal: 14, paddingVertical: 16, borderRadius: 24, gap: 12 },
+  contextBubble: { flex: 0, flexShrink: 1, paddingHorizontal: 14, paddingVertical: 18, borderRadius: 24, gap: 12 },
   key: { color: '#0062E9', fontWeight: '700' },
   turn: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: '#E0EAF8', backgroundColor: '#FFF' },
   speaker: { minWidth: 38, minHeight: 38, borderRadius: 22, padding: 6, backgroundColor: '#197AF3', alignItems: 'center', justifyContent: 'center', marginTop: 2, flexShrink: 0, maxWidth: '28%' },

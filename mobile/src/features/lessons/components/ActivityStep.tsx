@@ -119,7 +119,7 @@ const local = StyleSheet.create({
   heading: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   title: { fontSize: 27, lineHeight: 33, fontWeight: '800', color: colors.ink },
   context: { backgroundColor: '#F0F6FF', borderRadius: 18, borderWidth: 1, borderColor: '#DBE9FD', padding: 12, gap: 8 },
-  dialogueContext: { borderWidth: 0, padding: 10, backgroundColor: '#F1F7FF', borderRadius: 18, alignSelf: 'stretch' },
+  dialogueContext: { borderWidth: 0, paddingHorizontal: 10, paddingVertical: 16, backgroundColor: '#F1F7FF', borderRadius: 18, alignSelf: 'stretch' },
   compactContext: { width: '100%', maxWidth: 260, alignSelf: 'center', padding: 8 },
   contextText: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   feedback: { padding: 18, borderRadius: 20, borderWidth: 1, gap: 14 },

@@ -628,3 +628,31 @@ B: final media/voices/video playback belong to the media layer.
 C: further visual tweaks are optional unless acceptance reveals a concrete UX problem.
 No migrations, domain redesign, dependencies, services or next iteration proposed.
 No commit/push/merge/git reset.
+
+## Lessons Mobile V10 — Final Visual / Asset Polish
+
+V9 is accepted. Small presentation-only changes:
+- ContentBlocks: VIDEO poster opts into cover at 16:10, filling the clipped rounded
+  preview without distortion or letterboxing. Play remains centered; metadata stays.
+  Activity images retain contain. No placeholder/development copy is introduced.
+- generate-greeting.ps1: reproducible cartoon refinements (shaped clouds, shoulders,
+  hair, eyebrows and distinct gestures). Two versioned outputs: greeting-wave-v10.png
+  for VIDEO/Fill Options; greeting-response-v10.png for manual Nice to meet you ___!.
+  Neither illustration writes Hello/too, so the visual context does not give the answer.
+  Correct answers, instruction, hints and validation are unchanged.
+- ActivityStep/RichContent: only contextual MC padding grows slightly (blue container
+  vertical 16, white bubble 18); D, tail, audio, options and footer remain as accepted.
+- Fixtures and media allowlist/tests updated. Old versioned media stays available.
+
+Validation: mobile/script TypeScript PASS; 42 mobile Lessons tests PASS; 7 fixture/media
+checks PASS; exact regeneration hashes verified. Android export dist/lessons-v10-check.
+No unrelated suites, dependencies, domain/contract/schema or behavior changes.
+Authorized demo baseline: A1 2/8, Lesson 3 current/incomplete, Lesson 4 incomplete,
+A2 unstarted, zero ACTIVE/attempts/Review demo. Other users' learning is untouched.
+
+Acceptance focus: thumbnail fills the frame and clips cleanly; two distinct scenes
+remain legible; greeting image has no answer text; MC breathes slightly more at narrow
+width/font scaling. Existing scroll, keyboard and CTA behavior is frozen. Automated
+checks/export do not establish physical V10 acceptance.
+Remaining: physical visual acceptance; final voice/video assets belong to media layer.
+No known functional blocker and no next iteration proposed. No commit/push/merge/git reset.
