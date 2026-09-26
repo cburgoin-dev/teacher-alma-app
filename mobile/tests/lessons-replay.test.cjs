@@ -257,6 +257,61 @@ test('V7 Fill choice appears in sentence immediately; retry clears selection and
   assert.ok(tree.includes('I ')); assert.ok(tree.includes(' a student.'));
 });
 
+test('Multiple choice shows correct and incorrect options after feedback, then restores blue selection on retry', () => {
+  const values = []; let cursor = 0, retried = 0;
+  const hooks = { useEffect() {}, useRef: value => ({ current: value }), useReducer: (_, value) => [value, () => {}],
+    useState: initial => { const i = cursor++; if (!(i in values)) values[i] = initial; return [values[i], value => { values[i] = value; }]; } };
+  const { ActivityStep } = component('../src/features/lessons/components/ActivityStep.tsx', { react: hooks });
+  const options = [{ id: 'a', text: 'Hello' }, { id: 'b', text: 'Goodbye' }, { id: 'c', text: 'Thanks' }];
+  const props = { activity: { type: 'MULTIPLE_CHOICE', prompt: 'Choose', options }, initialAnswer: { selectedOptionId: 'b' },
+    busy: false, onSubmit() {}, onContinue() {}, onRetry() { retried++; } };
+  const render = feedback => { cursor = 0; return nodes(ActivityStep({ ...props, feedback })); };
+  const choices = tree => tree.filter(n => n.type === 'Pressable' && n.props.accessibilityRole === 'radio');
+  const style = choice => Object.assign({}, ...choice.props.style.filter(Boolean));
+
+  let tree = render(null), [hello, goodbye, thanks] = choices(tree);
+  assert.equal(style(goodbye).backgroundColor, '#E8F2FF');
+  assert.equal(style(hello).backgroundColor, undefined);
+  assert.equal(goodbye.props.accessibilityLabel, undefined);
+
+  tree = render({ attempt: { isCorrect: true, attemptNumber: 1 }, feedback: { correctAnswer: 'b' }, reinforcement: { onCompletion: false } });
+  [hello, goodbye, thanks] = choices(tree);
+  assert.equal(style(goodbye).backgroundColor, '#EDF9F2');
+  assert.equal(style(goodbye).borderColor, '#13874C');
+  assert.match(goodbye.props.accessibilityLabel, /Respuesta correcta/);
+  assert.equal(style(hello).backgroundColor, undefined);
+  assert.equal(style(thanks).backgroundColor, undefined);
+
+  tree = render({ mode: 'REPLAY', submissionNumber: 1, isCorrect: false, feedback: { correctAnswer: 'a' } });
+  [hello, goodbye, thanks] = choices(tree);
+  assert.equal(style(goodbye).backgroundColor, '#FFF3F1');
+  assert.equal(style(goodbye).borderColor, '#A33C25');
+  assert.match(goodbye.props.accessibilityLabel, /Respuesta incorrecta/);
+  assert.equal(style(hello).backgroundColor, '#EDF9F2');
+  assert.match(hello.props.accessibilityLabel, /Respuesta correcta/);
+  assert.equal(style(thanks).backgroundColor, undefined);
+
+  tree.find(n => n.type === 'Pressable' && nodes(n).includes('Intentar de nuevo')).props.onPress();
+  assert.equal(retried, 1);
+  [hello, goodbye, thanks] = choices(render(null));
+  assert.equal(style(goodbye).backgroundColor, '#E8F2FF');
+  assert.equal(goodbye.props.accessibilityLabel, undefined);
+  assert.equal(style(hello).backgroundColor, undefined);
+  assert.equal(hello.props.accessibilityLabel, undefined);
+
+  values.length = 0;
+  [hello, goodbye] = choices(render({ attempt: { isCorrect: false, attemptNumber: 1 }, feedback: { correctAnswer: 'a' }, reinforcement: { onCompletion: false } }));
+  assert.equal(style(goodbye).backgroundColor, '#FFF3F1');
+  assert.equal(style(hello).backgroundColor, '#EDF9F2');
+
+  values.length = 0;
+  props.activity = { type: 'FILL_BLANK_OPTIONS', prompt: '_____, I’m Sofía.', options };
+  [hello, goodbye] = choices(render({ attempt: { isCorrect: false, attemptNumber: 1 }, feedback: { correctAnswer: 'a' }, reinforcement: { onCompletion: false } }));
+  assert.equal(style(goodbye).backgroundColor, '#E8F2FF');
+  assert.equal(style(hello).backgroundColor, undefined);
+  assert.equal(goodbye.props.accessibilityLabel, undefined);
+});
+
 test('V7 Audio hides missing URLs, renders native control and cleans up on source unmount/background', async () => {
   const cleanups = []; let background, played = 0, removed = 0, status;
   const { AudioButton } = component('../src/features/lessons/components/AudioButton.tsx', {
