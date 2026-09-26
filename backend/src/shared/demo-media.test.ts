@@ -14,7 +14,7 @@ test('demo media serves exact fixture bytes and audio ranges only in development
       const address = server.address();
       assert.ok(address && typeof address !== 'string');
       const base = `http://127.0.0.1:${address.port}/demo-media/`;
-      for (const name of ['greeting.png', 'greeting-hello-v8.png', 'ball.png', 'nice-to-meet-you.wav', 'sofia-greeting.wav', 'daniel-greeting.wav', 'daniel-intro.wav', 'nice-to-meet-you-too.wav', 'i-am-a-student.wav', 'it-is-a-book.wav']) {
+      for (const name of ['greeting.png', 'greeting-hello-v8.png', 'greeting-hello-v9.png', 'ball.png', 'nice-to-meet-you.wav', 'sofia-greeting.wav', 'daniel-greeting.wav', 'daniel-intro.wav', 'nice-to-meet-you-too.wav', 'i-am-a-student.wav', 'it-is-a-book.wav']) {
         const response = await fetch(base + name);
         assert.equal(response.status, environment === 'development' ? 200 : 404);
         if (environment === 'development') {

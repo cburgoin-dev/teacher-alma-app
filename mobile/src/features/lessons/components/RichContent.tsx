@@ -11,8 +11,9 @@ export function RichText({ text, segments }: { text?: string; segments?: Segment
 }
 export function DialogueRow({ turn, alternate = false, showTranslation = true, contextual = false }: { contextual?: boolean; turn: DialogueTurn; alternate?: boolean; showTranslation?: boolean }) {
   return <View style={[local.turn, contextual && local.contextTurn]}>
-    {turn.speakerLabel ? <View style={[local.speaker, contextual && local.contextSpeaker, alternate && local.rose]}><Text style={local.label}>{turn.speakerLabel}</Text></View> : null}
+    {turn.speakerLabel ? <View style={[local.speaker, contextual && local.contextSpeaker, alternate && local.rose]}><Text style={[local.label, contextual && local.contextLabel]}>{turn.speakerLabel}</Text></View> : null}
     <View style={[local.bubble, contextual && local.contextBubble]}>
+      {contextual ? <View pointerEvents="none" accessible={false} style={local.tail} /> : null}
       <View style={[local.words, contextual && { flexGrow: 0 }]}>{turn.segments?.length ? turn.segments.map((segment, i) => <Text key={i} style={[local.phrase, { fontWeight: segment.emphasis === 'KEY' ? '700' : '500' }]}>{segment.text}</Text>) : <Text style={[s.heading, local.phrase]}>{turn.text}</Text>}
         {showTranslation && turn.translation ? <Text style={s.caption}>{turn.translation}</Text> : null}</View>
       <AudioButton {...turn} />
@@ -22,7 +23,9 @@ export function DialogueRow({ turn, alternate = false, showTranslation = true, c
 const local = StyleSheet.create({
   contextTurn: { padding: 0, borderWidth: 0, backgroundColor: 'transparent', alignItems: 'center' },
   contextSpeaker: { minWidth: 50, minHeight: 50, borderRadius: 25 },
-  contextBubble: { flex: 0, flexShrink: 1, padding: 12 },
+  contextLabel: { fontSize: 23, fontWeight: '800' },
+  tail: { position: 'absolute', left: -5, top: 25, width: 12, height: 12, backgroundColor: '#FFF', transform: [{ rotate: '45deg' }] },
+  contextBubble: { flex: 0, flexShrink: 1, paddingHorizontal: 14, paddingVertical: 16, borderRadius: 24, gap: 12 },
   key: { color: '#0062E9', fontWeight: '700' },
   turn: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: '#E0EAF8', backgroundColor: '#FFF' },
   speaker: { minWidth: 38, minHeight: 38, borderRadius: 22, padding: 6, backgroundColor: '#197AF3', alignItems: 'center', justifyContent: 'center', marginTop: 2, flexShrink: 0, maxWidth: '28%' },

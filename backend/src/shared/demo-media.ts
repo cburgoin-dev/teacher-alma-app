@@ -6,7 +6,7 @@ export function demoMedia(environment: string | undefined) {
   const router = express.Router();
   if (environment !== 'development') return router;
   const assets = fileURLToPath(new URL('../../scripts/assets/', import.meta.url));
-  for (const name of ['greeting.png', 'greeting-hello-v8.png', 'nice-to-meet-you.wav', 'sofia-greeting.wav', 'daniel-greeting.wav', 'daniel-intro.wav', 'nice-to-meet-you-too.wav', 'i-am-a-student.wav', 'it-is-a-book.wav', 'ball.png']) {
+  for (const name of ['greeting.png', 'greeting-hello-v8.png', 'greeting-hello-v9.png', 'nice-to-meet-you.wav', 'sofia-greeting.wav', 'daniel-greeting.wav', 'daniel-intro.wav', 'nice-to-meet-you-too.wav', 'i-am-a-student.wav', 'it-is-a-book.wav', 'ball.png']) {
     router.get('/' + name, (_request, response) => {
       response.sendFile(name, { root: assets });
     });

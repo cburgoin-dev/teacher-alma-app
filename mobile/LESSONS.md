@@ -592,3 +592,39 @@ C. Optional polish only after physical feedback; no automatic V9 scope.
 
 No backend domain redesign, migrations, new dependencies, gamification or final
 video/TTS infrastructure. No other users or non-demo learning reset.
+
+## Lessons Mobile V9 — Final Visual Polish Pass
+
+V8 is physically accepted. V9 changes only RichContent's contextual bubble, the compact
+IMAGE wrapper for manual Fill, demo fixtures/media and the editable greeting generator.
+VIDEO keeps its product title/description without development-status copy. MC retains
+its structure with a larger D glyph, rounder bubble, a small white tail contained in
+the existing badge gap, and extra internal spacing. Content dialogue is unchanged.
+
+The native illustration source adds subtle background, facial/clothing details and
+refined proportions. greeting-hello-v9.png is shared by Fill Options, VIDEO and Lesson
+3 manual Fill; the new filename prevents stale Android caching. Hello! stays intact.
+Manual IMAGE context is capped at 260 logical pixels, shrinks with its container and
+remains inside the existing scroll body. Lesson 4 retains its useful TEXT context;
+no extra image was needed. Sticky footer, keyboard, underline, answers, audio,
+Summary/Result, Matching and session semantics remain frozen.
+
+Density rule: use relevant context so an activity feels intentional; do not require
+an image in every activity or add unrelated decoration to fill the viewport.
+
+Validation: mobile TypeScript and 41 Lessons tests PASS; script TypeScript and 7
+fixture/media tests PASS (versioned PNG bytes, copy, context and answer preservation).
+Android export: dist/lessons-v9-check. Authorized demo seed/reset and check restored
+A1 2/8, Lesson 3 current/incomplete, Lesson 4 incomplete, A2 unstarted, zero ACTIVE,
+attempts and Review demo. No non-demo user learning was reset.
+
+Physical acceptance: check VIDEO copy/art, MC D/tail/spacing at normal and enlarged
+font, then Lesson 3 manual image + input with keyboard and scrolling. Verify the last
+option of a long activity remains reachable above the footer. Lesson 4 TEXT stays as
+accepted. Export/tests are not a claim of physical V9 validation.
+
+A: no known implementation blocker; physical V9 acceptance remains before closing.
+B: final media/voices/video playback belong to the media layer.
+C: further visual tweaks are optional unless acceptance reveals a concrete UX problem.
+No migrations, domain redesign, dependencies, services or next iteration proposed.
+No commit/push/merge/git reset.

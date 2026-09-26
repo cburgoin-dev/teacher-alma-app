@@ -69,7 +69,7 @@ export function ActivityStep({ activity, feedback, busy, onSubmit, onRetry, onCo
       <Text style={[s.body, { marginTop: 6 }]}>{presentation.instruction}</Text>
     </View></View>
     <View style={local.exercise}>
-    {activity.context ? <View style={[local.context, activity.context.type === 'DIALOGUE' && local.dialogueContext]}>
+    {activity.context ? <View style={[local.context, activity.context.type === 'DIALOGUE' && local.dialogueContext, activity.type === 'FILL_BLANK_TEXT' && activity.context.type === 'IMAGE' && local.compactContext]}>
       {activity.context.type === 'DIALOGUE' ? <DialogueRow turn={activity.context} contextual />
         : activity.context.type === 'TEXT' ? <View style={local.contextText}><Text style={[s.body, { flex: 1 }]}>{activity.context.text}</Text><AudioButton {...activity.context} /></View>
           : <><LessonImage wide url={activity.context.url} alt={activity.context.alt} />{activity.context.caption ? <Text style={s.caption}>{activity.context.caption}</Text> : null}</>}
@@ -120,6 +120,7 @@ const local = StyleSheet.create({
   title: { fontSize: 27, lineHeight: 33, fontWeight: '800', color: colors.ink },
   context: { backgroundColor: '#F0F6FF', borderRadius: 18, borderWidth: 1, borderColor: '#DBE9FD', padding: 12, gap: 8 },
   dialogueContext: { borderWidth: 0, padding: 10, backgroundColor: '#F1F7FF', borderRadius: 18, alignSelf: 'stretch' },
+  compactContext: { width: '100%', maxWidth: 260, alignSelf: 'center', padding: 8 },
   contextText: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   feedback: { padding: 18, borderRadius: 20, borderWidth: 1, gap: 14 },
   prompt: { padding: 14, borderRadius: 20 }, sentence: { fontSize: 29, fontWeight: '700', lineHeight: 40, textAlign: 'center', paddingVertical: 14, color: colors.ink },
