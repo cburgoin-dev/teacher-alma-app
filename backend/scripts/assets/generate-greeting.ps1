@@ -30,7 +30,7 @@ try {
   $draw.FillRectangle($white, 160, 270, 116, 48)
   $nameFont = [System.Drawing.Font]::new('Arial', 20, [System.Drawing.FontStyle]::Bold)
   $draw.DrawString('Sofía', $nameFont, $ink, 178, 278)
-  $canvas.Save((Join-Path $PSScriptRoot 'greeting.png'), [System.Drawing.Imaging.ImageFormat]::Png)
+  $canvas.Save((Join-Path $PSScriptRoot 'greeting-hello-v8.png'), [System.Drawing.Imaging.ImageFormat]::Png)
 } finally {
   foreach ($item in @($font, $nameFont, $arm, $eye, $draw, $canvas, $sky, $blue, $rose, $skin, $hair, $white, $ink, $green)) { if ($null -ne $item) { $item.Dispose() } }
 }

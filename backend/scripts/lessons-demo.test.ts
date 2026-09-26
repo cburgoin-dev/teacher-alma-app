@@ -48,7 +48,7 @@ test('V6 Fill Blank IMAGE is safe public HTTP metadata, with v1 fallbacks retain
   assert.equal(fill.context?.type, 'IMAGE');
   if (fill.context?.type !== 'IMAGE') throw new Error('Expected IMAGE');
   assert.ok(['http:', 'https:'].includes(new URL(fill.context.url).protocol));
-  assert.equal(new URL(fill.context.url).pathname, '/demo-media/greeting.png');
+  assert.equal(new URL(fill.context.url).pathname, '/demo-media/greeting-hello-v8.png');
   assert.ok(fill.context.alt.length > 10);
   assert.ok(fill.instruction);
   const summary = publicContent('SUMMARY', blocks[4]!.content);
@@ -87,4 +87,15 @@ test('V7 lessons each have three distinct pedagogical activities and enriched Le
   assert.ok(!blocks.some(b => b.lessonId === demoId(1004) && b.type === 'VIDEO'));
   assert.equal((activities[4]!.config as { acceptedAnswers: string[] }).acceptedAnswers[0], 'too');
   assert.equal((activities[5]!.config as { correctOptionId: string }).correctOptionId, 'ball');
+});
+
+
+test('V8 poster and Fill use the versioned Hello asset; dialogue authors emphasis explicitly', () => {
+  const { blocks, activities } = lessonsDemoData();
+  const video = publicContent('VIDEO', blocks.find(b => b.type === 'VIDEO')!.content);
+  assert.match(String(video.posterUrl), /greeting-hello-v8\.png$/);
+  const fill = publicActivity({ ...activities[1], status: 'ACTIVE', createdAt: new Date(), updatedAt: new Date() } as Activity);
+  assert.equal(fill.context?.type === 'IMAGE' && fill.context.url, video.posterUrl);
+  const example = publicContent('EXAMPLE', blocks[1]!.content);
+  assert.match(JSON.stringify(example.turns), /KEY/);
 });

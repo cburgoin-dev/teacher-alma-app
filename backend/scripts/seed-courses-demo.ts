@@ -53,11 +53,7 @@ async function main() {
         AND: [{ OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
           { OR: [{ scope: 'ALL_COURSES' }, { courseId: { in: ids } }] }] } });
       if (grants) throw new DemoGuard('Active entitlements affect this demo user. No data changed; use a development user without these grants.');
-      // Exact legacy integration fixtures identified locally; preserve all rows/progress.
-      await tx.course.updateMany({ where: { OR: [
-        { id: '9a689826-6ab9-43b2-a552-eab4360b36c7', slug: 'dev-test-courses-v1-published', title: 'DEV TEST - PUBLISHED - Courses v1' },
-        { id: '494001ac-52dc-40c4-9db9-311c531ee792', slug: 'dev-test-courses-v1-coming-soon', title: 'DEV TEST - COMING_SOON - Courses v1' },
-      ] }, data: { status: 'DRAFT' } });
+      // Only named demo fixtures are mutated; unrelated legacy courses remain untouched.
       for (const course of courses) {
         const existing = await tx.course.findFirst({ where: { OR: [{ id: course.id }, { slug: course.slug }] }, select: { id: true, slug: true } });
         if (existing && (existing.id !== course.id || existing.slug !== course.slug)) throw new DemoGuard('Demo identifier collision. No data changed.');

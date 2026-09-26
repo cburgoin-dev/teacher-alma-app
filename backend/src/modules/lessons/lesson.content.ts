@@ -1,7 +1,7 @@
 /** Explicit public projections for JSONB content. Unknown keys never cross the API. */
 export type Segment = { text: string; emphasis?: 'KEY' };
 export type AudioMetadata = { audioUrl?: string; audioAlt?: string };
-export type DialogueTurn = AudioMetadata & { text: string; speakerLabel?: string; translation?: string };
+export type DialogueTurn = AudioMetadata & { text: string; segments?: Segment[]; speakerLabel?: string; translation?: string };
 export type ActivityContext =
   | (AudioMetadata & { type: 'TEXT'; text: string })
   | (DialogueTurn & { type: 'DIALOGUE' })
@@ -39,7 +39,7 @@ export function segments(value: unknown): Segment[] {
   });
 }
 function turn(value: ObjectValue): DialogueTurn {
-  return { text: text(value.text), ...optionalText(value, 'speakerLabel'), ...optionalText(value, 'translation'), ...audio(value) };
+  return { text: text(value.text), ...(value.segments == null ? {} : { segments: segments(value.segments) }), ...optionalText(value, 'speakerLabel'), ...optionalText(value, 'translation'), ...audio(value) };
 }
 export function activityPresentation(value: ObjectValue): { instruction?: string; context?: ActivityContext } {
   const instruction = optionalText(value, 'instruction');

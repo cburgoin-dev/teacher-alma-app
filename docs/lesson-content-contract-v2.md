@@ -472,3 +472,16 @@ node --import tsx scripts/seed-courses-demo.ts --check
 The demo check exercises real HTTP/PostgreSQL payloads and ends at A1 2/8 + A2 unstarted, with demo attempts/reviews reset. Use `--reset` without `--lessons` to restore A1 3/8 + A2 unstarted. No other users' learning data is reset.
 
 Mobile public types include optional v2 fields for incremental API compatibility. Components still use v1 rendering; Mobile V4, media playback and final visual acceptance are separate work.
+
+## V8 presentation refinement: dialogue segments
+
+Dialogue turns (EXAMPLE and activity DIALOGUE context) optionally accept the existing
+`segments: { text: string; emphasis?: 'KEY' }[]` shape. Each segment is an authored
+phrase unit; mobile may place units on separate naturally wrapping lines. KEY has
+stronger emphasis. `text` remains required as the plain legacy fallback. No splitting
+or emphasis is inferred from punctuation, names or answer configuration. The public
+projection validates and allowlists each segment exactly like TEXT/SUMMARY.
+
+VIDEO already supports `posterUrl`; V8 needs no additional media contract.
+Fill manual uses a mobile presentation fallback limit of 40 characters, independent
+of accepted answers. No maxLength metadata, answer-length inference or schema change.

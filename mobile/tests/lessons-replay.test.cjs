@@ -109,9 +109,10 @@ function component(relative, overrides = {}) {
   const load = name => {
     if (name in overrides) return overrides[name];
     if (name === 'react/jsx-runtime') return require(name);
-    if (name === 'react') return { useState: initial => [initial, () => {}], useReducer: (_, initial) => [initial, () => {}] };
+    if (name.startsWith('lucide-react-native/icons/')) return { default: name };
+    if (name === 'react') return { useEffect() {}, useRef: value => ({ current: value }), useState: initial => [initial, () => {}], useReducer: (_, initial) => [initial, () => {}] };
     if (name === 'react-native') return { View: 'View', Text: 'Text', ScrollView: 'ScrollView', Pressable: 'Pressable', TextInput: 'TextInput',
-      StyleSheet: { create: value => value }, useWindowDimensions: () => ({ width: 400, fontScale: 1 }), Keyboard: { dismiss() {} } };
+      StyleSheet: { create: value => value }, useWindowDimensions: () => overrides.dimensions ?? ({ width: 400, fontScale: 1 }), Keyboard: { dismiss() {} } };
     if (name === 'react-native-safe-area-context') return { useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) };
     if (name === 'react-native-svg') return { default: 'Svg', Circle: 'Circle', Path: 'Path', Rect: 'Rect' };
     if (name.endsWith('/ui')) return { Button: 'Button' };
@@ -235,17 +236,17 @@ test('V6 normal Result names the course once and retains first-attempt score for
 
 test('V7 Fill choice appears in sentence immediately; retry clears selection and typed answer is the single inline input', () => {
   const values = []; let cursor = 0, retried = 0;
-  const hooks = { useState: initial => { const i = cursor++; if (!(i in values)) values[i] = initial; return [values[i], v => { values[i] = v; }]; }, useReducer: (_, initial) => [initial, () => {}] };
+  const hooks = { useEffect() {}, useRef: value => ({ current: value }), useState: initial => { const i = cursor++; if (!(i in values)) values[i] = initial; return [values[i], v => { values[i] = v; }]; }, useReducer: (_, initial) => [initial, () => {}] };
   const { ActivityStep } = component('../src/features/lessons/components/ActivityStep.tsx', { react: hooks });
   const activity = { type: 'FILL_BLANK_OPTIONS', prompt: '_____, I’m Sofía.', options: [{ id: 'hello', text: 'Hello' }], hint: 'Saluda' };
   const props = { activity, feedback: null, busy: false, onSubmit() {}, onContinue() {}, onRetry() { retried++; }, onAnswerChange() {} };
   const render = extra => { cursor = 0; return nodes(ActivityStep({ ...props, ...extra })); };
-  let tree = render(); assert.ok(tree.includes('_____'));
+  let tree = render(); assert.ok(tree.includes(' '));
   tree.find(n => n.type === 'Pressable' && n.props.accessibilityRole === 'radio').props.onPress();
-  tree = render(); assert.ok(!tree.includes('_____')); assert.ok(tree.includes('Hello')); assert.ok(tree.includes(', I’m Sofía.'));
+  tree = render(); assert.ok(!tree.includes(' ')); assert.ok(tree.includes('Hello')); assert.ok(tree.includes(', I’m Sofía.'));
   tree = render({ feedback: { attempt: { isCorrect: false }, feedback: {} } });
   tree.find(n => n.type === 'Pressable' && nodes(n).includes('Intentar de nuevo')).props.onPress();
-  assert.equal(retried, 1); tree = render(); assert.ok(tree.includes('_____'));
+  assert.equal(retried, 1); tree = render(); assert.ok(tree.includes(' '));
   assert.equal(tree.find(n => n.type === 'Button').props.disabled, true);
   values.length = 0;
   tree = render({ activity: { type: 'FILL_BLANK_TEXT', prompt: 'I _____ a student.' } });
@@ -264,13 +265,13 @@ test('V7 Audio hides missing URLs, renders native control and cleans up on sourc
       createAudioPlayer: () => ({ play() { played++; }, pause() {}, remove() { removed++; }, addListener: () => ({ remove() {} }) }) },
     'react-native': { View: 'View', Text: 'Text', Pressable: 'Pressable', ActivityIndicator: 'Loading', StyleSheet: { create: s => s },
       AppState: { addEventListener: (_, fn) => { background = fn; return { remove() {} }; } } },
-    'lucide-react-native/icons/volume-2': { default: 'Volume' }, 'lucide-react-native/icons/square': { default: 'Stop' }, 'lucide-react-native/icons/rotate-ccw': { default: 'Replay' },
+    'lucide-react-native/icons/volume-2': { default: 'Volume' }, 'lucide-react-native/icons/square': { __esModule: true, default: 'Stop' }, 'lucide-react-native/icons/rotate-ccw': { default: 'Replay' },
   });
   for (const audioUrl of [undefined, '', 'file:///clip.wav', 'https://user:pass@example.org/a.wav']) assert.equal(AudioButton({ audioUrl }), null);
   const child = AudioButton({ audioUrl: 'https://example.org/a.wav', audioAlt: 'Hello' });
   assert.equal(child.key, 'https://example.org/a.wav');
   const tree = nodes(child.type(child.props)); const button = tree.find(n => n.type === 'Pressable');
-  assert.equal(button.props.accessibilityRole, 'button'); assert.match(button.props.accessibilityLabel, /Reproducir audio: Hello/);
+  assert.equal(button.props.accessibilityRole, 'button'); assert.match(button.props.accessibilityLabel, /Escuchar esta frase: Hello/);
   button.props.onPress(); await Promise.resolve(); await Promise.resolve(); assert.equal(played, 1);
   background('background'); assert.equal(removed, 1); assert.equal(status, 'idle');
   button.props.onPress(); await Promise.resolve(); await Promise.resolve(); cleanups.forEach(fn => fn()); assert.equal(removed, 2);
@@ -291,4 +292,70 @@ test('V7 Summary phrases stay below heading hierarchy and audio is driven by met
   assert.ok(Number(phrase.props.style.fontWeight) < Number(heading.props.style.fontWeight));
   assert.equal(tree.filter(n => n.type === 'AudioButton')[0].props.audioUrl, 'https://example.org/a.wav');
   assert.equal(tree.filter(n => n.type === 'AudioButton')[1].props.audioUrl, undefined);
+});
+
+
+test('V8 Activity footer remains outside scroll through answer, feedback and retry; tall content is retained', () => {
+  const { ActivityStep } = component('../src/features/lessons/components/ActivityStep.tsx');
+  const activity = { type: 'MULTIPLE_CHOICE', prompt: 'Choose', context: { type: 'IMAGE', url: 'https://example.org/a.png', alt: 'Scene' }, options: Array.from({ length: 6 }, (_, i) => ({ id: String(i), text: 'Long option '.repeat(20) + i })) };
+  const props = { activity, busy: false, feedback: null, onSubmit() {}, onRetry() {}, onContinue() {}, bottomInset: 24 };
+  for (const extra of [{}, { initialAnswer: { selectedOptionId: '5' } }, { feedback: { attempt: { isCorrect: true }, feedback: { explanation: 'Correct explanation' } } }, { feedback: { attempt: { isCorrect: false }, feedback: { explanation: 'Wrong explanation' } } }]) {
+    const root = ActivityStep({ ...props, ...extra });
+    const body = nodes(root).find(n => n.type === 'ScrollView');
+    const bodyNodes = nodes(body), all = nodes(root);
+    assert.equal(bodyNodes.filter(n => n.props?.accessibilityRole === 'radio').length, 6);
+    assert.equal(bodyNodes.filter(n => n.type === 'Button').length, 0);
+    const button = all.find(n => n.type === 'Button');
+    assert.equal(button.props.title, extra.feedback ? 'Continuar' : 'Comprobar');
+    if (!extra.feedback) assert.equal(button.props.disabled, !extra.initialAnswer);
+    else assert.ok(bodyNodes.includes(extra.feedback.feedback.explanation));
+    if (extra.feedback?.attempt.isCorrect === false) assert.ok(bodyNodes.includes('Intentar de nuevo'));
+    assert.equal(all.filter(n => n.type === 'Button').length, 1);
+  }
+});
+
+test('V8 manual Fill is bounded and single line with one constant underline, including large font/narrow width', () => {
+  const values = []; let cursor = 0, draft;
+  const hooks = { useEffect() {}, useRef: value => ({ current: value }), useReducer: (_, value) => [value, () => {}], useState: initial => { const i = cursor++; if (!(i in values)) values[i] = initial; return [values[i], value => { values[i] = value; }]; } };
+  const { ActivityStep } = component('../src/features/lessons/components/ActivityStep.tsx', { react: hooks, dimensions: { width: 320, fontScale: 1.5 } });
+  const props = { activity: { type: 'FILL_BLANK_TEXT', prompt: 'Nice to meet you _____!' }, feedback: null, busy: false, onAnswerChange: value => { draft = value; } };
+  const render = feedback => { cursor = 0; return nodes(ActivityStep({ ...props, feedback: feedback ?? null })); };
+  let tree = render(), input = tree.find(n => n.type === 'TextInput');
+  assert.equal(input.props.multiline, false); assert.equal(input.props.maxLength, 40);
+  assert.equal(input.props.underlineColorAndroid, 'transparent'); assert.equal(input.props.placeholder, undefined);
+  input.props.onChangeText('x'.repeat(200)); tree = render(); input = tree.find(n => n.type === 'TextInput');
+  assert.equal(input.props.value.length, 40); assert.equal(draft.text.length, 40);
+  for (const isCorrect of [null, true, false]) {
+    input = render(isCorrect === null ? null : { attempt: { isCorrect }, feedback: {} }).find(n => n.type === 'TextInput');
+    assert.equal(Object.assign({}, ...input.props.style).borderBottomWidth, 2);
+    assert.ok(Object.assign({}, ...input.props.style).width <= 198);
+  }
+});
+
+test('V8 Dialogue uses authored segments and contextual badge is a sibling of the bubble', () => {
+  const { DialogueRow } = component('../src/features/lessons/components/RichContent.tsx');
+  const turn = { speakerLabel: 'A', text: 'Fallback', segments: [{ text: 'Hi, I’m Sofía.' }, { text: 'Nice to meet you!', emphasis: 'KEY' }], translation: 'Hola' };
+  const root = DialogueRow({ turn, contextual: true }); const children = root.props.children;
+  assert.ok(nodes(children[0]).includes('A')); assert.ok(!nodes(children[1]).includes('A'));
+  const tree = nodes(root); assert.ok(tree.includes('Hi, I’m Sofía.')); assert.ok(tree.includes('Nice to meet you!')); assert.ok(!tree.includes('Fallback'));
+  assert.equal(tree.find(n => n.type === 'Text' && n.props.children === 'Nice to meet you!').props.style[1].fontWeight, '700');
+  assert.ok(nodes(DialogueRow({ turn: { text: 'Legacy' } })).includes('Legacy'));
+});
+
+
+test('V8 AudioButton completion restores speaker and the next tap starts a new player from the beginning', async () => {
+  let state = 'idle', listener, created = 0, cleanup; const owner = {};
+  const { AudioButton } = component('../src/features/lessons/components/AudioButton.tsx', {
+    react: { useState: () => [state, value => { state = value; }], useRef: () => ({ current: owner }), useEffect: fn => { if (!cleanup) cleanup = fn(); } },
+    'expo-audio': { setAudioModeAsync: async () => {}, createAudioPlayer: () => { created++; return { play() {}, pause() {}, remove() {}, addListener: (_, fn) => { listener = fn; return { remove() {} }; } }; } },
+    'react-native': { View: 'View', Text: 'Text', Pressable: 'Pressable', ActivityIndicator: 'Loading', StyleSheet: { create: x => x }, AppState: { addEventListener: () => ({ remove() {} }) } },
+    'lucide-react-native/icons/volume-2': { __esModule: true, default: 'Speaker' }, 'lucide-react-native/icons/square': { __esModule: true, default: 'Stop' },
+  });
+  const child = AudioButton({ audioUrl: 'https://example.org/a.wav' });
+  const render = () => nodes(child.type(child.props));
+  render().find(n => n.type === 'Pressable').props.onPress(); await Promise.resolve(); await Promise.resolve();
+  listener({ isLoaded: true, playing: true }); assert.equal(state, 'playing'); assert.ok(render().some(n => n.type === 'Stop'));
+  listener({ didJustFinish: true }); assert.equal(state, 'idle'); assert.ok(render().some(n => n.type === 'Speaker'));
+  const button = render().find(n => n.type === 'Pressable'); assert.equal(button.props.accessibilityLabel, 'Escuchar esta frase');
+  button.props.onPress(); await Promise.resolve(); await Promise.resolve(); assert.equal(created, 2); cleanup();
 });

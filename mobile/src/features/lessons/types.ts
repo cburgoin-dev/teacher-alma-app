@@ -1,7 +1,7 @@
 export type Pair = { wordId: string; imageId: string };
 export type Segment = { text: string; emphasis?: 'KEY' };
 export type AudioMetadata = { audioUrl?: string; audioAlt?: string };
-export type DialogueTurn = AudioMetadata & { text: string; speakerLabel?: string; translation?: string };
+export type DialogueTurn = AudioMetadata & { text: string; segments?: Segment[]; speakerLabel?: string; translation?: string };
 export type ActivityContext = (AudioMetadata & { type: 'TEXT'; text: string })
   | (DialogueTurn & { type: 'DIALOGUE' }) | { type: 'IMAGE'; url: string; alt: string; caption?: string };
 type ActivityBase = { id: string; prompt: string; hint?: string; instruction?: string; context?: ActivityContext };

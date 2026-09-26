@@ -1,4 +1,4 @@
-export type PlaybackState = 'idle' | 'loading' | 'playing' | 'replay' | 'error';
+export type PlaybackState = 'idle' | 'loading' | 'playing' | 'error';
 export type PlaybackStatus = { playing: boolean; isLoaded: boolean; isBuffering: boolean; didJustFinish: boolean; error?: string | null };
 export interface LessonPlayer {
   play(): void;
@@ -37,10 +37,10 @@ export class LessonAudio {
       current.listener = player.addListener('playbackStatusUpdate', status => {
         if (this.active !== current) return;
         if (status.error) { this.stop(owner, 'error'); return; }
-        if (status.didJustFinish) { this.stop(owner, 'replay'); return; }
+        if (status.didJustFinish) { this.stop(owner, 'idle'); return; }
         if (status.isBuffering || !status.isLoaded) { notify('loading'); if (!current.timer) watchdog(); }
         else if (status.playing) { current.started = true; clearTimeout(current.timer); current.timer = undefined; notify('playing'); }
-        else if (current.started) this.stop(owner, 'replay');
+        else if (current.started) this.stop(owner, 'idle');
       });
       player.play();
     } catch { if (this.active === current) this.stop(owner, 'error'); }

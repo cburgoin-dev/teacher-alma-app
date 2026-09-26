@@ -24,7 +24,7 @@ test('audio is exclusive; completion permits replay; owner cleanup cannot stop a
   assert.equal(players[0].removed, 1); assert.equal(statesA.at(-1), 'idle');
   audio.stop(a); assert.equal(players[1].removed, 0);
   players[0].emit({ error: 'stale' }); assert.equal(statesB.at(-1), 'loading');
-  players[1].emit({ didJustFinish: true }); assert.equal(statesB.at(-1), 'replay'); assert.equal(players[1].removed, 1);
+  players[1].emit({ didJustFinish: true }); assert.equal(statesB.at(-1), 'idle'); assert.equal(players[1].removed, 1);
   await audio.play(b, 'b.wav', s => statesB.push(s)); assert.equal(players[2].played, 1);
   audio.stop(); assert.equal(players[2].removed, 1); assert.equal(players[2].unlistened, 1);
 });
@@ -57,6 +57,19 @@ test('audio interrupted after starting releases resources and replays on the nex
   await audio.play(owner, 'a', s => states.push(s));
   players[0].emit({ isLoaded: true, playing: true });
   players[0].emit({ isLoaded: true, playing: false });
-  assert.equal(states.at(-1), 'replay'); assert.equal(players[0].removed, 1);
+  assert.equal(states.at(-1), 'idle'); assert.equal(players[0].removed, 1);
   await audio.play(owner, 'a', s => states.push(s)); assert.equal(players[1].played, 1); audio.stop();
+});
+
+
+test('V8 blank colors and feedback reveal preserve neutral/focus/answer states without scrolling visible feedback', () => {
+  const { blankColor, feedbackScrollTarget, FILL_MAX_LENGTH } = require('../src/features/lessons/fillPresentation.ts');
+  assert.equal(FILL_MAX_LENGTH, 40);
+  assert.equal(blankColor(false, false, null), '#BACBE1');
+  assert.equal(blankColor(false, true, null), blankColor(true, false, null));
+  assert.equal(blankColor(true, true, true), '#13874C');
+  assert.equal(blankColor(true, true, false), '#B34436');
+  assert.equal(feedbackScrollTarget(0, 600, 300, 150), null);
+  assert.equal(feedbackScrollTarget(0, 0, 300, 150), null);
+  assert.ok(feedbackScrollTarget(0, 400, 900, 200) < 900);
 });

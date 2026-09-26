@@ -3,7 +3,6 @@ import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, View } from '
 import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import Volume2 from 'lucide-react-native/icons/volume-2';
 import Square from 'lucide-react-native/icons/square';
-import RotateCcw from 'lucide-react-native/icons/rotate-ccw';
 import { LessonAudio, type PlaybackState } from '../lessonAudio';
 import { mediaUrl } from '../contentPresentation';
 import type { AudioMetadata } from '../types';
@@ -24,8 +23,8 @@ function PlayableAudio({ url, label }: { url: string; label?: string }) {
     return () => { lessonAudio.stop(owner); subscription.remove(); };
   }, [owner]);
   const playing = state === 'playing', loading = state === 'loading';
-  const action = playing || loading ? 'Detener audio' : state === 'replay' ? 'Repetir audio' : state === 'error' ? 'Reintentar audio' : 'Reproducir audio';
-  const Icon = playing ? Square : state === 'replay' || state === 'error' ? RotateCcw : Volume2;
+  const action = playing || loading ? 'Detener audio' : state === 'error' ? 'Reintentar audio' : 'Escuchar esta frase';
+  const Icon = playing ? Square : Volume2;
   return <View style={s.control}>
     <Pressable accessibilityRole="button" accessibilityLabel={`${action}${label ? ': ' + label : ''}`}
       accessibilityState={{ busy: loading }} accessibilityHint="Se reproduce dentro de la lección"

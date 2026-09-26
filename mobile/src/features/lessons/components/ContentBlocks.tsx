@@ -1,3 +1,4 @@
+import Play from 'lucide-react-native/icons/play';
 import { useState } from 'react';
 import { Alert, Image, Linking, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Button } from '../../courses/components/ui';
@@ -63,6 +64,7 @@ export function ContentBlocks({ blocks }: { blocks: Block[] }) {
         <View style={[local.preview, stacked && { width: '100%' }]}>
           {block.posterUrl ? <LessonImage url={block.posterUrl} alt={block.title ?? 'Video de la lección'} /> :
             <View style={local.poster} accessible accessibilityLabel="Vista previa de video"><LearningIcon kind="video" plain size={42} color="#73A1CC" /></View>}
+        {block.posterUrl ? <View pointerEvents="none" accessible={false} style={local.playOverlay}><View style={local.playDisc}><Play size={24} color="#0062E9" fill="#0062E9" /></View></View> : null}
         </View>
         <View style={local.mediaText}><Text style={[s.heading, { fontSize: 16, lineHeight: 22 }]}>{block.title ?? 'Una explicación en video'}</Text>
           {block.caption ? <Text style={s.caption}>{block.caption}</Text> : null}
@@ -80,6 +82,8 @@ export function ContentBlocks({ blocks }: { blocks: Block[] }) {
   })}</>;
 }
 const local = StyleSheet.create({
+  playOverlay: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' },
+  playDisc: { padding: 12, borderRadius: 30, backgroundColor: '#FFFFFFE8' },
   keyPhrase: { color: '#0062E9', fontSize: 17, lineHeight: 24, fontWeight: '600' },
   card: { padding: 16, borderRadius: 18, borderWidth: 1, borderColor: '#DFEAFA', backgroundColor: '#F0F6FF', gap: 14 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 }, flex: { flex: 1 }, blue: { color: '#0062E9' },

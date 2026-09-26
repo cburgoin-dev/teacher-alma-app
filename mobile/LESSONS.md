@@ -505,3 +505,90 @@ Tras autorización explícita del usuario se ejecutó el check HTTP que restable
 - ADB sin dispositivos: pendiente aceptación física V7, audio nativo/reconexión, wrapping y teclado. Se revisó la imagen regenerada «Hello!»; no se presentan capturas sintéticas como evidencia Android.
 
 Antes de cerrar Lessons solo queda confirmar esta aceptación y corregir bugs concretos que aparezcan. Voz/imagen/video definitivos siguen siendo contenido futuro; no se añadieron Review UI, Practice, DRAG, settings ni rewards.
+
+## Lessons Mobile V8 — Final Interaction & Fidelity Pass
+
+Implementation on feature/lessons-v1; physical Android acceptance pending. V7 remains
+the accepted checkpoint. All V8 changes are local, without commit/push/merge/git reset.
+
+### Changed surface
+
+- AudioButton + lessonAudio: idle/loading/playing/error. Completion and interruption
+  restore speaker; tapping again creates a fresh player at the beginning. Single-owner,
+  replacement, pending-start cancellation, focus/step/unmount/AppState cleanup remain.
+- RichContent/types + backend lesson.content: optional authored dialogue segments reuse
+  the existing KEY shape, sanitized recursively with required plain text fallback.
+  Lesson 3 separates introductions from KEY greetings. A/B remain explicit badges;
+  translation stays secondary and audio remains on the right. MC contextual variant
+  places a larger D badge outside a content-sized white bubble, in the blue container.
+- ContentBlocks + demo fixture: illustrated VIDEO poster with decorative centered Play
+  and explicit preview-only caption. No dead pressable; actual video action remains
+  conditional on a valid video URL. Existing posterUrl contract; no hosting integration.
+- greeting-hello-v8.png and generator: versioned filename bypasses the old Android
+  greeting.png cache. Fill and VIDEO reference this URL. Visually inspected Hello!;
+  running API on port 3000 returned exact PNG bytes and the new URLs/segments.
+- ActivityStep + LessonScreen: Activity owns its ScrollView and a sibling footer in
+  normal flex layout (not an overlay). Only Activity is sticky; Content/Summary CTA
+  stays at the end, Result unchanged. Body has trailing padding and maxWidth 640.
+  Empty → disabled Comprobar; ready → enabled; feedback → Continuar. Wrong feedback
+  keeps Intentar de nuevo inside the scroll body. Retry clears Fill/hint and existing
+  Matching state without changing scoring. Feedback reveals its start smoothly only
+  when below the viewport, retaining preceding answer context.
+- fillPresentation: 40-character presentation fallback, single-line manual input,
+  bounded width and native horizontal text scrolling. No answer-derived limit or
+  dynamic font shrinking. One 2px underline: neutral, blue focus/pending, green/red
+  feedback; no underscore placeholder, native Android underline or text decoration.
+  Options still substitute their public label inline; legacy prompts retain fallback.
+- app.json: Android resize keyboard mode explicit. iOS keeps KeyboardAvoidingView;
+  focused input is measured against the resized scroll viewport and revealed if needed.
+  Footer stays outside scrolling, respects bottom inset and stacks hint/action at
+  narrow width/large text. Native config changes require rebuilding a development build;
+  an Expo export does not validate the installed host's keyboard behavior.
+- seed-courses-demo: removed obsolete updates to unrelated legacy test courses;
+  reset/apply now only mutate named demo fixtures and the configured demo user's state.
+
+### Validation
+
+- Mobile Lessons: 41/41 PASS including speaker restoration/restart, ownership, bounded
+  input, single underline, six-option/image activity with footer outside scroll,
+  feedback/retry, Matching, Replay, first-attempt/completion and unchanged Result.
+  Native primitives are mocked: these tests do not prove pixel layout or keyboard.
+- Backend content/fixture/media: 11/11 PASS, recursive allowlist/legacy fallback,
+  versioned poster and Fill, exact bytes/MIME/ranges and production media isolation.
+- TypeScript mobile/backend/scripts PASS. Android export PASS, 1029 modules, Hermes
+  2.3 MB, dist/lessons-v8-check ignored. git diff --check PASS.
+- Authorized check-lessons-demo --run PASS with real PostgreSQL/HTTP: six activities,
+  wrong/retry, perfect, Review, access, Replay and stale-run regression. Final seed
+  check: A1 2/8, lesson 3 current/incomplete, 4 incomplete, A2 unstarted, zero ACTIVE,
+  attempts and Review demo. API/media LAN origin: http://192.168.1.64:3000.
+- ADB: no connected devices. No physical Android result is claimed.
+
+### Compact physical V8 route
+
+1. Lesson 3 Content: A/B introduction + KEY + translation. Play A→B; stop/background;
+   let audio end, verify speaker returns and one tap restarts. Inspect illustrated VIDEO.
+2. MC: D outside white bubble, smaller audio; disabled/enabled sticky Comprobar.
+3. Fill Options: fresh Hello! illustration, choose Hello inline, verify one constant
+   underline through neutral/pending/feedback; test a wrong answer and clean retry.
+4. Manual Fill: type too, then paste a long string (max 40), move cursor/delete;
+   keyboard must leave input and Comprobar usable. Repeat at narrow width/font 1.3–1.5.
+5. Scroll long/image activity to its last option and feedback; body must pass fully
+   above footer. Correct → sticky Continuar; wrong → scrollable retry or Continue.
+   Six-option long-content structure is covered automatically; current demos retain 3.
+6. Summary: both audios return to speaker; typography unchanged. Result unchanged.
+   Reopen Lesson 3 as fresh Replay and verify no previous answer/feedback or durable
+   progress/Review mutation. Lesson 4 quick pass: am, bidirectional Matching/retry,
+   image MC, Summary audio, three activities, Result/next Premium access unchanged.
+
+### Remaining debt
+
+A. Closing Lessons MVP still requires physical V8 acceptance: Android keyboard/resize,
+   narrow font scaling, last-option scroll, feedback and TalkBack. No known failing
+   automated check; export cannot substitute for this acceptance.
+B. Final media/content layer: replace demo voices with suitable speaker/persona voices
+   (in particular Sofía), curated recordings/illustrations and final video. No TTS,
+   streaming/provider infrastructure, Review/Practice or gamification added.
+C. Optional polish only after physical feedback; no automatic V9 scope.
+
+No backend domain redesign, migrations, new dependencies, gamification or final
+video/TTS infrastructure. No other users or non-demo learning reset.

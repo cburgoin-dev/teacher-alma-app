@@ -56,3 +56,10 @@ test('all activity families expose safe presentation without answer config or ch
   assert.deepEqual(activityPresentation({ context: { type: 'TEXT', text: 'Read', audioUrl, ...secret } }).context, { type: 'TEXT', text: 'Read', audioUrl });
   assert.deepEqual(activityPresentation({ context: { type: 'IMAGE', url: 'https://example.test/a.png', alt: 'People', caption: 'Greeting', ...secret } }).context, { type: 'IMAGE', url: 'https://example.test/a.png', alt: 'People', caption: 'Greeting' });
 });
+
+
+test('V8 dialogue segments reuse explicit sanitized KEY runs with legacy fallback', () => {
+  const dto = publicContent('EXAMPLE', { variant: 'DIALOGUE', turns: [{ text: 'Hi. Nice to meet you!', segments: [{ text: 'Hi.', privateKey: 'secret' }, { text: 'Nice to meet you!', emphasis: 'KEY' }] }] });
+  assert.deepEqual(dto.turns, [{ text: 'Hi. Nice to meet you!', segments: [{ text: 'Hi.' }, { text: 'Nice to meet you!', emphasis: 'KEY' }] }]);
+  assert.throws(() => publicContent('EXAMPLE', { variant: 'DIALOGUE', turns: [{ text: 'Hi', segments: [{ text: 'Hi', emphasis: 'ANSWER' }] }] }));
+});
