@@ -25,7 +25,7 @@ export class LessonSession {
       orderBy: [{ attemptNumber: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }] });
   }
   findReview(userId: string, activityId: string) {
-    return this.db.reviewItem.findFirst({ where: { userId, activityId, status: 'ACTIVE' } });
+    return this.db.reviewItem.findUnique({ where: { userId_activityId: { userId, activityId } } });
   }
   countReviews(userId: string, lessonId: string) {
     return this.db.reviewItem.count({ where: { userId, sourceLessonId: lessonId, status: 'ACTIVE' } });
@@ -66,7 +66,7 @@ export class LessonSession {
     return this.db.reviewItem.create({ data: { userId, activityId, sourceLessonId, incorrectAttempts, status: 'ACTIVE' } });
   }
   incrementReview(id: string, amount = 1) {
-    return this.db.reviewItem.update({ where: { id }, data: { incorrectAttempts: { increment: amount } } });
+    return this.db.reviewItem.update({ where: { id }, data: { status: 'ACTIVE', resolvedAt: null, incorrectAttempts: { increment: amount } } });
   }
   completeCourse(userId: string, courseId: string, now: Date) {
     return this.db.courseProgress.updateMany({ where: { userId, courseId, status: { not: 'COMPLETED' } },

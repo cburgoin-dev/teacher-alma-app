@@ -152,7 +152,7 @@ test('Lessons HTTP + Prisma/PostgreSQL integration', { skip: process.env.RUN_LES
       assert.deepEqual(replies.map(r => r.body.attempt.attemptNumber).sort(), [2, 3]);
       assert.equal(await prisma.reviewItem.count({ where: { userId } }), 0);
       const original = await prisma.activityAttempt.findFirstOrThrow({ where: { runId } });
-      const { id: ignored, ...duplicate } = original;
+      const { id: ignored, reviewResult: ignoredReviewResult, ...duplicate } = original;
       await assert.rejects(prisma.activityAttempt.create({ data: { ...duplicate, answerData: { selectedOptionId: 'a' } } }), /Unique constraint/);
       assert.deepEqual(await durable(), before);
       for (const [step, answer] of [[optionsId, { selectedOptionId: 'a' }], [textId, { text: ' AM ' }]] as const) {

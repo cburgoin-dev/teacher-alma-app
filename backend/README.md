@@ -42,7 +42,7 @@ La migración inicial se genera desde el esquema sin conectar a PostgreSQL y añ
 
 La migración SQL conserva los `CHECK` de cantidad no negativa, fechas del reto, actividad obligatoria para bloques `ACTIVITY`, curso obligatorio para productos `COURSE_PURCHASE` y scope `COURSE`. Las recomendaciones que dicen «normalmente null» no se convierten en prohibiciones adicionales.
 
-Los índices únicos parciales permiten un solo ReviewItem `ACTIVE` por usuario/actividad y un solo reto `ACTIVE` por usuario, manteniendo múltiples registros históricos resueltos/finalizados. Se usa SQL personalizado para evitar depender de una función preview de Prisma. Estos índices no se reemplazan por `@@unique` globales. Mantener este SQL al evolucionar las migraciones.
+Review v1 sustituye el índice parcial de Review por unicidad global `(user_id, activity_id)` y reactiva el mismo lifecycle. La migración consolida duplicados conservando todos los intentos. El índice parcial de retos `ACTIVE` permanece sin cambios. Detalles de tokens, idempotencia y migración: [Review backend](src/modules/review/README.md).
 
 La pertenencia del bloque actual a la lección, la correspondencia pregunta/intento de diagnóstico y la inmutabilidad del ledger requieren validaciones/transacciones en servicios futuros; no se inventan nuevas claves compuestas, triggers ni lógica funcional en este scaffolding.
 

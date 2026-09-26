@@ -7,9 +7,11 @@ import type { CourseService } from '../modules/courses/course.service.js';
 import { errorHandler } from './http-error.js';
 import { lessonRoutes } from '../modules/lessons/lesson.routes.js';
 import type { LessonService } from '../modules/lessons/lesson.service.js';
+import { reviewRoutes } from '../modules/review/review.routes.js';
+import type { ReviewService } from '../modules/review/review.service.js';
 
 /** Composition boundary permits HTTP tests without loading secrets or a database. */
-export function createApp(courses: CourseService, auth: RequestHandler, lessons?: LessonService) {
+export function createApp(courses: CourseService, auth: RequestHandler, lessons?: LessonService, review?: ReviewService) {
   const app = express();
   app.use(cors());
   app.use(express.json());
@@ -17,6 +19,7 @@ export function createApp(courses: CourseService, auth: RequestHandler, lessons?
   app.get('/health', (_request, response) => { response.json({ status: 'ok' }); });
   app.use('/courses', auth, courseRoutes(courses));
   if (lessons) app.use('/lessons', auth, lessonRoutes(lessons));
+  if (review) app.use('/review', auth, reviewRoutes(review));
   app.use(errorHandler);
   return app;
 }

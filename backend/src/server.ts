@@ -6,10 +6,14 @@ import { developmentAuth } from './shared/auth.js';
 import { prisma } from './shared/prisma.js';
 import { PrismaLessonRepository } from './modules/lessons/lesson.repository.js';
 import { LessonService } from './modules/lessons/lesson.service.js';
+import { PrismaReviewRepository } from './modules/review/review.repository.js';
+import { ReviewService } from './modules/review/review.service.js';
+import { configuredReviewToken } from './modules/review/review.token.js';
 
 const app = createApp(new CourseService(new PrismaCourseRepository(prisma)),
   developmentAuth(process.env.NODE_ENV, process.env.DEV_AUTH_USER_ID),
-  new LessonService(new PrismaLessonRepository(prisma)));
+  new LessonService(new PrismaLessonRepository(prisma)),
+  new ReviewService(new PrismaReviewRepository(prisma), configuredReviewToken()));
 
 const port = Number(process.env.PORT ?? 3000);
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
