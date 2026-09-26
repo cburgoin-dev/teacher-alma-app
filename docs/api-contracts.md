@@ -1145,3 +1145,211 @@ Summary is post-completion presentation, excluded from prerequisites and complet
 An immediate retry offered on the final feedback is now post-completion: it uses the existing read-only replay check, leaves the run closed and cannot alter its first-attempt score or Review. Earlier retries within ACTIVE runs remain persisted and numbered normally. No new Practice/Review session is introduced.
 
 POST run complete remains an idempotent confirmation/result read for completed runs (and validates eligibility if ACTIVE); mobile does not rely on it to reach completion. Optional unanswered activities remain in the existing score denominator.
+
+---
+
+# Review v1 contracts
+
+Review v1 implements saved-error reinforcement defined in `docs/review-semantics-v1.md`. It reuses activity validation/public serialization but is not Lesson Replay, normal LessonRun or future free Practice.
+
+Initial public contracts:
+
+```text
+GET  /review
+POST /review/batches
+POST /review/items/:reviewItemId/attempt
+```
+
+## Review invariants
+
+- Only ACTIVE, currently commercially eligible ReviewItems appear in a new batch.
+- Maximum batch size is 5; there is no minimum beyond one eligible item.
+- Global priority: never reviewed first, then least recently reviewed, then createdAt/id stable tie-breakers.
+- A preferred lesson may be supplied by Lesson Result; its eligible items fill first, then the global queue fills remaining slots.
+- Public Review activity payloads reuse the safe activity allowlist but MUST omit `hint` and all answer keys/private validation data.
+- A started batch freezes its selected item ids and their commercial authorization for the short token lifetime. Entitlement expiry during that batch does not eject the learner; a new batch revalidates access.
+- Review submission is atomic and idempotent.
+- Review never mutates LessonRun, lesson/course progression, historical lesson score, Replay or gamification.
+
+## 11. GET /review
+
+Purpose: return the authenticated learner's current eligible Review summary for READY/EMPTY.
+
+Read-only. It must not update `lastReviewedAt` or create attempts.
+
+READY example:
+
+```json
+{
+  "state": "READY",
+  "pendingCount": 4,
+  "groups": [
+    {
+      "topic": { "id": "topic-uuid", "title": "Saludos y presentaciones" },
+      "count": 3
+    },
+    {
+      "topic": { "id": "topic-uuid-2", "title": "Personas y objetos" },
+      "count": 1
+    }
+  ]
+}
+```
+
+EMPTY:
+
+```json
+{ "state": "EMPTY", "pendingCount": 0, "groups": [] }
+```
+
+`pendingCount` counts ACTIVE items eligible under current commercial access. Commercially blocked ACTIVE items remain persisted but are omitted from actionable counts/groups.
+
+Failures: `401`; `500` unexpected failure.
+
+## 12. POST /review/batches
+
+Purpose: select and authorize one ephemeral Review batch. This does not create a persisted ReviewSession.
+
+Body:
+
+```json
+{
+  "preferredLessonId": "lesson-uuid-or-null"
+}
+```
+
+`preferredLessonId` is optional. The initial Lesson Result entry passes the lesson just completed. Invalid non-null UUID -> `400 INVALID_LESSON_ID`.
+
+Selection:
+1. eligible ACTIVE items from the preferred lesson, using normal priority;
+2. fill remaining slots from global priority;
+3. maximum 5, no duplicates.
+
+Success `200`:
+
+```json
+{
+  "batchToken": "opaque-short-lived-token",
+  "items": [
+    {
+      "id": "review-item-uuid",
+      "source": {
+        "lesson": { "id": "lesson-uuid", "title": "Nice to meet you!" },
+        "topic": { "id": "topic-uuid", "title": "Saludos y presentaciones" },
+        "course": { "id": "course-uuid", "title": "Inglés A1", "level": "A1" }
+      },
+      "activity": {
+        "id": "activity-uuid",
+        "type": "MULTIPLE_CHOICE",
+        "prompt": "¿Qué responderías?",
+        "options": [
+          { "id": "a", "text": "Nice to meet you!" },
+          { "id": "b", "text": "Goodbye!" }
+        ]
+      }
+    }
+  ],
+  "totalEligiblePending": 4
+}
+```
+
+The token is opaque to Mobile, scoped to the authenticated user and exact selected ReviewItem ids, integrity-protected and short lived. Its implementation may be stateless; no ReviewSession table is required. Mobile keeps the returned item order locally for stable `1 de N` traversal.
+
+If no eligible items exist, return `200` with `items: []`, `totalEligiblePending: 0` and no usable batch token (or a nullable token); Mobile renders EMPTY. Do not manufacture a conflict for normal empty state.
+
+The batch-start transaction/read must not mark items reviewed or create ActivityAttempts.
+
+Failures: `400 INVALID_LESSON_ID`; `401`; `500`.
+
+## 13. POST /review/items/:reviewItemId/attempt
+
+Purpose: check one authorized Review answer, persist the Review attempt and apply the item lifecycle transition atomically.
+
+Body:
+
+```json
+{
+  "batchToken": "opaque-token-from-batch-start",
+  "requestKey": "stable-logical-submission-key",
+  "answer": { "selectedOptionId": "a" }
+}
+```
+
+`answer` uses the same logical answer shapes as Lessons. Mobile generates one requestKey per logical Review submission and reuses it only for transport retry of that same submission.
+
+Validation:
+- authenticated user owns the ReviewItem;
+- batchToken is valid for that user and contains this item;
+- item still exists and belongs to the activity/source exposed in the token/batch;
+- item is ACTIVE when the logical submission first commits;
+- answer shape is valid.
+
+A valid submission creates/reuses exactly one `ActivityAttempt` with `context = REVIEW`, `reviewItemId`, `activityId`, `lessonId = sourceLessonId` when available, `runId = null`, normalized answer and sequential Review attempt number.
+
+Correct answer atomically:
+- creates/reuses attempt;
+- sets `lastReviewedAt`;
+- sets status `RESOLVED`;
+- sets `resolvedAt`.
+
+Incorrect answer atomically:
+- creates/reuses attempt;
+- sets `lastReviewedAt`;
+- increments `incorrectAttempts` once;
+- keeps status `ACTIVE`.
+
+Success example:
+
+```json
+{
+  "reviewItem": { "id": "review-item-uuid", "status": "RESOLVED" },
+  "attempt": { "id": "attempt-uuid", "attemptNumber": 2, "isCorrect": true },
+  "feedback": {
+    "message": "Correct answer",
+    "correctAnswer": "a",
+    "explanation": "Nice to meet you expresa que te alegra conocer a alguien."
+  },
+  "pendingReviewCount": 3
+}
+```
+
+`feedback.correctAnswer` and optional explanation are returned only after submission. The Review item payload before submission never contains private answer data or hints.
+
+The same valid `requestKey` repeated for the same logical request returns the same committed result without another attempt, counter increment or state transition. Reusing it for a different item/answer must be rejected.
+
+Commercial access is not re-evaluated against current entitlement for an item already authorized by a still-valid batch token; this intentionally lets a short in-progress batch finish if membership expires mid-flow. A new batch always uses current entitlement.
+
+Relevant failures:
+- `400 INVALID_REVIEW_ITEM_ID`;
+- `400 INVALID_REVIEW_REQUEST_KEY`;
+- `400 INVALID_ANSWER`;
+- `401` unauthenticated;
+- `403 REVIEW_BATCH_INVALID` for missing/invalid/expired/not-owned token or item not authorized by it;
+- `404 REVIEW_ITEM_NOT_FOUND` for missing/non-owned item;
+- `409 REVIEW_ITEM_NOT_ACTIVE` if another independent authorized action already resolved it.
+
+Mobile treats an item that becomes unavailable/not-active concurrently as skippable and continues the frozen local batch. It must not infer a successful resolution from a conflict.
+
+## Authentication/service boundary for Review v1
+
+Reuse the existing application-level auth boundary:
+
+```text
+Route -> Controller -> ReviewService -> ReviewRepository -> PostgreSQL
+```
+
+Controllers stay thin. ReviewService owns eligibility, ordering, preferred-lesson selection, batch authorization, answer validation, attempt numbering/idempotency and lifecycle transitions. Repository code owns persistence only.
+
+Review may reuse shared activity checking/public serialization and commercial-entitlement helpers, but should not call LessonService as a shortcut or duplicate the activity engine.
+
+## Review v1 implementation boundary
+
+Do not expand this slice into:
+- free Practice;
+- Assessment/unit challenges;
+- spaced repetition/mastery algorithms;
+- generated activity variants;
+- coins/streak/reward rules;
+- final Home or Progress implementation;
+- persistent ReviewSession history/resume.
+
