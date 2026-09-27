@@ -1,4 +1,5 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import ChevronRight from 'lucide-react-native/icons/chevron-right';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -69,12 +70,16 @@ export function LessonResultScreen({ route, navigation }: NativeStackScreenProps
         <Text accessibilityLabel={`${courseProgress.completedLessons} de ${courseProgress.totalLessons} lecciones completadas`} style={s.caption}>{courseProgress.completedLessons} de {courseProgress.totalLessons}</Text>
       </View>
     </View>
-    {result.pendingReviewCount > 0 ? <View style={local.review}>
-      <LearningIcon kind="pencil" rose /><View style={{ flex: 1 }}>
-        <Text style={s.heading}>{result.pendingReviewCount} {result.pendingReviewCount === 1 ? 'ejercicio de esta lección para reforzar' : 'ejercicios de esta lección para reforzar'}</Text>
-        <Button title="Repasar ahora" onPress={() => navigation.navigate('Review', { courseId, preferredLessonId: response.lesson.id })} />
-      </View>
-    </View> : result.isPerfect ? <View style={[local.review, local.positive]}>
+    {result.pendingReviewCount > 0 ? <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${result.pendingReviewCount} ${result.pendingReviewCount === 1 ? 'ejercicio' : 'ejercicios'} para repasar. De esta lección`}
+      accessibilityHint="Abre el repaso de ejercicios pendientes"
+      onPress={() => navigation.navigate('Review', { courseId, preferredLessonId: response.lesson.id })}
+      style={({ pressed }) => [local.reviewPending, pressed && local.reviewPressed]}>
+        <View style={local.reviewBadge}><LearningIcon kind="pencil" plain color="#D72E50" size={27} /></View>
+        <View style={{ flex: 1, gap: 3 }}><Text style={local.reviewTitle}>{result.pendingReviewCount} {result.pendingReviewCount === 1 ? 'ejercicio para repasar' : 'ejercicios para repasar'}</Text><Text style={local.reviewCaption}>De esta lección</Text></View>
+        <View accessible={false} importantForAccessibility="no-hide-descendants"><ChevronRight size={21} color="#65789D" strokeWidth={2} /></View>
+    </Pressable> : result.isPerfect ? <View style={[local.review, local.positive]}>
       <LearningIcon kind="completion" /><Text style={[s.heading, { flex: 1, color: '#13874C' }]}>¡Sin errores para repasar!</Text>
     </View> : null}
     {nextLesson ? <View style={[local.next, access && local.premium]}>
@@ -102,6 +107,11 @@ const local = StyleSheet.create({
   positive: { backgroundColor: '#EFFAF5', borderColor: '#D8F2E5' },
   progress: { gap: 8, padding: 16, borderWidth: 1, borderColor: '#DEEAFA', borderRadius: 18, backgroundColor: '#FCFDFF' },
   review: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12, backgroundColor: '#FFF3F5', borderWidth: 1, borderColor: '#FFE0E7', borderRadius: 18 },
+  reviewPending: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12, minHeight: 80, backgroundColor: '#FFF7F8', borderColor: '#FFE3E9', borderWidth: 1, borderRadius: 18 },
+  reviewPressed: { backgroundColor: '#FFEAF0', borderColor: '#F5C8D3' },
+  reviewBadge: { minWidth: 46, minHeight: 46, padding: 8, borderRadius: 23, backgroundColor: '#FFE4EA', alignItems: 'center', justifyContent: 'center' },
+  reviewTitle: { color: '#C62849', fontSize: 17, lineHeight: 23, fontWeight: '700' },
+  reviewCaption: { color: '#65789D', fontSize: 14, lineHeight: 20 },
   next: { padding: 16, gap: 10, borderRadius: 18, backgroundColor: '#F6F9FE', borderColor: '#DFEAF8', borderWidth: 1 },
   premium: { backgroundColor: '#FFFAEE', borderColor: '#F1D99B' },
 });

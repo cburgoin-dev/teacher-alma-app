@@ -46,7 +46,7 @@ export function ReviewScreen({ route, navigation }: NativeStackScreenProps<Cours
       {state.phase === 'IN_PROGRESS' ? <ProgressBar percentage={progress} /> : null}
     </ContextualHeader>
     {state.loading ? <View style={s.center}><ActivityIndicator color="#0062E9" /><Text style={s.caption}>Preparando tu repaso…</Text></View>
-      : state.phase === 'READY' ? <ScrollView contentContainerStyle={[local.readyContent, { paddingBottom: Math.max(24, insets.bottom + 12) }]}>
+      : state.phase === 'READY' ? <ScrollView key="ready" contentContainerStyle={[local.readyContent, { paddingBottom: Math.max(24, insets.bottom + 12) }]}>
         {state.error ? <View style={s.card}><Text accessibilityLiveRegion="polite" style={s.error}>No pudimos preparar tu repaso. Comprueba tu conexión y vuelve a intentarlo.</Text>
           <Button title="Reintentar" tone="blue" busy={state.busy} onPress={flow.load} /></View> : null}
         {state.summary ? <>
@@ -68,25 +68,31 @@ export function ReviewScreen({ route, navigation }: NativeStackScreenProps<Cours
                 <View style={local.count}><View style={[local.countBadge, { backgroundColor: palette.halo }]}><Text style={[local.readyNumber, { color: palette.ink }]}>{group.count}</Text></View><Text style={local.countLabel}>{group.count === 1 ? 'ejercicio' : 'ejercicios'}</Text></View>
               </View>;
             })}</View>
-            <View style={local.start}><Button title="Empezar repaso" arrow busy={state.busy} onPress={flow.start} /></View>
+            <View style={local.start}>{state.summary.pendingCount > 5 ? <Text style={local.sessionNote}>Este repaso incluirá 5 de tus {state.summary.pendingCount} ejercicios pendientes.</Text> : null}<Button title="Empezar repaso" arrow busy={state.busy} onPress={flow.start} /></View>
           </> : null}
         </> : null}
         <Button title={state.summary?.pendingCount ? 'Más tarde' : courseId ? 'Volver a la ruta' : 'Volver a cursos'} tone="blue" onPress={flow.requestExit} />
-      </ScrollView> : state.phase === 'RESULT' ? <ScrollView contentContainerStyle={contentStyle}>
+      </ScrollView> : state.phase === 'RESULT' ? <ScrollView key="result" contentContainerStyle={contentStyle}>
         <View style={local.resultHero}><CompletionHero perfect={false} />
           <Text style={[local.title, { textAlign: 'center' }]}>{state.expired ? 'Tu repaso hasta ahora' : '¡Repaso completado!'}</Text>
-          <Text style={s.body}>{state.expired ? 'Estas son tus respuestas confirmadas. Puedes iniciar otro repaso cuando quieras.' : 'Cada ejercicio te ayuda a seguir aprendiendo.'}</Text>
+          <Text style={local.resultSubtitle}>{state.expired ? 'Estas son tus respuestas confirmadas. Puedes iniciar otro repaso cuando quieras.' : 'Cada ejercicio te ayuda a seguir aprendiendo.'}</Text>
         </View>
+        <Text style={local.summaryLabel}>En este repaso</Text>
         <View style={local.stats}>
-          <View style={[local.stat, { backgroundColor: '#EFFAF5', borderColor: '#D8F2E5' }]}><LearningIcon kind="completion" />
-            <Text style={local.number}>{result.resolved}</Text><Text style={s.heading}>corregidos</Text></View>
-          <View style={[local.stat, { backgroundColor: '#FFF3F5', borderColor: '#FFE0E7' }]}><LearningIcon kind="pencil" rose />
-            <Text style={local.number}>{result.pending}</Text><Text style={s.heading}>siguen pendientes</Text><Text style={s.caption}>Podrás repasarlos en otro repaso.</Text></View>
+          <View style={[local.stat, { backgroundColor: '#EFFAF5', borderColor: '#D8F2E5' }]}>
+            <View style={local.statHeading}><LearningIcon kind="completion" /><Text style={local.number}>{result.resolved}</Text></View>
+            <Text style={local.statTitle}>{result.resolved === 1 ? 'corregido' : 'corregidos'}</Text>
+            {result.pending === 0 && result.resolved > 0 ? <Text style={local.statCaption}>¡Todos los ejercicios respondidos, corregidos!</Text> : null}
+          </View>
+          {result.pending > 0 ? <View style={[local.stat, { backgroundColor: '#FFF5F6', borderColor: '#FFE6EA' }]}>
+            <View style={local.statHeading}><LearningIcon kind="pencil" plain color="#E62E4B" /><Text style={local.number}>{result.pending}</Text></View>
+            <Text style={local.statTitle}>{result.pending === 1 ? 'sigue pendiente' : 'siguen pendientes'}</Text><Text style={local.statCaption}>Puedes reforzarlos en otro repaso.</Text></View> : null}
         </View>
         {result.skipped > 0 ? <Text style={s.caption}>{result.skipped} {result.skipped === 1 ? 'ejercicio no disponible' : 'ejercicios no disponibles'}. No se cuentan como resueltos.</Text> : null}
-        {result.topics.length > 0 ? <View style={s.card}><Text style={s.heading}>Temas repasados</Text>
-          {result.topics.map(topic => <View key={topic.id} style={local.topicResult}><LearningIcon kind="chat" plain />
-            <View style={{ flex: 1 }}><Text style={s.body}>{topic.title}</Text><Text style={s.caption}>{topic.resolved} de {topic.answered} corregidos</Text></View></View>)}
+        {result.topics.length > 0 ? <View style={local.topicsCard}><Text style={local.topicsTitle}>Temas repasados</Text>
+          {result.topics.map(topic => <View key={topic.id} style={local.topicResult}><LearningIcon kind="chat" plain size={22} />
+            <Text style={local.resultTopicTitle}>{topic.title}</Text><Text accessibilityLabel={topic.resolved + ' de ' + topic.answered + ' corregidos'} style={local.topicRatio}>{topic.resolved}/{topic.answered}</Text></View>)}
+          <Text style={local.statCaption}>Ejercicios corregidos / respondidos</Text>
         </View> : null}
         <Button title={courseId ? 'Continuar mi ruta' : 'Continuar aprendiendo'} arrow onPress={flow.requestExit} />
       </ScrollView> : state.expired || state.unavailable ? <View style={s.center}>
@@ -108,7 +114,7 @@ const local = StyleSheet.create({
   hero: { backgroundColor: '#EAF4FF', padding: 18, borderRadius: 18, gap: 10, borderWidth: 1, borderColor: '#E4F0FF' },
   readyTitle: { color: '#111B43', fontSize: 24, lineHeight: 30, fontWeight: '700', maxWidth: 285 },
   heroBody: { color: '#5E76A4', fontSize: 16, lineHeight: 23 },
-  title: { color: '#101B4D', fontSize: 29, lineHeight: 36, fontWeight: '800' },
+  title: { color: '#101B4D', fontSize: 25, lineHeight: 32, fontWeight: '700' },
   blueTitle: { color: '#0062E9', fontSize: 18, lineHeight: 24, fontWeight: '700' },
   encouragement: { marginTop: 4, padding: 12, gap: 12, flexDirection: 'row', alignItems: 'center', borderRadius: 16, backgroundColor: '#FFFFFFBB' },
   encouragementBody: { color: '#5E76A4', fontSize: 14, lineHeight: 20 },
@@ -121,13 +127,23 @@ const local = StyleSheet.create({
   countBadge: { minWidth: 44, paddingHorizontal: 10, paddingVertical: 2, borderRadius: 20, alignItems: 'center' },
   readyNumber: { fontSize: 23, lineHeight: 29, fontWeight: '700' },
   countLabel: { color: '#65789D', fontSize: 12, lineHeight: 17 },
-  start: { marginTop: 12 },
-  number: { color: '#101B4D', fontSize: 32, lineHeight: 40, fontWeight: '800' },
+  start: { marginTop: 12, gap: 9 },
+  sessionNote: { color: '#5E76A4', fontSize: 14, lineHeight: 20, textAlign: 'center' },
+  number: { color: '#101B4D', fontSize: 28, lineHeight: 34, fontWeight: '700' },
   topicLabel: { paddingHorizontal: 20, paddingTop: 4, color: '#61759D', fontSize: 14, lineHeight: 20 },
-  resultHero: { alignItems: 'center', gap: 10 },
+  resultHero: { alignItems: 'center', gap: 8, flexShrink: 0 },
+  resultSubtitle: { color: '#5E76A4', fontSize: 16, lineHeight: 23, textAlign: 'center' },
+  summaryLabel: { color: '#65789D', fontSize: 14, lineHeight: 20, textAlign: 'center' },
+  statHeading: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  statTitle: { color: '#243252', fontSize: 16, lineHeight: 22, fontWeight: '600' },
+  statCaption: { color: '#65789D', fontSize: 13, lineHeight: 19 },
+  topicsCard: { padding: 12, gap: 8, borderRadius: 18, borderWidth: 1, borderColor: '#E1EBF8', backgroundColor: '#FCFDFF' },
+  topicsTitle: { color: '#172343', fontSize: 19, lineHeight: 25, fontWeight: '700' },
+  resultTopicTitle: { flex: 1, color: '#45618B', fontSize: 14, lineHeight: 20 },
+  topicRatio: { color: '#45618B', fontSize: 15, lineHeight: 21, fontWeight: '700' },
   stats: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  stat: { flexGrow: 1, flexBasis: 145, padding: 16, borderRadius: 20, borderWidth: 1, gap: 6 },
-  topicResult: { flexDirection: 'row', gap: 12, alignItems: 'center', paddingVertical: 8 },
+  stat: { flexGrow: 1, flexBasis: 140, padding: 14, borderRadius: 16, borderWidth: 1, gap: 6 },
+  topicResult: { flexDirection: 'row', gap: 10, alignItems: 'center', padding: 10, borderRadius: 14, backgroundColor: '#F0F7FF' },
 });
 const topicPalettes = [
   { surface: '#FFF5F6', border: '#FFE6EA', halo: '#FFE2E7', ink: '#E62E4B' },

@@ -127,3 +127,13 @@ test('Review feedback shares answer rendering without Lesson reinforcement or re
     assert.equal(feedbackTitle(feedback), isCorrect ? '¡Correcto!' : 'Vamos a repasarlo');
   }
 });
+test('perfect batch has zero pending locally even when READY has more global items', async () => {
+  const { flow } = await open(fixture());
+  for (const item of items) { await flow.submit({ text: 'right' }); flow.continue(); }
+  assert.equal(flow.snapshot().phase, 'RESULT');
+  assert.equal(flow.snapshot().summary.pendingCount, 8);
+  const result = reviewResult(flow.snapshot().outcomes);
+  assert.equal(result.pending, 0);
+  assert.equal(result.resolved, items.length);
+  assert.ok(result.topics.every(t => t.resolved === t.answered));
+});
