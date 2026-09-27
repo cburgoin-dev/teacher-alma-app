@@ -199,9 +199,15 @@ Conceptually the roadmap will eventually need to represent:
 - current position;
 - completed/locked state.
 
-This is relevant to the previously discussed London-bus/current-position idea. The bus is considered Roadmap visual identity/polish, not part of Assessment domain logic.
+This is directly tied to the previously discussed London-bus/current-position idea.
 
-Because Unit Challenge adds a new node type, major roadmap polish should preferably happen after Challenge roadmap semantics are known, to avoid redesigning the path twice.
+Current approved product direction:
+- the bus is not merely a future visual experiment;
+- implementing a London-style bus/current-position marker is intended to be part of the same roadmap refinement work that introduces Unit Challenge nodes;
+- it should be treated as an early visible piece of the Assessment/Roadmap integration slice, while remaining frontend presentation rather than Assessment domain logic;
+- the bus should represent the learner's current position/progression on the route and must not become an independent progression source.
+
+Because Unit Challenge adds a new node type, the roadmap refinement should be designed once around both ordinary Lesson nodes and Unit Challenge milestone nodes, with the bus/current-position treatment integrated from the start.
 
 ## Free-content / commercial product hypothesis
 
