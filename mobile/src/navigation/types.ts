@@ -7,6 +7,7 @@ export type CoursesStackParamList = {
   Roadmap: { courseId: string };
   Lesson: { courseId: string; lessonId: string };
   LessonResult: { courseId: string; result: LessonOutcome };
+  Review: { courseId?: string; preferredLessonId?: string };
 };
 
 export type RootTabParamList = {

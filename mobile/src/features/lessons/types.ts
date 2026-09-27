@@ -51,7 +51,8 @@ export type LessonResult = {
 export type ReplayCheckResponse = { isCorrect: boolean; feedback: AttemptResponse['feedback'] };
 // This is local UI history, not a persisted attempt or an API response.
 export type ReplayFeedback = ReplayCheckResponse & { mode: 'REPLAY'; submissionNumber: number };
-export type ActivityFeedback = AttemptResponse | ReplayFeedback;
+export type ReviewFeedback = ReplayCheckResponse & { mode: 'REVIEW' };
+export type ActivityFeedback = AttemptResponse | ReplayFeedback | ReviewFeedback;
 export type ReplayResult = {
   mode: 'REPLAY';
   lesson: LessonResult['lesson'];

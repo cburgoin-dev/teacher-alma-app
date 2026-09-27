@@ -7,7 +7,7 @@ export function pairFeedback(pair: Pair | undefined, feedback: ActivityFeedback 
 export const feedbackCorrect = (feedback: ActivityFeedback) => 'attempt' in feedback ? feedback.attempt.isCorrect : feedback.isCorrect;
 export const reinforcementOnCompletion = (feedback: ActivityFeedback) => 'reinforcement' in feedback && feedback.reinforcement.onCompletion;
 export function feedbackTitle(feedback: ActivityFeedback) {
-  const retried = 'attempt' in feedback ? feedback.attempt.attemptNumber > 1 && feedback.reinforcement.onCompletion : feedback.submissionNumber > 1;
+  const retried = 'attempt' in feedback ? feedback.attempt.attemptNumber > 1 && feedback.reinforcement.onCompletion : 'submissionNumber' in feedback && feedback.submissionNumber > 1;
   return !feedbackCorrect(feedback) ? 'Vamos a repasarlo' : retried ? '¡Ahora sí!' : '¡Correcto!';
 }
 // Both SVG anchors and paths use the same measured card-edge coordinates.

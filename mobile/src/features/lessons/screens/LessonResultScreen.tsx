@@ -9,7 +9,7 @@ import { lessonStyles as s } from '../components/lessonStyles';
 import { LearningIcon } from '../components/LearningIcon';
 import { accuracy, courseLabel } from '../contentPresentation';
 
-function CompletionHero({ perfect }: { perfect: boolean }) {
+export function CompletionHero({ perfect }: { perfect: boolean }) {
   return <View accessible={false} pointerEvents="none" style={local.art}>
     <Svg width="100%" height="100%" viewBox="0 0 260 150">
       <Circle cx="130" cy="75" r="69" fill={perfect ? '#FFF3D8' : '#EBF4FF'} />
@@ -71,8 +71,8 @@ export function LessonResultScreen({ route, navigation }: NativeStackScreenProps
     </View>
     {result.pendingReviewCount > 0 ? <View style={local.review}>
       <LearningIcon kind="pencil" rose /><View style={{ flex: 1 }}>
-        <Text style={s.heading}>{result.pendingReviewCount} {result.pendingReviewCount === 1 ? 'ejercicio para reforzar' : 'ejercicios para reforzar'}</Text>
-        <Text style={s.caption}>Guardado para repasar más adelante.</Text>
+        <Text style={s.heading}>{result.pendingReviewCount} {result.pendingReviewCount === 1 ? 'ejercicio de esta lección para reforzar' : 'ejercicios de esta lección para reforzar'}</Text>
+        <Button title="Repasar ahora" onPress={() => navigation.navigate('Review', { courseId, preferredLessonId: response.lesson.id })} />
       </View>
     </View> : result.isPerfect ? <View style={[local.review, local.positive]}>
       <LearningIcon kind="completion" /><Text style={[s.heading, { flex: 1, color: '#13874C' }]}>¡Sin errores para repasar!</Text>

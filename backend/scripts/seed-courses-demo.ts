@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { demoCourses, demoId } from './courses-demo-data.js';
 import { isUuid } from '../src/shared/auth.js';
 import { lessonsDemoData } from './lessons-demo-data.js';
+import { currentDemoMediaOrigin } from './demo-media-origin.js';
 
 class DemoGuard extends Error {}
 async function main() {
@@ -11,6 +12,8 @@ async function main() {
   }
   if (process.argv.includes('--access-boundary') && action !== '--reset') throw new DemoGuard('Use --reset --access-boundary to select the alternate scenario.');
   const lessonScenario = process.argv.includes('--lessons');
+  const keepReview = process.argv.includes('--keep-review');
+  if (keepReview && (action !== '--reset' || !lessonScenario)) throw new DemoGuard('Use --keep-review only with --reset --lessons.');
   if (process.argv.includes('--resume')) throw new DemoGuard('Resume was removed. Use --reset --lessons or --reset --stale-run.');
   const staleScenario = process.argv.includes('--stale-run');
   if (staleScenario && (action !== '--reset' || lessonScenario || process.argv.includes('--access-boundary'))) throw new DemoGuard('Use --reset --stale-run without other scenario flags.');
@@ -30,6 +33,7 @@ async function main() {
     if (!await prisma.user.findUnique({ where: { id: userId }, select: { id: true } })) throw new DemoGuard('The configured development user does not exist.');
     const courses = demoCourses(process.argv.includes('--access-boundary'));
     const ids = courses.map(c => c.id);
+    if (action !== '--check') process.env.LESSONS_DEMO_ASSET_BASE_URL = await currentDemoMediaOrigin();
     const content = lessonsDemoData();
     const blockIds = content.blocks.map(b => b.id!);
     const activityIds = content.activities.map(a => a.id!);
@@ -93,7 +97,11 @@ async function main() {
       if (action === '--reset') {
         // Only the named demo courses and configured user's learning state; never whole tables.
         await tx.activityAttempt.deleteMany({ where: { userId, lessonId: { in: lessonIds }, context: 'LESSON' } });
-        await tx.reviewItem.deleteMany({ where: { userId, activityId: { in: activityIds }, sourceLessonId: { in: lessonIds } } });
+        // REVIEW attempts require their item while they exist (production CHECK).
+        // Scope through exactly the items this reset deletes, including legacy null lessonId.
+        if (!keepReview) await tx.activityAttempt.deleteMany({ where: { userId, context: 'REVIEW',
+          reviewItem: { userId, activityId: { in: activityIds }, sourceLessonId: { in: lessonIds } } } });
+        if (!keepReview) await tx.reviewItem.deleteMany({ where: { userId, activityId: { in: activityIds }, sourceLessonId: { in: lessonIds } } });
         await tx.lessonBlockProgress.deleteMany({ where: { userId, lessonBlockId: { in: blockIds } } });
         await tx.lessonProgress.deleteMany({ where: { userId, lessonId: { in: lessonIds } } });
         await tx.lessonRun.deleteMany({ where: { userId, lessonId: { in: lessonIds } } });

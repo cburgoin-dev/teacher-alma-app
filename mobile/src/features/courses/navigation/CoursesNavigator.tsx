@@ -6,6 +6,7 @@ import { RoadmapScreen } from '../screens/RoadmapScreen';
 import { LessonScreen } from '../../lessons/screens/LessonScreen';
 import { LessonResultScreen } from '../../lessons/screens/LessonResultScreen';
 import { ContextualHeader } from '../../../components/ContextualHeader';
+import { ReviewScreen } from '../../review/screens/ReviewScreen';
 
 const Stack = createNativeStackNavigator<CoursesStackParamList>();
 
@@ -17,6 +18,7 @@ export function CoursesNavigator() {
       <Stack.Screen name="Roadmap" component={RoadmapScreen} options={{ title: 'Ruta de aprendizaje', header: ({ navigation }) => <ContextualHeader safeTop title="Ruta de aprendizaje" onBack={() => navigation.goBack()} /> }} />
       <Stack.Screen name="Lesson" component={LessonScreen} options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="LessonResult" component={LessonResultScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Review" component={ReviewScreen} options={{ headerShown: false, gestureEnabled: false }} />
     </Stack.Navigator>
   );
 }
