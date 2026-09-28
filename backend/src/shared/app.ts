@@ -1,4 +1,6 @@
 import express from 'express';
+import { unitChallengeRoutes } from '../modules/unit-challenges/unit-challenge.routes.js';
+import type { UnitChallengeService } from '../modules/unit-challenges/unit-challenge.service.js';
 import type { RequestHandler } from 'express';
 import cors from 'cors';
 import { demoMedia } from './demo-media.js';
@@ -11,7 +13,7 @@ import { reviewRoutes } from '../modules/review/review.routes.js';
 import type { ReviewService } from '../modules/review/review.service.js';
 
 /** Composition boundary permits HTTP tests without loading secrets or a database. */
-export function createApp(courses: CourseService, auth: RequestHandler, lessons?: LessonService, review?: ReviewService) {
+export function createApp(courses: CourseService, auth: RequestHandler, lessons?: LessonService, review?: ReviewService, challenges?: UnitChallengeService) {
   const app = express();
   app.use(cors());
   app.use(express.json());
@@ -20,6 +22,7 @@ export function createApp(courses: CourseService, auth: RequestHandler, lessons?
   app.use('/courses', auth, courseRoutes(courses));
   if (lessons) app.use('/lessons', auth, lessonRoutes(lessons));
   if (review) app.use('/review', auth, reviewRoutes(review));
+  if (challenges) app.use('/unit-challenges', auth, unitChallengeRoutes(challenges));
   app.use(errorHandler);
   return app;
 }

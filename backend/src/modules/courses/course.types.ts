@@ -14,6 +14,14 @@ export interface TopicRecord {
   title: string;
   position: number;
   lessons: LessonRecord[];
+  unitChallenge?: {
+    id: string;
+    title: string;
+    status: string;
+    accessType: string;
+    progress: { id: string }[];
+    runs: { id: string }[];
+  } | null;
 }
 
 export interface CourseProgressRecord {

@@ -34,11 +34,11 @@ test('all four routes return contract-shaped 200 responses and start remains ide
   assert.deepEqual(Object.keys(detail.body).sort(), ['access', 'content', 'coverUrl', 'description', 'id', 'level', 'progress', 'slug', 'status', 'title']);
   const roadmap = await request(`/courses/${courseId}/roadmap`);
   assert.equal(roadmap.status, 200);
-  assert.deepEqual(Object.keys(roadmap.body).sort(), ['course', 'progress', 'topics']);
+  assert.deepEqual(Object.keys(roadmap.body).sort(), ['course', 'currentNode', 'progress', 'topics']);
   assert.equal(repo.writes, 0);
   const start = await request(`/courses/${courseId}/start`, 'POST');
   assert.equal(start.status, 200);
-  assert.deepEqual(Object.keys(start.body).sort(), ['course', 'nextLesson', 'progress']);
+  assert.deepEqual(Object.keys(start.body).sort(), ['course', 'nextNode', 'progress']);
   assert.deepEqual(await request(`/courses/${courseId}/start`, 'POST'), start);
   assert.equal(repo.writes, 1);
   assert.deepEqual(await request('/health'), { status: 200, body: { status: 'ok' } });

@@ -183,7 +183,7 @@ test('Lessons HTTP + Prisma/PostgreSQL integration', { skip: process.env.RUN_LES
       const responses = await Promise.all([post('/complete'), post('/complete')]);
       assert.equal(responses[0]!.status, 200); assert.deepEqual(responses[0], responses[1]);
       assert.deepEqual(responses[0]!.body.result, { correctAnswers: 3, totalActivities: 4, isPerfect: false, pendingReviewCount: 1 });
-      assert.equal(responses[0]!.body.courseProgress.completedLessons, 1); assert.equal(responses[0]!.body.nextLesson.id, paidId);
+      assert.equal(responses[0]!.body.courseProgress.completedLessons, 1); assert.equal(responses[0]!.body.nextNode.id, paidId);
       const reviews = await prisma.reviewItem.findMany({ where: { userId } }); assert.equal(reviews[0]!.incorrectAttempts, 2);
       const durableLesson = await prisma.lessonProgress.findUniqueOrThrow({ where: { userId_lessonId: { userId, lessonId } } });
       assert.equal(durableLesson.status, 'COMPLETED'); assert.equal(durableLesson.completedRunId, runId);

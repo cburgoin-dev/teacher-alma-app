@@ -1856,13 +1856,15 @@ The final phase submission atomically:
 }
 ```
 
-If the completed run does **not** meet a configured threshold:
+If the completed run does **not** meet a configured threshold and no `unit_challenge_progress` already exists for this learner/challenge:
 - `run.status = COMPLETED`;
 - `result.passed = false`;
 - no `unit_challenge_progress` is created;
 - Topic remains incomplete;
 - next Topic remains prerequisite-locked;
 - `nextNode` remains this same Unit Challenge milestone (replay needed), with access evaluated normally for a new run.
+
+If `unit_challenge_progress` already exists from an earlier qualifying run, a failed replay still completes with `result.passed = false`, but does not modify that progress, revoke Topic completion or relock following content. Current/next progression is derived from the existing consolidated progress.
 
 The final Result may later expose configured/derived reinforcement areas when a real content field supports them; v1 must not fabricate them from answer text.
 

@@ -5,6 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import type { AddressInfo } from 'node:net';
 import { demoId } from './courses-demo-data.js';
+import { completeUnitChallengeDemo } from './complete-unit-challenge-demo.js';
 import { createApp } from '../src/shared/app.js';
 import { developmentAuth } from '../src/shared/auth.js';
 import { CourseService } from '../src/modules/courses/course.service.js';
@@ -72,7 +73,11 @@ async function main() {
       assert.equal(result.result.correctAnswers, n === 1003 ? 2 : 3);
       assert.equal(result.result.pendingReviewCount, n === 1003 ? 1 : 0);
       assert.equal(result.result.isPerfect, n === 1004);
-      if (n === 1004) { assert.equal(result.nextLesson?.lockReason, 'ACCESS'); assert.equal(result.nextLesson?.accessible, false); }
+      if (n === 1004) { assert.equal(result.nextNode?.lockReason, 'ACCESS'); assert.equal(result.nextNode?.accessible, false); }
+      if (n === 1003) {
+        assert.equal(result.nextNode?.type, 'UNIT_CHALLENGE');
+        await completeUnitChallengeDemo(prisma, userId, demoId(50101));
+      }
     }
     // Completed lessons use only Replay checks and never create new runs.
     const runCount = await prisma.lessonRun.count({ where: { userId } });
@@ -80,7 +85,7 @@ async function main() {
     assert.equal(await prisma.lessonRun.count({ where: { userId } }), runCount);
     const path = await courses.roadmap(demoId(1), userId);
     assert.equal(path.progress.completedLessons, 4);
-    assert.equal(path.topics.flatMap(t => t.lessons)[4]!.progression.lockReason, 'ACCESS');
+    assert.equal(path.topics.flatMap(t => t.nodes).find(n => n.id === demoId(1005))!.progression.lockReason, 'ACCESS');
     seed('--reset', '--stale-run');
     const stale = await prisma.lessonRun.findFirstOrThrow({ where: { userId, lessonId: demoId(1003), status: 'ACTIVE' } });
     const fresh = await lessons.start(demoId(1003), userId, randomUUID());

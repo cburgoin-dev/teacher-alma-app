@@ -319,6 +319,7 @@ Frozen per-run phase snapshot and one-time submission boundary.
 - `total_items integer not null`
 - `submission_request_key text null`
 - `submission_request_hash text null`
+- `submission_response jsonb null`: public response receipt, persisted in the same submission transaction for exact retries even after later progression changes.
 - `submitted_at timestamptz null`
 - `created_at timestamptz not null default now()`
 - `updated_at timestamptz not null default now()`

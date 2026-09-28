@@ -82,7 +82,7 @@ test('demo prepare -> HTTP Review attempt -> scoped reset -> prepare again', {
     const roadmap = await courses.roadmap(demoId(1), userId);
     assert.equal(roadmap.progress.completedLessons, 2);
     assert.equal(roadmap.progress.totalLessons, 8);
-    const lessonStates = roadmap.topics.flatMap(t => t.lessons);
+    const lessonStates = roadmap.topics.flatMap(t => t.nodes);
     assert.equal(lessonStates.find(l => l.id === demoId(1003))?.progression.isCurrent, true);
     for (const id of [1003, 1004].map(demoId)) assert.equal(lessonStates.find(l => l.id === id)?.progressStatus, 'NOT_STARTED');
     assert.equal((await courses.detail(demoId(2), userId)).progress, null);

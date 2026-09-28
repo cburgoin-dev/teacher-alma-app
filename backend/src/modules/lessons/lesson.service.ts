@@ -1,7 +1,7 @@
 import { publicContent } from './lesson.content.js';
 import { HttpError } from '../../shared/http-error.js';
 import { entitlementSource } from '../courses/course.rules.js';
-import { progress as courseProgress } from '../courses/course.service.js';
+import { courseProgress, progressionPath, nextNode } from '../courses/course.progression.js';
 import { checkAnswer, publicActivity } from './lesson.activity.js';
 import { deriveSteps, nextRequiredStep, requireStep, requireStepAvailable, stepCompleted } from './lesson.steps.js';
 import type { LessonBlockRecord, LessonRecord, LessonSession, PrismaLessonRepository, RunRecord } from './lesson.repository.js';
@@ -41,9 +41,9 @@ export class LessonService {
     if (!lesson || lesson.status !== 'PUBLISHED' || lesson.topic.course.status !== 'PUBLISHED') fail(404, 'LESSON_NOT_FOUND', 'Lesson not found');
     const course = lesson.topic.course;
     if (write && !course.courseProgress.length) fail(409, 'COURSE_NOT_STARTED', 'Start the course first');
-    const path = publishedPath(lesson);
-    const before = path.slice(0, path.findIndex(l => l.id === lessonId));
-    if (lesson.lessonProgress[0]?.status !== 'COMPLETED' && before.some(l => l.isRequired && l.lessonProgress[0]?.status !== 'COMPLETED')) {
+    const path = progressionPath(course);
+    const before = path.slice(0, path.findIndex(l => l.type === 'LESSON' && l.id === lessonId));
+    if (lesson.lessonProgress[0]?.status !== 'COMPLETED' && before.some(l => l.required && l.progressStatus !== 'COMPLETED')) {
       fail(409, 'LESSON_PREREQUISITE_REQUIRED', 'Complete preceding required lessons first');
     }
     const source = entitlementSource(course.id, await session.findEntitlements(userId), this.clock());
@@ -192,16 +192,14 @@ export class LessonService {
         await session.linkReview(run.id, activityId, review.id);
       }
       lesson = (await session.findLesson(lesson.id, userId))!;
-      if (courseProgress(publishedPath(lesson)).status === 'COMPLETED') await session.completeCourse(userId, lesson.topic.course.id, now);
+      if (courseProgress(lesson.topic.course).status === 'COMPLETED') await session.completeCourse(userId, lesson.topic.course.id, now);
     }
-    const path = publishedPath(lesson);
-    const progress = courseProgress(path);
-    const next = path.find(l => l.isRequired && l.lessonProgress[0]?.status !== 'COMPLETED');
-    const accessible = next ? next.accessType === 'FREE' || (next.accessType === 'PAID' && source !== 'NONE') : false;
+    const progress = courseProgress(lesson.topic.course);
+    const next = nextNode(lesson.topic.course, source);
     return { runId: run.id, lesson: { id: lesson.id, title: lesson.title }, course: { id: lesson.topic.course.id, title: lesson.topic.course.title, level: lesson.topic.course.level },
       result: { correctAnswers: run.correctAnswers!, totalActivities: run.totalActivities!, isPerfect: run.totalActivities! > 0 && run.correctAnswers === run.totalActivities,
         pendingReviewCount: await session.countReviews(userId, lesson.id) }, courseProgress: progress,
-      nextLesson: next ? { id: next.id, title: next.title, accessible, lockReason: accessible ? null : 'ACCESS' } : null };
+      nextNode: next };
 
   }
   complete(lessonId: string, runId: string, userId: string) {

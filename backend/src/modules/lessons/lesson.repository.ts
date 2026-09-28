@@ -12,7 +12,9 @@ export class LessonSession {
       } },
       topic: { include: { course: { include: {
         courseProgress: { where: { userId } },
-        topics: { orderBy: { position: 'asc' }, include: { lessons: {
+        topics: { orderBy: { position: 'asc' }, include: {
+          unitChallenge: { include: { progress: { where: { userId } }, runs: { where: { userId, status: 'ACTIVE' } } } },
+          lessons: {
           orderBy: { position: 'asc' }, include: { lessonProgress: { where: { userId } } },
         } } },
       } } } },

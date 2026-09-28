@@ -290,6 +290,7 @@ Conceptual fields:
 - `correct_items` (nullable until submission)
 - `total_items`
 - `submission_request_key` or equivalent idempotency boundary (nullable before submission)
+- `submission_response` (JSONB public response receipt for exact transport retries, written atomically with submission)
 - `submitted_at` (nullable)
 - timestamps as needed
 

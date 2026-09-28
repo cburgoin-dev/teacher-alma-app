@@ -1,4 +1,7 @@
 import 'dotenv/config';
+import { unitChallengeDemo } from './unit-challenge-demo-data.js';
+import { completeUnitChallengeDemo } from './complete-unit-challenge-demo.js';
+import { validatePublishedTopics } from '../src/modules/unit-challenges/unit-challenge.content.js';
 import { demoCourses, demoId } from './courses-demo-data.js';
 import { isUuid } from '../src/shared/auth.js';
 import { lessonsDemoData } from './lessons-demo-data.js';
@@ -46,12 +49,19 @@ async function main() {
           courses: await prisma.course.count({ where: { id: { in: ids } } }),
           topics: await prisma.topic.count({ where: { courseId: { in: ids } } }),
           lessons: await prisma.lesson.count({ where: { topic: { courseId: { in: ids } } } }),
+          unitChallenges: await prisma.unitChallenge.count({ where: { topic: { courseId: { in: ids } } } }),
+          unitChallengeRuns: await prisma.unitChallengeRun.count({ where: { userId, challenge: { topic: { courseId: { in: ids } } } } }),
           courseProgress: await prisma.courseProgress.count({ where: { userId, courseId: { in: ids } } }),
           lessonProgress: await prisma.lessonProgress.count({ where: { userId, lesson: { topic: { courseId: { in: ids } } } } }) },
         courses: await prisma.course.findMany({ select: { id: true, title: true, slug: true, status: true }, orderBy: { position: 'asc' } }) }, null, 2));
+      const topics = await prisma.topic.findMany({ where: { courseId: { in: ids }, course: { status: 'PUBLISHED' } },
+        include: { lessons: true, unitChallenge: { include: { phases: true } } } });
+      validatePublishedTopics(topics);
+      console.log('Unit Challenge published content validated.');
       return;
     }
     await prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId}::uuid FOR UPDATE`;
       // Never remove or revoke an entitlement to manufacture a commercial lock.
       const grants = await tx.entitlement.count({ where: { userId, status: 'ACTIVE', startsAt: { lte: new Date() },
         AND: [{ OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
@@ -70,6 +80,15 @@ async function main() {
           if (existingTopic && existingTopic.courseId !== course.id) throw new DemoGuard('Demo topic identifier collision.');
           const topicData = { courseId: course.id, title: topic.title, position: topic.position };
           await tx.topic.upsert({ where: { id: topic.id }, create: { id: topic.id, ...topicData }, update: topicData });
+          const demo = unitChallengeDemo(topic.id, Number(topic.id.slice(-12)), topic.lessons.every(l => l.accessType === 'FREE') ? 'FREE' : 'PAID');
+          const existingChallenge = await tx.unitChallenge.findFirst({ where: { OR: [{ id: demo.challenge.id }, { topicId: topic.id }] } });
+          if (existingChallenge && (existingChallenge.id !== demo.challenge.id || existingChallenge.topicId !== topic.id)) throw new DemoGuard('Demo challenge identifier collision.');
+          await tx.unitChallenge.upsert({ where: { id: demo.challenge.id }, create: demo.challenge, update: demo.challenge });
+          for (const phase of demo.phases) {
+            const existingPhase = await tx.unitChallengePhase.findFirst({ where: { OR: [{ id: phase.id }, { unitChallengeId: demo.challenge.id, position: phase.position }] } });
+            if (existingPhase && (existingPhase.id !== phase.id || existingPhase.unitChallengeId !== demo.challenge.id)) throw new DemoGuard('Demo challenge phase identifier collision.');
+            await tx.unitChallengePhase.upsert({ where: { id: phase.id }, create: phase, update: phase });
+          }
           for (const lesson of topic.lessons) {
             const existingLesson = await tx.lesson.findUnique({ where: { id: lesson.id }, select: { topicId: true } });
             if (existingLesson && existingLesson.topicId !== topic.id) throw new DemoGuard('Demo lesson identifier collision.');
@@ -94,7 +113,11 @@ async function main() {
         await tx.lessonBlock.upsert({ where: { id: block.id! }, create: block, update: block });
       }
       const lessonIds = courses.flatMap(c => c.topics.flatMap(t => t.lessons.map(l => l.id)));
+      validatePublishedTopics(await tx.topic.findMany({ where: { courseId: { in: ids }, course: { status: 'PUBLISHED' } },
+        include: { lessons: true, unitChallenge: { include: { phases: true } } } }));
       if (action === '--reset') {
+        await tx.unitChallengeProgress.deleteMany({ where: { userId, challenge: { topic: { courseId: { in: ids } } } } });
+        await tx.unitChallengeRun.deleteMany({ where: { userId, challenge: { topic: { courseId: { in: ids } } } } });
         // Only the named demo courses and configured user's learning state; never whole tables.
         await tx.activityAttempt.deleteMany({ where: { userId, lessonId: { in: lessonIds }, context: 'LESSON' } });
         // REVIEW attempts require their item while they exist (production CHECK).
@@ -122,6 +145,7 @@ async function main() {
           answerData: { selectedOptionId: 'bye' }, isCorrect: false, attemptNumber: 1 } });
       }
     }, { timeout: 30000 });
+    if (process.argv.includes('--access-boundary')) await completeUnitChallengeDemo(prisma, userId, demoId(50101));
     console.log(JSON.stringify({ action, courses: courses.map(c => ({ id: c.id, title: c.title, topics: c.topics.length,
       lessons: c.topics.reduce((n, t) => n + t.lessons.length, 0) })), resetUserProgress: action === '--reset' }, null, 2));
   } finally { await prisma.$disconnect(); }

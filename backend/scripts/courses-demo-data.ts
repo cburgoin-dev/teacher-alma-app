@@ -38,6 +38,11 @@ export function demoCourses(accessBoundary = false): CourseRecord[] {
       courseProgress: courseIndex === 0 ? [{ status: 'IN_PROGRESS' }] : [],
       topics: definition.topics.map(([title, titles], topicIndex) => ({
         id: demoId((courseIndex + 1) * 100 + topicIndex + 1), title, position: topicIndex + 1,
+        unitChallenge: {
+          id: demoId(50000 + (courseIndex + 1) * 100 + topicIndex + 1), title: 'Tu primera conversación',
+          status: 'PUBLISHED', accessType: courseIndex === 0 && topicIndex === 0 || courseIndex === 1 && topicIndex === 0 ? 'FREE' : 'PAID',
+          progress: courseIndex === 0 && topicIndex === 0 && accessBoundary ? [{ id: demoId(90000) }] : [], runs: [],
+        },
         lessons: titles.map((lessonTitle, index) => {
           const globalIndex = lessonIndex++;
           return { id: demoId((courseIndex + 1) * 1000 + globalIndex + 1), title: lessonTitle,

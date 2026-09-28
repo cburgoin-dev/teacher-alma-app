@@ -11,14 +11,121 @@ datasource db {
   provider = "postgresql"
 }
 
+model UnitChallenge {
+  id           String                  @id @default(uuid()) @db.Uuid
+  topicId      String                  @unique @map("topic_id") @db.Uuid
+  title        String                  @db.Text
+  description  String?                 @db.Text
+  passingScore Int?                    @map("passing_score")
+  accessType   String                  @default("FREE") @map("access_type") @db.Text
+  status       String                  @default("DRAFT") @db.Text
+  createdAt    DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime                @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  topic        Topic                   @relation(fields: [topicId], references: [id], onDelete: Restrict)
+  phases       UnitChallengePhase[]
+  runs         UnitChallengeRun[]
+  progress     UnitChallengeProgress[]
+
+  @@index([status])
+  @@index([accessType])
+  @@map("unit_challenges")
+}
+
+model UnitChallengePhase {
+  id              String                  @id @default(uuid()) @db.Uuid
+  unitChallengeId String                  @map("unit_challenge_id") @db.Uuid
+  type            String                  @db.Text
+  position        Int
+  config          Json                    @db.JsonB
+  createdAt       DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime                @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  challenge       UnitChallenge           @relation(fields: [unitChallengeId], references: [id], onDelete: Restrict)
+  runPhases       UnitChallengeRunPhase[]
+
+  @@unique([unitChallengeId, position])
+  @@index([unitChallengeId])
+  @@map("unit_challenge_phases")
+}
+
+model UnitChallengeRun {
+  id                   String                  @id @default(uuid()) @db.Uuid
+  userId               String                  @map("user_id") @db.Uuid
+  unitChallengeId      String                  @map("unit_challenge_id") @db.Uuid
+  requestKey           String                  @map("request_key") @db.Text
+  status               String                  @default("ACTIVE") @db.Text
+  passingScoreSnapshot Int?                    @map("passing_score_snapshot")
+  correctItems         Int?                    @map("correct_items")
+  totalItems           Int                     @map("total_items")
+  passed               Boolean?
+  startedAt            DateTime                @default(now()) @map("started_at") @db.Timestamptz(6)
+  updatedAt            DateTime                @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  completedAt          DateTime?               @map("completed_at") @db.Timestamptz(6)
+  abandonedAt          DateTime?               @map("abandoned_at") @db.Timestamptz(6)
+  user                 User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge            UnitChallenge           @relation(fields: [unitChallengeId], references: [id], onDelete: Restrict)
+  phases               UnitChallengeRunPhase[]
+  durableProgress      UnitChallengeProgress?
+
+  @@unique([userId, unitChallengeId, requestKey])
+  @@index([unitChallengeId])
+  @@index([userId, status])
+  @@map("unit_challenge_runs")
+}
+
+model UnitChallengeRunPhase {
+  id                    String             @id @default(uuid()) @db.Uuid
+  runId                 String             @map("run_id") @db.Uuid
+  sourcePhaseId         String             @map("source_phase_id") @db.Uuid
+  position              Int
+  type                  String             @db.Text
+  contentSnapshot       Json               @map("content_snapshot") @db.JsonB
+  answerData            Json?              @map("answer_data") @db.JsonB
+  correctItems          Int?               @map("correct_items")
+  totalItems            Int                @map("total_items")
+  submissionRequestKey  String?            @map("submission_request_key") @db.Text
+  submissionRequestHash String?            @map("submission_request_hash") @db.Text
+  submissionResponse    Json?              @map("submission_response") @db.JsonB
+  submittedAt           DateTime?          @map("submitted_at") @db.Timestamptz(6)
+  createdAt             DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  run                   UnitChallengeRun   @relation(fields: [runId], references: [id], onDelete: Cascade)
+  sourcePhase           UnitChallengePhase @relation(fields: [sourcePhaseId], references: [id], onDelete: Restrict)
+
+  @@unique([runId, position])
+  @@unique([runId, sourcePhaseId])
+  @@unique([runId, submissionRequestKey])
+  @@index([sourcePhaseId])
+  @@index([runId, submittedAt, position])
+  @@map("unit_challenge_run_phases")
+}
+
+model UnitChallengeProgress {
+  id              String           @id @default(uuid()) @db.Uuid
+  userId          String           @map("user_id") @db.Uuid
+  unitChallengeId String           @map("unit_challenge_id") @db.Uuid
+  passedRunId     String           @unique @map("passed_run_id") @db.Uuid
+  completedAt     DateTime         @default(now()) @map("completed_at") @db.Timestamptz(6)
+  updatedAt       DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge       UnitChallenge    @relation(fields: [unitChallengeId], references: [id], onDelete: Restrict)
+  passedRun       UnitChallengeRun @relation(fields: [passedRunId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, unitChallengeId])
+  @@index([unitChallengeId])
+  @@index([userId])
+  @@map("unit_challenge_progress")
+}
+
 model User {
-  id                  String   @id @default(uuid()) @db.Uuid
-  email               String   @unique @db.Text
-  displayName         String?  @map("display_name") @db.Text
-  timezone            String   @default("UTC") @db.Text
-  authProviderSubject String?  @unique @map("auth_provider_subject") @db.Text
-  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  unitChallengeRuns     UnitChallengeRun[]
+  unitChallengeProgress UnitChallengeProgress[]
+  id                    String                  @id @default(uuid()) @db.Uuid
+  email                 String                  @unique @db.Text
+  displayName           String?                 @map("display_name") @db.Text
+  timezone              String                  @default("UTC") @db.Text
+  authProviderSubject   String?                 @unique @map("auth_provider_subject") @db.Text
+  createdAt             DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime                @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   lessonRuns          LessonRun[]
   courseProgress      CourseProgress[]      @relation("CourseProgress_userId")
@@ -60,13 +167,14 @@ model Course {
 }
 
 model Topic {
-  id          String   @id @default(uuid()) @db.Uuid
-  courseId    String   @map("course_id") @db.Uuid
-  title       String   @db.Text
-  description String?  @db.Text
-  position    Int
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  unitChallenge UnitChallenge?
+  id            String         @id @default(uuid()) @db.Uuid
+  courseId      String         @map("course_id") @db.Uuid
+  title         String         @db.Text
+  description   String?        @db.Text
+  position      Int
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   course  Course   @relation("Topic_courseId", fields: [courseId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   lessons Lesson[] @relation("Lesson_topicId")
@@ -130,11 +238,11 @@ model LessonBlock {
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  lesson              Lesson                @relation("LessonBlock_lessonId", fields: [lessonId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  activity            Activity?             @relation("LessonBlock_activityId", fields: [activityId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  currentRuns         LessonRun[] @relation("LessonRun_currentBlockId")
+  lesson              Lesson                   @relation("LessonBlock_lessonId", fields: [lessonId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  activity            Activity?                @relation("LessonBlock_activityId", fields: [activityId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  currentRuns         LessonRun[]              @relation("LessonRun_currentBlockId")
   runBlockProgress    LessonRunBlockProgress[]
-  lessonBlockProgress LessonBlockProgress[] @relation("LessonBlockProgress_lessonBlockId")
+  lessonBlockProgress LessonBlockProgress[]    @relation("LessonBlockProgress_lessonBlockId")
 
   @@unique([lessonId, position])
   @@index([lessonId])
@@ -170,8 +278,8 @@ model LessonProgress {
   completedAt    DateTime? @map("completed_at") @db.Timestamptz(6)
   updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  user         User         @relation("LessonProgress_userId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  lesson       Lesson       @relation("LessonProgress_lessonId", fields: [lessonId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  user         User       @relation("LessonProgress_userId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  lesson       Lesson     @relation("LessonProgress_lessonId", fields: [lessonId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   completedRun LessonRun? @relation(fields: [completedRunId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([userId, lessonId])
@@ -198,24 +306,25 @@ model LessonBlockProgress {
 }
 
 model LessonRun {
-  id String @id @default(uuid()) @db.Uuid
-  userId String @map("user_id") @db.Uuid
-  lessonId String @map("lesson_id") @db.Uuid
-  requestKey String @map("request_key") @db.Text
-  status String @default("ACTIVE") @db.Text
-  currentBlockId String? @map("current_block_id") @db.Uuid
-  startedAt DateTime @default(now()) @map("started_at") @db.Timestamptz(6)
-  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
-  abandonedAt DateTime? @map("abandoned_at") @db.Timestamptz(6)
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  correctAnswers Int? @map("correct_answers")
-  totalActivities Int? @map("total_activities")
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Restrict)
-  currentBlock LessonBlock? @relation("LessonRun_currentBlockId", fields: [currentBlockId], references: [id], onDelete: Restrict)
-  blocks LessonRunBlockProgress[]
-  attempts ActivityAttempt[]
+  id              String                   @id @default(uuid()) @db.Uuid
+  userId          String                   @map("user_id") @db.Uuid
+  lessonId        String                   @map("lesson_id") @db.Uuid
+  requestKey      String                   @map("request_key") @db.Text
+  status          String                   @default("ACTIVE") @db.Text
+  currentBlockId  String?                  @map("current_block_id") @db.Uuid
+  startedAt       DateTime                 @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt     DateTime?                @map("completed_at") @db.Timestamptz(6)
+  abandonedAt     DateTime?                @map("abandoned_at") @db.Timestamptz(6)
+  updatedAt       DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  correctAnswers  Int?                     @map("correct_answers")
+  totalActivities Int?                     @map("total_activities")
+  user            User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson          Lesson                   @relation(fields: [lessonId], references: [id], onDelete: Restrict)
+  currentBlock    LessonBlock?             @relation("LessonRun_currentBlockId", fields: [currentBlockId], references: [id], onDelete: Restrict)
+  blocks          LessonRunBlockProgress[]
+  attempts        ActivityAttempt[]
   durableProgress LessonProgress?
+
   @@unique([userId, lessonId, requestKey])
   @@index([lessonId])
   @@index([currentBlockId])
@@ -223,33 +332,34 @@ model LessonRun {
 }
 
 model LessonRunBlockProgress {
-  runId String @map("run_id") @db.Uuid
-  lessonBlockId String @map("lesson_block_id") @db.Uuid
-  completedAt DateTime @default(now()) @map("completed_at") @db.Timestamptz(6)
-  run LessonRun @relation(fields: [runId], references: [id], onDelete: Cascade)
-  lessonBlock LessonBlock @relation(fields: [lessonBlockId], references: [id], onDelete: Restrict)
+  runId         String      @map("run_id") @db.Uuid
+  lessonBlockId String      @map("lesson_block_id") @db.Uuid
+  completedAt   DateTime    @default(now()) @map("completed_at") @db.Timestamptz(6)
+  run           LessonRun   @relation(fields: [runId], references: [id], onDelete: Cascade)
+  lessonBlock   LessonBlock @relation(fields: [lessonBlockId], references: [id], onDelete: Restrict)
+
   @@id([runId, lessonBlockId])
   @@index([lessonBlockId])
   @@map("lesson_run_block_progress")
 }
 
 model ActivityAttempt {
-  id            String   @id @default(uuid()) @db.Uuid
-  userId        String   @map("user_id") @db.Uuid
-  activityId    String   @map("activity_id") @db.Uuid
-  lessonId      String?  @map("lesson_id") @db.Uuid
-  runId         String? @map("run_id") @db.Uuid
-  run           LessonRun? @relation(fields: [runId], references: [id], onDelete: Restrict)
-  reviewItemId  String?  @map("review_item_id") @db.Uuid
-  reviewRequestKey String? @map("review_request_key") @db.Text
-  reviewBatchId String? @map("review_batch_id") @db.Uuid
-  reviewRequestHash String? @map("review_request_hash") @db.Text
-  reviewResult Json? @map("review_result") @db.JsonB
-  context       String   @db.Text
-  answerData    Json     @map("answer_data") @db.JsonB
-  isCorrect     Boolean  @map("is_correct")
-  attemptNumber Int      @default(1) @map("attempt_number")
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                String     @id @default(uuid()) @db.Uuid
+  userId            String     @map("user_id") @db.Uuid
+  activityId        String     @map("activity_id") @db.Uuid
+  lessonId          String?    @map("lesson_id") @db.Uuid
+  runId             String?    @map("run_id") @db.Uuid
+  run               LessonRun? @relation(fields: [runId], references: [id], onDelete: Restrict)
+  reviewItemId      String?    @map("review_item_id") @db.Uuid
+  reviewRequestKey  String?    @map("review_request_key") @db.Text
+  reviewBatchId     String?    @map("review_batch_id") @db.Uuid
+  reviewRequestHash String?    @map("review_request_hash") @db.Text
+  reviewResult      Json?      @map("review_result") @db.JsonB
+  context           String     @db.Text
+  answerData        Json       @map("answer_data") @db.JsonB
+  isCorrect         Boolean    @map("is_correct")
+  attemptNumber     Int        @default(1) @map("attempt_number")
+  createdAt         DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
 
   user       User        @relation("ActivityAttempt_userId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   activity   Activity    @relation("ActivityAttempt_activityId", fields: [activityId], references: [id], onDelete: Restrict, onUpdate: Cascade)

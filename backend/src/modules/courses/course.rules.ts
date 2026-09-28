@@ -33,6 +33,6 @@ export function entitlementSource(
   return 'NONE';
 }
 
-export function hasLessonAccess(lesson: LessonRecord, source: ReturnType<typeof entitlementSource>): boolean {
+export function hasLessonAccess<T extends Pick<LessonRecord, 'accessType'>>(lesson: T, source: ReturnType<typeof entitlementSource>): boolean {
   return lesson.accessType === 'FREE' || (lesson.accessType === 'PAID' && source !== 'NONE');
 }

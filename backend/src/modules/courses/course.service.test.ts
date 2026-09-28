@@ -26,9 +26,9 @@ test('published content includes optional lessons; progress counts required less
       lesson(2, { isRequired: false, accessType: 'PAID' }), lesson(1)] },
   ] })]);
   const service = new CourseService(repo);
-  assert.deepEqual((await service.detail(courseId, userId)).content, { topicCount: 2, lessonCount: 3, freeLessonCount: 2 });
+  assert.deepEqual((await service.detail(courseId, userId)).content, { topicCount: 2, lessonCount: 3, freeLessonCount: 2, unitChallengeCount: 0 });
   const roadmap = await service.roadmap(courseId, userId);
-  const path = roadmap.topics.flatMap(t => t.lessons);
+  const path = roadmap.topics.flatMap(t => t.nodes);
   assert.deepEqual(path.map(l => l.title), ['Lesson 1', 'Lesson 2', 'Lesson 4']);
   assert.deepEqual(path[0]?.progression, { unlocked: true, isCurrent: false, lockReason: null });
   assert.deepEqual(path[1]?.progression, { unlocked: false, isCurrent: false, lockReason: 'PREREQUISITE' });
@@ -43,11 +43,12 @@ test('start is idempotent, marks first pending current, and does not start a les
   const second = await service.start(courseId, userId);
   assert.deepEqual(first, second);
   assert.equal(repo.writes, 1);
-  assert.deepEqual(first.progress, { status: 'IN_PROGRESS', completedLessons: 0, totalLessons: 2, percentage: 0 });
+  assert.deepEqual(first.progress, { status: 'IN_PROGRESS', completedLessons: 0, totalLessons: 2, percentage: 0,
+    completedUnitChallenges: 0, totalUnitChallenges: 0, completedRequiredNodes: 0, totalRequiredNodes: 2 });
   const roadmap = await service.roadmap(courseId, userId);
-  assert.equal(roadmap.topics[0]?.lessons[0]?.progression.isCurrent, true);
-  assert.equal(roadmap.topics[0]?.lessons[0]?.progressStatus, 'NOT_STARTED');
-  assert.equal(roadmap.topics[0]?.lessons[1]?.progression.unlocked, false);
+  assert.equal(roadmap.topics[0]?.nodes[0]?.progression.isCurrent, true);
+  assert.equal(roadmap.topics[0]?.nodes[0]?.progressStatus, 'NOT_STARTED');
+  assert.equal(roadmap.topics[0]?.nodes[1]?.progression.unlocked, false);
 });
 
 test('concurrent starts remain idempotent through the repository conflict-safe operation', async () => {
@@ -64,13 +65,13 @@ test('completion unlocks across topic boundaries; access never overrides prerequ
     { id: 'b', title: 'B', position: 2, lessons: [lesson(2, { accessType: 'PAID', isRequired: false }), lesson(3)] },
   ] })]);
   const service = new CourseService(repo, () => now);
-  let path = (await service.roadmap(courseId, userId)).topics.flatMap(t => t.lessons);
+  let path = (await service.roadmap(courseId, userId)).topics.flatMap(t => t.nodes);
   assert.equal(path[0]?.progression.unlocked, true);
   assert.deepEqual(path[1]?.progression, { unlocked: true, isCurrent: false, lockReason: 'ACCESS' });
   assert.deepEqual(path[1]?.access, { type: 'PAID', hasAccess: false });
   assert.deepEqual(path[2]?.progression, { unlocked: true, isCurrent: true, lockReason: null });
   repo.grants = [{ scope: 'ALL_COURSES', courseId: null, status: 'ACTIVE', startsAt: now, expiresAt: null }];
-  path = (await service.roadmap(courseId, userId)).topics.flatMap(t => t.lessons);
+  path = (await service.roadmap(courseId, userId)).topics.flatMap(t => t.nodes);
   assert.equal(path[1]?.access.hasAccess, true);
   assert.equal(path[1]?.progression.lockReason, null);
   assert.equal(path[2]?.progression.unlocked, true);
@@ -85,7 +86,7 @@ test('later free content does not authorize a paid first lesson; entitlement doe
   await assert.rejects(service.start(courseId, userId), { status: 403, code: 'COURSE_ACCESS_REQUIRED' });
   assert.equal(repo.writes, 0);
   repo.grants = [{ scope: 'COURSE', courseId, status: 'ACTIVE', startsAt: now, expiresAt: null }];
-  assert.equal((await service.start(courseId, userId)).nextLesson?.id, lesson(1).id);
+  assert.equal((await service.start(courseId, userId)).nextNode?.id, lesson(1).id);
   assert.equal((await service.detail(courseId, userId)).access.source, 'COURSE_PURCHASE');
 });
 
@@ -106,10 +107,11 @@ test('all published lessons completed produces 100%, COMPLETED and null next wit
   ] })]);
   const service = new CourseService(repo);
   const result = await service.start(courseId, userId);
-  assert.equal(result.nextLesson, null);
-  assert.deepEqual(result.progress, { status: 'COMPLETED', completedLessons: 1, totalLessons: 1, percentage: 100 });
+  assert.equal(result.nextNode, null);
+  assert.deepEqual(result.progress, { status: 'COMPLETED', completedLessons: 1, totalLessons: 1, percentage: 100,
+    completedUnitChallenges: 0, totalUnitChallenges: 0, completedRequiredNodes: 1, totalRequiredNodes: 1 });
   assert.deepEqual((await service.detail(courseId, userId)).progress, result.progress);
-  assert.equal((await service.roadmap(courseId, userId)).topics[0]?.lessons.some(l => l.progression.isCurrent), false);
+  assert.equal((await service.roadmap(courseId, userId)).topics[0]?.nodes.some(l => l.progression.isCurrent), false);
   assert.equal(repo.writes, 0);
   assert.equal(repo.courses[0]?.courseProgress[0]?.status, 'IN_PROGRESS');
 });
@@ -135,15 +137,16 @@ test('published course with only hidden lessons is readable but cannot be starte
   ] })]);
   const service = new CourseService(repo);
   const detail = await service.detail(courseId, userId);
-  assert.deepEqual(detail.content, { topicCount: 0, lessonCount: 0, freeLessonCount: 0 });
+  assert.deepEqual(detail.content, { topicCount: 0, lessonCount: 0, freeLessonCount: 0, unitChallengeCount: 0 });
   assert.equal(detail.progress, null);
   assert.equal(detail.access.source, 'NONE');
-  assert.deepEqual((await service.roadmap(courseId, userId)).progress, { completedLessons: 0, totalLessons: 0, percentage: 0 });
+  assert.deepEqual((await service.roadmap(courseId, userId)).progress, { completedLessons: 0, totalLessons: 0, percentage: 0,
+    completedUnitChallenges: 0, totalUnitChallenges: 0, completedRequiredNodes: 0, totalRequiredNodes: 0 });
   await assert.rejects(service.start(courseId, userId), { code: 'COURSE_HAS_NO_CONTENT' });
   assert.equal(repo.writes, 0);
 });
 
-test('a repeated start still validates initial access and never treats progress as an entitlement', async () => {
+test('a repeated start validates frontier access and never treats progress as an entitlement', async () => {
   const repo = new MemoryCourses([course({ courseProgress: [{ status: 'IN_PROGRESS' }], topics: [
     { id: 't', title: 'T', position: 1, lessons: [lesson(1, { accessType: 'PAID' })] },
   ] })]);
@@ -157,5 +160,19 @@ for (const requiredComplete of [true, false]) test('required progress independen
  const service=new CourseService(repo); const detail=await service.detail(courseId,userId);
  assert.equal(detail.content.lessonCount,2); assert.equal(detail.progress?.totalLessons,1);
  assert.equal(detail.progress?.completedLessons,requiredComplete?1:0); assert.equal(detail.progress?.status,requiredComplete?'COMPLETED':'IN_PROGRESS');
- assert.equal((await service.roadmap(courseId,userId)).topics[0]?.lessons.length,2);
+ assert.equal((await service.roadmap(courseId,userId)).topics[0]?.nodes.length,2);
+});
+
+test('combined required-node percentage never rounds an unpassed milestone up to 100%', async () => {
+  const lessons = Array.from({ length: 199 }, (_, i) => lesson(i + 1, { lessonProgress: [{ status: 'COMPLETED' }] }));
+  const repo = new MemoryCourses([course({ courseProgress: [{ status: 'IN_PROGRESS' }], topics: [{
+    id: 'topic', title: 'Topic', position: 1, lessons,
+    unitChallenge: { id: 'challenge', title: 'Final milestone', status: 'PUBLISHED', accessType: 'FREE', progress: [], runs: [] },
+  }] })]);
+  const service = new CourseService(repo);
+  const result = await service.detail(courseId, userId);
+  assert.equal(result.progress?.percentage, 99);
+  assert.equal(result.progress?.totalRequiredNodes, 200);
+  assert.equal(result.progress?.status, 'IN_PROGRESS');
+  assert.deepEqual((await service.roadmap(courseId, userId)).currentNode, { type: 'UNIT_CHALLENGE', id: 'challenge' });
 });

@@ -17,6 +17,11 @@ function courseSelect(userId: string) {
         id: true,
         title: true,
         position: true,
+        unitChallenge: { select: {
+          id: true, title: true, status: true, accessType: true,
+          progress: { where: { userId }, select: { id: true } },
+          runs: { where: { userId, status: 'ACTIVE' }, select: { id: true } },
+        } },
         lessons: {
           select: {
             id: true,
