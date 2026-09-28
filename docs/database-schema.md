@@ -343,6 +343,7 @@ Notes:
 - Snapshot content may include private validation data because it is server persistence. Public APIs must sanitize it.
 - One row represents one phase, not one individual evaluable item. Conversation choices/crossword entries remain inside the snapshot/answer JSONB because v1 does not require independent item lifecycle/querying.
 - Phase submission is one-time. The service should row-lock this record, use `submission_request_key` + payload hash for transport idempotency, return the existing accepted result for an exact retry, and reject a conflicting key/payload or a new submission after the phase is already final.
+- v1 persistence is phase-granular: partially filled Crossword cells or intermediate Conversation choices are Mobile-local until the phase is submitted. An interrupted run resumes at the first unsubmitted phase, which may restart that phase's local interaction.
 - Immediate correctness detail must not be returned to Mobile; aggregate scoring remains server-side until Result.
 
 ---
