@@ -122,7 +122,7 @@ Conceptual fields:
 
 Special assessment milestone that closes a Topic for learning progression.
 
-Each learner-facing/published Topic has exactly one Unit Challenge in v1. Draft/import content may be incomplete while being prepared, but publication validation should not allow a Topic intended for learners to remain without its challenge.
+Each Topic exposed to learners through published/available course content has exactly one Unit Challenge in v1. Draft/import content may be incomplete while being prepared, but content validation should not expose a Topic without its challenge. This does not require adding a separate publication-status field to `topics`.
 
 Conceptual fields:
 
