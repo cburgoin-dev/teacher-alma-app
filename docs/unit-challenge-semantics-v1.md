@@ -28,9 +28,9 @@ Course
     └── Unit Challenge
 ```
 
-Each published Topic has exactly **one** Unit Challenge in v1.
+Each learner-facing Topic that belongs to published/available course content has exactly **one** Unit Challenge in v1.
 
-Draft/import workflows may temporarily contain an incomplete Topic while content is being prepared, but a Topic intended for learner-facing publication must not be considered complete without its Unit Challenge.
+Draft/import workflows may temporarily contain an incomplete Topic while content is being prepared, but a Topic exposed to learners as part of published/available course content must not be considered valid without its Unit Challenge. `Topic` itself does not need a new publication-status column for this rule.
 
 A future Course/Final Challenge is outside v1.
 
