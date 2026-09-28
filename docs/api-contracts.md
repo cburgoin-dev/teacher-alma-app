@@ -69,9 +69,11 @@ Clarifications for Courses v1:
 
 - `DRAFT` and `ARCHIVED` lessons are excluded from roadmap, progress totals, prerequisites and next-lesson selection.
 - All `PUBLISHED` lessons appear in the active roadmap and content counts, regardless of `is_required`.
-- Course progress `totalLessons`, `completedLessons`, percentage and completion use only `PUBLISHED` lessons with `is_required = true`. Completed counts additionally require the authenticated user's `lesson_progress.status = 'COMPLETED'`.
-- Main progression/current/next selection follows required published lessons in the ordered path. Optional published lessons remain visible and can be accessed/completed, but never block the next required lesson or course completion.
-- `content.lessonCount` remains the total published content count, not the required-progress denominator.
+- Lesson counts remain lesson-specific, but course completion/percentage now use the full required progression path: required `PUBLISHED` Lessons plus one valid published Unit Challenge milestone for each learner-facing Topic.
+- Completed Lesson counts require `lesson_progress.status = 'COMPLETED'`; completed Unit Challenge counts require `unit_challenge_progress`.
+- Main progression/current/next selection follows required roadmap nodes in Topic order: required Lessons first, then that Topic's Unit Challenge, then the next Topic.
+- Optional published Lessons remain visible and can be accessed/completed, but never block the next required node or course completion.
+- `content.lessonCount` remains the total published Lesson content count, not the complete required-progress denominator.
 
 Commercial access does not come from `course_progress`. Starting a course never creates a purchase or entitlement.
 
@@ -111,7 +113,11 @@ No pagination or filters are required for the initial MVP because the catalog is
         "status": "IN_PROGRESS",
         "completedLessons": 3,
         "totalLessons": 10,
-        "percentage": 30
+        "completedUnitChallenges": 0,
+        "totalUnitChallenges": 4,
+        "completedRequiredNodes": 3,
+        "totalRequiredNodes": 14,
+        "percentage": 21
       },
       "access": {
         "hasFullAccess": false,
@@ -144,7 +150,9 @@ NONE
 - Sort by configured `position`.
 - Progress is specific to the authenticated user.
 - Access is specific to the authenticated user.
-- `percentage` is derived from completed required published lessons and total required published lessons; it is not a separately persisted UI value.
+- `completedLessons/totalLessons` remain Lesson statistics.
+- `completedUnitChallenges/totalUnitChallenges` count required Topic milestones exposed in the active learner-facing course structure.
+- `completedRequiredNodes/totalRequiredNodes` and `percentage` use the combined required progression path (required Lessons + Unit Challenges); percentage is not persisted.
 - This endpoint is read-only and must not create `course_progress`.
 
 ### Relevant failures
@@ -184,13 +192,18 @@ Required.
   "content": {
     "topicCount": 4,
     "lessonCount": 10,
+    "unitChallengeCount": 4,
     "freeLessonCount": 3
   },
   "progress": {
     "status": "IN_PROGRESS",
     "completedLessons": 3,
     "totalLessons": 10,
-    "percentage": 30
+    "completedUnitChallenges": 0,
+    "totalUnitChallenges": 4,
+    "completedRequiredNodes": 3,
+    "totalRequiredNodes": 14,
+    "percentage": 21
   },
   "access": {
     "hasFullAccess": false,
@@ -202,7 +215,7 @@ Required.
 
 `progress` may be `null` if the user has never started the course.
 
-`content.lessonCount` and `content.freeLessonCount` count only relevant (`PUBLISHED`) lessons. `content.topicCount` counts topics that contain at least one relevant lesson for the active learner-facing course structure.
+`content.lessonCount` and `content.freeLessonCount` count only relevant (`PUBLISHED`) Lessons. `content.unitChallengeCount` counts valid published Unit Challenges in the learner-facing structure. `content.topicCount` counts Topics exposed in that structure.
 
 ### Business rules
 
@@ -244,9 +257,9 @@ Also possible: `401`, `500`.
 
 ### Purpose
 
-Return the ordered course structure and enough user-specific state for the mobile app to render the learning roadmap.
+Return the ordered course structure and enough user-specific state for Mobile to render the learning route.
 
-The backend describes domain state. It does not define visual node coordinates, serpentine layout or other presentation details.
+The backend describes domain state. It does not define node coordinates, path geometry, bus coordinates or animation history.
 
 ### Authentication
 
@@ -268,20 +281,30 @@ Required.
     "level": "A1"
   },
   "progress": {
-    "completedLessons": 3,
-    "totalLessons": 10,
-    "percentage": 30
+    "completedLessons": 2,
+    "totalLessons": 8,
+    "completedUnitChallenges": 0,
+    "totalUnitChallenges": 4,
+    "completedRequiredNodes": 2,
+    "totalRequiredNodes": 12,
+    "percentage": 17
+  },
+  "currentNode": {
+    "type": "UNIT_CHALLENGE",
+    "id": "challenge-uuid"
   },
   "topics": [
     {
-      "id": "8b3ec122-af3d-4c33-b8ba-21f8c20cd111",
+      "id": "topic-uuid",
       "title": "Presentaciones",
       "position": 1,
-      "lessons": [
+      "nodes": [
         {
-          "id": "c572f9d2-5e02-4f19-af37-394d3acb4c01",
-          "title": "Saludos básicos",
+          "type": "LESSON",
+          "id": "lesson-1-uuid",
+          "title": "Saludos",
           "position": 1,
+          "required": true,
           "progressStatus": "COMPLETED",
           "access": {
             "type": "FREE",
@@ -294,10 +317,29 @@ Required.
           }
         },
         {
-          "id": "52b25e31-93f6-45de-a88d-bdb76ccb8e83",
-          "title": "Presentarte",
+          "type": "LESSON",
+          "id": "lesson-2-uuid",
+          "title": "Presentaciones",
           "position": 2,
-          "progressStatus": "IN_PROGRESS",
+          "required": true,
+          "progressStatus": "COMPLETED",
+          "access": {
+            "type": "FREE",
+            "hasAccess": true
+          },
+          "progression": {
+            "unlocked": true,
+            "isCurrent": false,
+            "lockReason": null
+          }
+        },
+        {
+          "type": "UNIT_CHALLENGE",
+          "id": "challenge-uuid",
+          "title": "Reto de unidad",
+          "position": 3,
+          "required": true,
+          "progressStatus": "NOT_STARTED",
           "access": {
             "type": "FREE",
             "hasAccess": true
@@ -307,11 +349,20 @@ Required.
             "isCurrent": true,
             "lockReason": null
           }
-        },
+        }
+      ]
+    },
+    {
+      "id": "topic-2-uuid",
+      "title": "Familia y amigos",
+      "position": 2,
+      "nodes": [
         {
-          "id": "d0fe4045-5c40-4922-a0d6-5e56aeb2710e",
-          "title": "Preguntas básicas",
-          "position": 3,
+          "type": "LESSON",
+          "id": "lesson-3-uuid",
+          "title": "Mi familia",
+          "position": 1,
+          "required": true,
           "progressStatus": "NOT_STARTED",
           "access": {
             "type": "PAID",
@@ -329,13 +380,25 @@ Required.
 }
 ```
 
-Supported `progressStatus` values:
+Supported node `type` values for v1:
+
+```text
+LESSON
+UNIT_CHALLENGE
+```
+
+Supported `progressStatus` values remain:
 
 ```text
 NOT_STARTED
 IN_PROGRESS
 COMPLETED
 ```
+
+For Unit Challenge nodes:
+- `IN_PROGRESS` means an ACTIVE challenge run exists.
+- `COMPLETED` means durable `unit_challenge_progress` exists (the challenge has been passed for progression).
+- A learner may have historical completed-but-unpassed runs while the node still reports `NOT_STARTED` when no ACTIVE run exists; attempt/result history is exposed by Unit Challenge contracts, not encoded as another roadmap state.
 
 Supported roadmap `access.type` values:
 
@@ -354,57 +417,69 @@ null
 
 ### Separation of concerns
 
-These values must remain independent:
+These remain independent:
 
 ```text
-progressStatus != access != progression
+node type != progressStatus != access != progression
 ```
 
 Examples:
+- A node can be `NOT_STARTED`, `PAID`, progression-unlocked, and still have `hasAccess = true` through a valid entitlement.
+- A free Lesson in Topic 2 can remain prerequisite-locked because Topic 1's Unit Challenge has not been passed.
+- A progression-current Unit Challenge can be commercially locked. It remains the learner's curricular `currentNode` while `lockReason = "ACCESS"`.
 
-- A lesson can be `NOT_STARTED`, `PAID`, and still have `hasAccess = true` because the user has a valid subscription or permanent course entitlement.
-- A lesson can be `NOT_STARTED`, `FREE`, but remain locked because its prerequisite has not been completed.
+### Ordering and progression
 
-### Progression rules
+Within each Topic:
+1. relevant published Lessons are ordered by `lesson.position`;
+2. its Unit Challenge milestone follows the Lessons.
 
-Initial MVP progression is sequential within the ordered course path of required `PUBLISHED` lessons:
+Across Topics, `topic.position` defines order.
 
-- A lesson is progression-unlocked when all preceding required published lessons are completed.
-- Completing a required lesson unlocks the next required lesson in global `topic.position`, then `lesson.position`, order; intervening optional lessons do not block it.
-- A completed lesson remains accessible for repetition.
-- Correctness and completion are separate concepts.
-- Wrong answers do not by themselves prevent progression.
-- Lesson completion follows the lesson completion rules defined elsewhere; this endpoint only reports the resulting state.
-- `is_required = false` does not remove a published lesson from the roadmap; it only excludes it from required progress and prerequisites for later lessons.
+Required progression follows:
+- required Lesson nodes only;
+- then that Topic's Unit Challenge;
+- then the next Topic's first required progression node.
 
-A lesson may be progression-unlocked but still commercially inaccessible. In that case `unlocked` may be `true` while `access.hasAccess` is `false`; `lockReason = "ACCESS"` represents that effective block for entering the lesson.
+Rules:
+- Completing a required Lesson unlocks the next required Lesson in the same Topic.
+- Completing the final required Lesson in a Topic unlocks its Unit Challenge.
+- Optional Lessons remain visible but never block the challenge.
+- Passing the Unit Challenge unlocks the next Topic's required progression frontier.
+- Unit Challenge completion below a configured passing threshold does not unlock the next Topic.
+- Completed Lessons and passed Unit Challenges remain replayable subject to current commercial access.
+- Correctness and Lesson completion remain separate.
 
-### Current lesson
+A progression-unlocked node can still be commercially inaccessible. In that case `unlocked = true`, `access.hasAccess = false`, and `lockReason = "ACCESS"`.
 
-`isCurrent` identifies the lesson the user should currently continue/start according to learning progression.
+### Current node / bus source
 
-Before a course has been explicitly started, the first lesson may be progression-unlocked while `isCurrent` remains `false`.
+`currentNode` is the first required progression node not yet completed/passed after the course has started.
 
-After the course is started, the next required published pending lesson becomes `isCurrent = true`.
+Before explicit course start, the first node may be progression-unlocked while `currentNode` is `null`.
 
-If all required published lessons are completed, no lesson is current.
+The London-style bus/current-position treatment in Mobile is derived from `currentNode`; the API never returns bus coordinates or path animation instructions.
+
+If the current node is commercially locked, it remains `currentNode`.
+
+When every required progression node is complete, `currentNode` is `null`.
 
 ### Business rules
 
-- Return only relevant (`PUBLISHED`) lessons.
-- Topics containing no relevant lessons are omitted from the learner-facing roadmap.
-- Topics and lessons are returned in configured order.
+- Return only learner-facing relevant content.
+- `DRAFT`/`ARCHIVED` Lessons and Unit Challenges are excluded.
+- A Topic exposed through active course content must have a valid Unit Challenge; invalid authoring/content state should be caught by import/publication validation rather than silently manufacturing a node.
+- Nodes/topics are returned in configured/derived order.
 - `DRAFT` courses are treated as non-existent.
-- `COMING_SOON` courses may expose their public structure only if product/design later requires it; they must never become startable through this endpoint. For the initial implementation, the service may return the same visible structure rules used by Course Detail without creating progress.
-- Reading the roadmap never starts a course or lesson.
-- The endpoint must not create `course_progress`, `lesson_progress`, attempts, entitlements, coin transactions or streak activity.
+- Reading the roadmap never starts a course, Lesson or Unit Challenge run.
+- The endpoint must not create progress, runs, attempts, entitlements, rewards or streak activity.
 
 ### Relevant failures
 
-- `400` invalid UUID.
-- `401` unauthenticated.
-- `404` course not found / hidden draft.
-- `500` unexpected failure.
+- `400 INVALID_COURSE_ID`
+- `401` unauthenticated
+- `404 COURSE_NOT_FOUND`
+- `500` unexpected failure
 
 ---
 
@@ -443,24 +518,33 @@ None.
     "status": "IN_PROGRESS",
     "completedLessons": 0,
     "totalLessons": 10,
+    "completedUnitChallenges": 0,
+    "totalUnitChallenges": 4,
+    "completedRequiredNodes": 0,
+    "totalRequiredNodes": 14,
     "percentage": 0
   },
-  "nextLesson": {
+  "nextNode": {
+    "type": "LESSON",
     "id": "c572f9d2-5e02-4f19-af37-394d3acb4c01",
     "title": "Saludos básicos"
   }
 }
 ```
 
-If the course was already started, the same endpoint returns the current existing progress and the current next relevant lesson. It does not create duplicates.
+If the course was already started, the same endpoint returns the existing progress and current required progression node. It does not create duplicates.
 
-When every required published lesson is completed, `nextLesson` is `null` and the derived progress response is:
+When every required progression node (required Lessons + Topic Unit Challenges) is complete, `nextNode` is `null` and the derived progress response is:
 
 ```json
 {
   "status": "COMPLETED",
   "completedLessons": 10,
   "totalLessons": 10,
+  "completedUnitChallenges": 4,
+  "totalUnitChallenges": 4,
+  "completedRequiredNodes": 14,
+  "totalRequiredNodes": 14,
   "percentage": 100
 }
 ```
@@ -488,7 +572,7 @@ Authenticated user
   -> validate course state/content/access
   -> if course_progress exists: return existing state
   -> otherwise create course_progress
-  -> return current progress + next lesson
+  -> return current progress + next node
 ```
 
 Starting a course creates `course_progress` only.
@@ -591,7 +675,7 @@ Conceptually, the service/controller flow should enforce:
 5. Resolve relevant lessons and reject an empty published course.
 6. Determine whether the user can access the first required published lesson (falling back to the first published lesson when none is required).
 7. Reuse existing course_progress or create it once.
-8. Derive current progress and next lesson.
+8. Derive current combined required-node progress and current/next progression node.
 9. Return response.
 ```
 
@@ -716,7 +800,7 @@ Stable rules:
 - Reading lesson content has no side effects.
 - Starting a lesson never silently starts its parent course.
 - The parent course must already be started/completed for the learner before a normal lesson can be started.
-- Learning progression and commercial access are both validated by the backend.
+- Learning progression and commercial access are both validated by the backend. A Lesson in a later Topic remains prerequisite-locked until preceding Topic Unit Challenges are passed.
 - Completion and correctness are separate.
 - Incorrect practice answers do not block lesson completion.
 - Score uses the first submitted attempt for each relevant activity.
@@ -1004,9 +1088,9 @@ Idempotent confirmation/result endpoint; completion already occurs automatically
 Atomically sets COMPLETED with score snapshot; creates durable LessonProgress linked to this run; consolidates traversed blocks; consolidates Review; updates course completion when appropriate. Score is first submission per distinct lesson activity within this run; optional unanswered activities remain in the denominator, as before. Abandoned attempts are excluded. Every incorrect submission in the accepted run increments an ACTIVE Review item once (or creates one); correct retries do not resolve it. Any failure rolls back all consolidation.
 
 200:
-`{ runId, lesson: { id, title }, course: { id, title, level }, result: { correctAnswers, totalActivities, isPerfect, pendingReviewCount }, courseProgress: { completedLessons, totalLessons, percentage, status }, nextLesson: { id, title, accessible, lockReason } | null }`.
+`{ runId, lesson: { id, title }, course: { id, title, level }, result: { correctAnswers, totalActivities, isPerfect, pendingReviewCount }, courseProgress: { completedLessons, totalLessons, completedUnitChallenges, totalUnitChallenges, completedRequiredNodes, totalRequiredNodes, percentage, status }, nextNode: { type: "LESSON" | "UNIT_CHALLENGE", id, title, accessible, lockReason } | null }`.
 
-Score is snapshotted on the run; course progress, pending Review and next lesson reflect current durable state. No rewards, billing or access grants.
+Score is snapshotted on the run; course progress, pending Review and `nextNode` reflect current durable state. Completing the final required Lesson in a Topic exposes its Unit Challenge rather than completing the Topic/course by itself. No rewards, billing or access grants.
 
 ## 10. POST /lessons/:lessonId/runs/:runId/abandon
 
@@ -1352,4 +1436,513 @@ Do not expand this slice into:
 - coins/streak/reward rules;
 - final Home or Progress implementation;
 - persistent ReviewSession history/resume.
+
+
+
+---
+
+# Unit Challenge v1 contracts
+
+Unit Challenge v1 implements `docs/unit-challenge-semantics-v1.md`. It is a special Topic assessment flow with durable runs, phase-level submission and no immediate correctness feedback.
+
+Initial contracts:
+
+```text
+GET  /unit-challenges/:unitChallengeId
+POST /unit-challenges/:unitChallengeId/runs
+GET  /unit-challenges/:unitChallengeId/runs/:runId
+POST /unit-challenges/:unitChallengeId/runs/:runId/phases/:runPhaseId/submit
+POST /unit-challenges/:unitChallengeId/runs/:runId/abandon
+```
+
+A separate explicit `complete` endpoint is not required in v1. Submission of the final pending phase atomically completes the run and returns Result.
+
+## Unit Challenge invariants
+
+- One learner-facing Unit Challenge belongs to one Topic.
+- It is progression-unlocked only after all required relevant Lessons in that Topic are completed.
+- Commercial access and progression are independent.
+- A run snapshots phase order/content and passing threshold at start.
+- v1 persistence is phase-granular. Unsaved interaction inside the current phase may restart after interruption.
+- Submitted phases are immutable for that run.
+- Missing evaluable answers are allowed and score incorrect.
+- No correctness/correct-answer feedback is returned before final Result.
+- Unit Challenge v1 does not create `ActivityAttempt` or `ReviewItem` records.
+- The first qualifying completed run creates durable Unit Challenge progression; later replay cannot revoke it.
+- Existing/past completed results remain readable by their owner; starting a new run/replay revalidates current commercial access.
+
+## 14. GET /unit-challenges/:unitChallengeId
+
+Purpose: return learner-facing challenge metadata/state needed for the intro screen without starting a run.
+
+Authentication: required.
+
+Success `200` example:
+
+```json
+{
+  "challenge": {
+    "id": "challenge-uuid",
+    "title": "Tu primera conversación",
+    "description": "Repasa presentaciones y saludos con un reto breve.",
+    "passingScore": null,
+    "phaseCount": 2,
+    "phaseTypes": ["CONVERSATION", "CROSSWORD"],
+    "topic": {
+      "id": "topic-uuid",
+      "title": "Presentaciones",
+      "position": 1
+    },
+    "course": {
+      "id": "course-uuid",
+      "title": "Inglés A1",
+      "level": "A1"
+    }
+  },
+  "progress": {
+    "passed": false,
+    "attemptCount": 0,
+    "bestScore": null
+  },
+  "activeRun": null,
+  "access": {
+    "type": "FREE",
+    "hasAccess": true
+  },
+  "progression": {
+    "unlocked": true,
+    "isCurrent": true,
+    "lockReason": null
+  }
+}
+```
+
+If an ACTIVE run exists:
+
+```json
+{
+  "activeRun": {
+    "id": "run-uuid",
+    "currentPhasePosition": 2,
+    "completedPhases": 1,
+    "totalPhases": 2
+  }
+}
+```
+
+Rules:
+- Read-only; never creates a run/progress.
+- `phaseTypes` exposes mechanic names only, not phase content/answer keys.
+- `bestScore` is derived from COMPLETED run history as an integer percentage (or null with no completed runs).
+- A challenge may be progression-unlocked but commercially blocked.
+- A passed challenge remains discoverable/replayable subject to current access.
+
+Failures:
+- `400 INVALID_UNIT_CHALLENGE_ID`
+- `401`
+- `404 UNIT_CHALLENGE_NOT_FOUND`
+- `500`
+
+## 15. POST /unit-challenges/:unitChallengeId/runs
+
+Purpose: start a new run or resume the already ACTIVE run.
+
+Body:
+
+```json
+{
+  "requestKey": "stable-entry-request-key"
+}
+```
+
+`requestKey` follows the same 16–100 ASCII letters/digits/underscore/hyphen convention as Lesson run start.
+
+Start/resume behavior:
+
+1. Resolve visible/published challenge and owning course/topic.
+2. Require started/in-progress course context as appropriate.
+3. Validate progression unlock.
+4. If an ACTIVE owned run already exists for this challenge, return that run for resume. Do not abandon it merely because the client generated a new entry key after an app restart.
+5. Otherwise validate current commercial access.
+6. Snapshot the challenge phases/order/private validation content and `passingScore`.
+7. Compute `totalItems > 0`.
+8. Create one ACTIVE run and its run-phase snapshots atomically.
+
+An exact retry of the original `requestKey` returns the same created run. Reusing a key that identifies an ABANDONED run returns `409 UNIT_CHALLENGE_RUN_NOT_ACTIVE`. Reusing a key that identifies a COMPLETED run returns that completed run/result idempotently; Mobile should generate a new key for a deliberate replay.
+
+Success `200` (new or resumed ACTIVE run):
+
+```json
+{
+  "run": {
+    "id": "run-uuid",
+    "status": "ACTIVE",
+    "resumed": false,
+    "completedPhases": 0,
+    "totalPhases": 2,
+    "currentPhasePosition": 1
+  },
+  "phase": {
+    "id": "run-phase-uuid",
+    "type": "CONVERSATION",
+    "position": 1,
+    "content": {
+      "title": "Tu primera conversación",
+      "scenario": "Conoce a Emma.",
+      "participants": [
+        { "id": "emma", "name": "Emma" },
+        { "id": "learner", "name": "Tú" }
+      ],
+      "steps": [
+        { "id": "m1", "kind": "MESSAGE", "speakerId": "emma", "text": "Hi! I'm Emma." },
+        {
+          "id": "q1",
+          "kind": "CHOICE",
+          "prompt": "What's your name?",
+          "options": [
+            { "id": "a", "text": "I'm Alex." },
+            { "id": "b", "text": "Good night!" }
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+
+Private fields such as correct option ids are never included in `phase.content`.
+
+For `CROSSWORD`, public content includes grid dimensions, entry ids, clues/directions/coordinates and display metadata necessary to render the crossword, but **never canonical answers**.
+
+Failures:
+- `400 INVALID_UNIT_CHALLENGE_ID`
+- `400 INVALID_RUN_REQUEST_KEY`
+- `401`
+- `403 UNIT_CHALLENGE_ACCESS_REQUIRED`
+- `404 UNIT_CHALLENGE_NOT_FOUND`
+- `409 COURSE_NOT_STARTED`
+- `409 UNIT_CHALLENGE_PREREQUISITE_REQUIRED`
+- `409 UNIT_CHALLENGE_HAS_NO_CONTENT`
+- `409 UNIT_CHALLENGE_RUN_NOT_ACTIVE` for an abandoned-key reuse
+- `500`
+
+## 16. GET /unit-challenges/:unitChallengeId/runs/:runId
+
+Purpose: restore/resume an owned run or re-read its final result without creating state.
+
+For ACTIVE runs, return the same safe current phase payload shape as run start:
+
+```json
+{
+  "run": {
+    "id": "run-uuid",
+    "status": "ACTIVE",
+    "completedPhases": 1,
+    "totalPhases": 2,
+    "currentPhasePosition": 2
+  },
+  "phase": {
+    "id": "run-phase-2-uuid",
+    "type": "CROSSWORD",
+    "position": 2,
+    "content": {
+      "width": 7,
+      "height": 6,
+      "entries": [
+        {
+          "id": "e1",
+          "clue": "Saludo en inglés.",
+          "direction": "ACROSS",
+          "row": 2,
+          "column": 1,
+          "length": 5
+        }
+      ]
+    }
+  }
+}
+```
+
+The public Crossword entry uses `length` rather than exposing its canonical answer.
+
+For COMPLETED runs, `phase` is null and `result` is returned:
+
+```json
+{
+  "run": {
+    "id": "run-uuid",
+    "status": "COMPLETED",
+    "completedPhases": 2,
+    "totalPhases": 2,
+    "currentPhasePosition": null
+  },
+  "phase": null,
+  "result": {
+    "correctItems": 8,
+    "totalItems": 10,
+    "percentage": 80,
+    "passed": true,
+    "passingScore": null
+  }
+}
+```
+
+For ABANDONED runs, return ownership/history metadata but no resumable phase:
+
+```json
+{
+  "run": {
+    "id": "run-uuid",
+    "status": "ABANDONED"
+  },
+  "phase": null,
+  "result": null
+}
+```
+
+Current entitlement expiration does not block reading/resuming the already-started ACTIVE run or reading an owned historical result. New run/replay creation still revalidates access.
+
+Failures:
+- `400 INVALID_UNIT_CHALLENGE_ID / INVALID_RUN_ID`
+- `401`
+- `404 UNIT_CHALLENGE_RUN_NOT_FOUND`
+- `500`
+
+## 17. POST /unit-challenges/:unitChallengeId/runs/:runId/phases/:runPhaseId/submit
+
+Purpose: atomically submit the complete answer set for the current run phase.
+
+Body:
+
+### CONVERSATION
+
+```json
+{
+  "requestKey": "stable-phase-submission-key",
+  "answer": {
+    "choices": [
+      { "stepId": "q1", "optionId": "a" },
+      { "stepId": "q2", "optionId": "c" }
+    ]
+  }
+}
+```
+
+### CROSSWORD
+
+```json
+{
+  "requestKey": "stable-phase-submission-key",
+  "answer": {
+    "entries": [
+      { "entryId": "e1", "text": "HELLO" },
+      { "entryId": "e2", "text": "" }
+    ]
+  }
+}
+```
+
+Missing evaluable Choice/entry answers are allowed and score incorrect. Unknown/duplicate ids, invalid option ids or structurally invalid answer payloads are `400 INVALID_UNIT_CHALLENGE_ANSWER`.
+
+Validation:
+- authenticated owner;
+- matching challenge/run/run-phase;
+- run ACTIVE;
+- run-phase is the first unsubmitted phase;
+- request key valid;
+- answer payload valid for the snapshotted phase type.
+
+Idempotency:
+- Mobile generates one `requestKey` per logical phase submission and reuses it only for transport retry.
+- Same key + same normalized answer returns the same committed response without duplicate scoring/progression.
+- Same key with a different payload returns `409 UNIT_CHALLENGE_SUBMISSION_CONFLICT`.
+- A new key for an already-submitted phase returns `409 UNIT_CHALLENGE_PHASE_ALREADY_SUBMITTED`.
+
+### Success while another phase remains
+
+`200 OK`
+
+```json
+{
+  "run": {
+    "id": "run-uuid",
+    "status": "ACTIVE",
+    "completedPhases": 1,
+    "totalPhases": 2,
+    "currentPhasePosition": 2
+  },
+  "submittedPhase": {
+    "id": "run-phase-1-uuid",
+    "type": "CONVERSATION"
+  },
+  "phase": {
+    "id": "run-phase-2-uuid",
+    "type": "CROSSWORD",
+    "position": 2,
+    "content": {
+      "width": 7,
+      "height": 6,
+      "entries": [
+        {
+          "id": "e1",
+          "clue": "Saludo en inglés.",
+          "direction": "ACROSS",
+          "row": 2,
+          "column": 1,
+          "length": 5
+        }
+      ]
+    }
+  }
+}
+```
+
+The response intentionally contains **no correctness, score, canonical answers or corrective feedback** while the run remains ACTIVE.
+
+### Success on final phase
+
+The final phase submission atomically:
+- stores the phase answer/result;
+- marks the run COMPLETED;
+- computes frozen `correctItems/totalItems/passed`;
+- creates `unit_challenge_progress` if this is the first qualifying run;
+- updates course completion when this was the final required Topic milestone;
+- derives current/next roadmap frontier.
+
+`200 OK` example:
+
+```json
+{
+  "run": {
+    "id": "run-uuid",
+    "status": "COMPLETED"
+  },
+  "challenge": {
+    "id": "challenge-uuid",
+    "title": "Tu primera conversación"
+  },
+  "topic": {
+    "id": "topic-uuid",
+    "title": "Presentaciones",
+    "completed": true
+  },
+  "result": {
+    "correctItems": 8,
+    "totalItems": 10,
+    "percentage": 80,
+    "passed": true,
+    "passingScore": null
+  },
+  "courseProgress": {
+    "completedLessons": 2,
+    "totalLessons": 8,
+    "completedUnitChallenges": 1,
+    "totalUnitChallenges": 4,
+    "completedRequiredNodes": 3,
+    "totalRequiredNodes": 12,
+    "percentage": 25,
+    "status": "IN_PROGRESS"
+  },
+  "nextNode": {
+    "type": "LESSON",
+    "id": "next-topic-lesson-uuid",
+    "title": "Mi familia",
+    "accessible": false,
+    "lockReason": "ACCESS"
+  }
+}
+```
+
+If the completed run does **not** meet a configured threshold:
+- `run.status = COMPLETED`;
+- `result.passed = false`;
+- no `unit_challenge_progress` is created;
+- Topic remains incomplete;
+- next Topic remains prerequisite-locked;
+- `nextNode` remains this same Unit Challenge milestone (replay needed), with access evaluated normally for a new run.
+
+The final Result may later expose configured/derived reinforcement areas when a real content field supports them; v1 must not fabricate them from answer text.
+
+Failures:
+- `400 INVALID_UNIT_CHALLENGE_ID / INVALID_RUN_ID / INVALID_RUN_PHASE_ID`
+- `400 INVALID_UNIT_CHALLENGE_REQUEST_KEY`
+- `400 INVALID_UNIT_CHALLENGE_ANSWER`
+- `401`
+- `404 UNIT_CHALLENGE_RUN_NOT_FOUND / UNIT_CHALLENGE_PHASE_NOT_FOUND`
+- `409 UNIT_CHALLENGE_RUN_NOT_ACTIVE`
+- `409 UNIT_CHALLENGE_PHASE_NOT_AVAILABLE`
+- `409 UNIT_CHALLENGE_PHASE_ALREADY_SUBMITTED`
+- `409 UNIT_CHALLENGE_SUBMISSION_CONFLICT`
+- `500`
+
+## 18. POST /unit-challenges/:unitChallengeId/runs/:runId/abandon
+
+Purpose: explicitly abandon an owned ACTIVE run after learner confirmation.
+
+Empty body.
+
+Behavior:
+- ACTIVE -> ABANDONED with `abandoned_at`;
+- repeated ABANDONED request succeeds idempotently;
+- COMPLETED -> `409 UNIT_CHALLENGE_RUN_NOT_ACTIVE`;
+- preserve snapshots/submitted phase history;
+- create no `unit_challenge_progress`;
+- do not mutate Review, rewards, streak or Lesson progress.
+
+Access/publication revocation does not prevent abandoning an owned run.
+
+Success:
+
+```json
+{
+  "runId": "run-uuid",
+  "status": "ABANDONED"
+}
+```
+
+Failures:
+- `400 INVALID_UNIT_CHALLENGE_ID / INVALID_RUN_ID`
+- `401`
+- `404 UNIT_CHALLENGE_RUN_NOT_FOUND`
+- `409 UNIT_CHALLENGE_RUN_NOT_ACTIVE`
+- `500`
+
+## Authentication/service boundary for Unit Challenge v1
+
+Reuse the existing application-level auth boundary:
+
+```text
+Route
+  -> Controller
+      -> UnitChallengeService
+          -> UnitChallengeRepository / progression-access helpers
+              -> PostgreSQL
+```
+
+Controllers validate/interpret HTTP shape and map errors. The service owns:
+- visibility;
+- progression eligibility;
+- access;
+- start/resume;
+- snapshot construction;
+- phase ordering;
+- answer validation/scoring;
+- idempotency;
+- run completion;
+- durable Unit Challenge progression;
+- resulting course/roadmap progression.
+
+The Unit Challenge service may reuse existing entitlement/course/roadmap helpers. It must not call LessonService as a shortcut or duplicate access rules inconsistently.
+
+## Unit Challenge v1 implementation boundary
+
+Do not expand the backend slice into:
+- Mobile implementation;
+- Unit Challenge -> ReviewItem coupling;
+- coins/streak/rewards;
+- Sentence Builder or Listening Challenge;
+- speaking/TTS;
+- admin/CMS;
+- payments/provider work beyond reusing existing entitlement checks;
+- bus coordinates/road geometry/motion persistence.
 
