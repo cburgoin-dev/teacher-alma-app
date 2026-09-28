@@ -1,6 +1,6 @@
 # Unit Challenge / Assessment Concept v0
 
-Status: **product/architecture concept only**. This document records the current direction discussed for a future Assessment / Unit Challenge vertical. It is not yet a source of truth for schema, API contracts, unlock rules or implementation details.
+Status: **historical/product concept**. The approved v1 behavioral source of truth is now `docs/unit-challenge-semantics-v1.md`. This document preserves the rationale and exploration that led to that semantics document; where they differ, Semantics v1 is authoritative.
 
 ## Why this exists
 
@@ -132,23 +132,26 @@ The learner must understand audio with reduced textual scaffolding, then answer 
 
 Do **not** treat "1-4 challenge types" as a requirement to implement four engines at once.
 
-The current preferred starting point is:
+The approved v1 starting set is:
 
-- one distinctive mechanic such as **Crossword**;
-- one lower-cost scenario mechanic such as **Conversation Challenge**;
-- reuse existing Activity types as supporting phases where useful.
+- **Crossword**;
+- **Conversation Challenge**.
+
+A generic learner-facing normal Activity phase is not part of Unit Challenge v1. Lower-level implementation primitives may still be reused internally where useful.
 
 Sentence Builder and Listening Challenge can follow later if they justify their implementation/content cost.
 
 ## Completion and scoring direction
 
-Current product direction:
+Approved v1 direction:
 
-- the learner should complete the Unit Challenge to finish/close the Topic;
-- the first version should **not require a minimum score threshold to continue**;
-- the result may still show accuracy/score and areas to reinforce.
+- the learner must pass the Unit Challenge to finish/close the Topic for progression;
+- `passingScore` is configurable and nullable;
+- when `passingScore = null`, completing a valid run is sufficient to pass;
+- when a threshold is configured, a completed run below that threshold is preserved but does not yet pass the Topic milestone;
+- the result may show accuracy/score and areas to reinforce.
 
-This favors completion and feedback rather than hard-blocking progress because of a low score.
+See `unit-challenge-semantics-v1.md` for authoritative run/replay/progression rules.
 
 Example:
 
@@ -159,7 +162,7 @@ Example:
 Hay algunos temas que puedes reforzar.
 ```
 
-Future mastery medals/badges or threshold-based rules remain possible, but are not approved for v1.
+Future mastery medals/badges remain deferred. Threshold behavior itself is now approved as nullable/configurable v1 semantics.
 
 ## Feedback direction
 
@@ -171,23 +174,13 @@ The existing general Assessment note in business rules already allows:
 - retry rules;
 - configurable passing thresholds.
 
-For Unit Challenge specifically, the exact feedback model is still open. A challenge may benefit from less immediate coaching than a Lesson so it better reflects retained knowledge, but this has not yet been frozen.
+Unit Challenge v1 withholds correctness feedback during the challenge. Submitted evaluable answers are recorded without immediate correct/incorrect coaching; academic feedback is concentrated in Result.
 
-## Review interaction — OPEN
+## Review interaction — v1 resolved
 
-It is not yet decided how Unit Challenge errors interact with Review.
+Unit Challenge errors do not create, increment, reactivate or resolve `ReviewItem` records in v1.
 
-Options discussed:
-
-1. Every incorrect challenge answer produces/reactivates Review.
-2. Challenge errors never affect Review.
-3. Hybrid mapping:
-   - reused normal Activities can feed the existing Review lifecycle;
-   - challenge-specific mechanics such as individual crossword cells do not automatically become ReviewItems unless they map cleanly to an underlying reusable Activity/concept.
-
-The hybrid model currently appears promising, but this remains explicitly **unapproved** until Assessment semantics are designed.
-
-Do not implement Review coupling from this concept document.
+The Result may communicate areas to reinforce from Assessment data without mutating the existing Review lifecycle. Future explicit Assessment-to-Review mapping remains a separate design decision.
 
 ## Roadmap
 
@@ -273,40 +266,42 @@ This concept does not define:
 
 Those belong to Assessment Semantics/Data/API design immediately before implementation.
 
-## Questions that remain open
+## Product-semantics resolution status
 
-These should be explicitly resolved before creating Assessment v1 contracts:
+The behavioral questions that blocked Assessment v1 contracts are now resolved in `unit-challenge-semantics-v1.md`, including:
 
-1. Exact Topic -> Unit Challenge cardinality: always one, optional by course, or configurable?
-2. Exact unlock rule: all required Topic lessons completed, or another condition?
-3. Does completion always unlock the next Topic regardless of score?
-4. Feedback timing: per phase, at end, or mixed?
-5. Retry model: immediate phase retry, whole-challenge retry, or later replay?
-6. How challenge errors map to ReviewItem, if at all.
-7. Whether Assessment attempts need a durable session/run entity similar to LessonRun.
-8. How a composed challenge snapshots phases/order for concurrency/content edits.
-9. Access semantics if entitlement expires during an active challenge.
-10. What learner history/result data should persist.
-11. Whether a Final Course Challenge belongs in the initial product.
-12. Exact initial mechanic set for implementation.
-13. Content-authoring/import format for Crossword and composed challenge phases.
-14. Whether Unit Challenge completion contributes differently to streak/rewards/coins.
+- one Unit Challenge per published Topic;
+- unlock after all required Topic Lessons;
+- nullable configurable passing threshold;
+- minimal/no correctness feedback during the run;
+- no same-run phase retry and whole-challenge replay later;
+- no ReviewItem coupling in v1;
+- durable resumable runs with content snapshots;
+- entitlement freeze for an already-started run;
+- durable result/history semantics;
+- initial `CONVERSATION` + `CROSSWORD` phase set;
+- deterministic Crossword authoring/import expectations;
+- Roadmap node-type and current-position integration;
+- admin/CMS explicitly out of MVP scope.
+
+Still intentionally deferred from v1 product semantics:
+- Final Course Challenge;
+- exact coin/streak/reward behavior;
+- future Assessment-to-Review mapping;
+- additional challenge mechanics.
 
 ## Recommended next step
 
-Do not implement this concept yet solely because it is documented.
-
-When Assessment becomes the active vertical:
+Assessment is now the active vertical:
 
 ```text
 Concept v0
-  -> resolve open product semantics
-  -> Assessment Semantics v1
-  -> data model/schema
+  -> Unit Challenge Semantics v1 [DONE]
+  -> data model/schema [NEXT]
   -> API contracts
   -> backend slice
   -> mobile slice
   -> physical/visual iterations
 ```
 
-This keeps the current idea preserved without prematurely locking implementation details.
+The next design work should extend existing models/contracts instead of duplicating already-defined Course, Lesson, Roadmap or access concepts.
