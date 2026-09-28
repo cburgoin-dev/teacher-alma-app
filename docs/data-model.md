@@ -259,7 +259,7 @@ Conceptual fields:
 - `passing_score_snapshot` (nullable)
 - `correct_items` (nullable until completion)
 - `total_items` (nullable until completion)
-- `score_percent` (nullable until completion)
+- normalized score/percentage is derived from `correct_items / total_items` rather than stored independently
 - `passed` (nullable until completion; frozen result for this run)
 - `started_at`
 - `updated_at`
