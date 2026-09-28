@@ -219,6 +219,38 @@ test('Unit Challenge HTTP + PostgreSQL lifecycle and progression', { skip: proce
       assert.equal((await prisma.courseProgress.findUniqueOrThrow({ where: { userId_courseId: { userId, courseId } } })).status, 'COMPLETED');
       assert.deepEqual(await sideEffects(), [0, 0, 0, 0]);
     });
+    await t.test('2/3 displays 66 in Result, historical GET and bestScore; exact thresholds 67 fail and 66 pass', async () => {
+      const authored = await prisma.unitChallengePhase.findFirstOrThrow({ where: { unitChallengeId: lastChallengeId, position: 1 } });
+      await prisma.unitChallengePhase.update({ where: { id: authored.id }, data: { config: {
+        ...scene, steps: [...scene.steps, { ...scene.steps[1]!, id: 'q2' }],
+      } } });
+      const history: { runId: string; passingScore: number; passed: boolean }[] = [];
+      for (const [passingScore, passed] of [[67, false], [66, true]] as const) {
+        await prisma.unitChallenge.update({ where: { id: lastChallengeId }, data: { passingScore } });
+        const root = '/unit-challenges/' + lastChallengeId;
+        const started = await request(root + '/runs', 'POST', { requestKey: randomUUID() });
+        assert.equal(started.status, 200);
+        const runRoot = root + '/runs/' + started.body.run.id;
+        const mid = await request(runRoot + '/phases/' + started.body.phase.id + '/submit', 'POST', {
+          requestKey: randomUUID(), answer: { choices: [{ stepId: 'q', optionId: 'a' }, { stepId: 'q2', optionId: 'a' }] },
+        });
+        assert.equal(mid.status, 200);
+        const submission = { requestKey: randomUUID(), answer: { entries: [] } };
+        const path = runRoot + '/phases/' + mid.body.phase.id + '/submit';
+        const end = await request(path, 'POST', submission);
+        assert.equal(end.status, 200);
+        assert.deepEqual(end.body.result, { correctItems: 2, totalItems: 3, percentage: 66, passingScore, passed });
+        assert.deepEqual((await request(path, 'POST', submission)).body, end.body);
+        assert.equal((await request(root)).body.progress.bestScore, 66);
+        history.push({ runId: started.body.run.id, passingScore, passed });
+      }
+      // Read both historical runs after the authored threshold changed.
+      for (const { runId, passingScore, passed } of history) {
+        const historical = await request('/unit-challenges/' + lastChallengeId + '/runs/' + runId);
+        assert.equal(historical.status, 200);
+        assert.deepEqual(historical.body.result, { correctItems: 2, totalItems: 3, percentage: 66, passingScore, passed });
+      }
+    });
   } finally {
     if (server) await new Promise<void>((resolve, reject) => { server!.close(e => e ? reject(e) : resolve()); server!.closeAllConnections(); });
     await prisma.user.deleteMany({ where: { id: { in: [userId, otherId] } } });

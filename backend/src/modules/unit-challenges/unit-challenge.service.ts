@@ -6,6 +6,10 @@ import { publicContent, scoreAnswer, totalItems, validateChallenge, validateCont
 import type { ChallengePhase, ChallengeRun, PrismaUnitChallengeRepository, UnitChallengeSession } from './unit-challenge.repository.js';
 
 function fail(status: number, code: string): never { throw new HttpError(status, code, code); }
+// Presentation only; passing uses the exact item-count comparison below.
+function publicPercentage(correctItems: number, totalItems: number) {
+  return Math.floor(correctItems * 100 / totalItems);
+}
 function requestKey(value: unknown, code: string): string {
   if (typeof value !== 'string' || !/^[A-Za-z0-9_-]{16,100}$/.test(value)) fail(400, code);
   return value;
@@ -21,7 +25,7 @@ function view(run: ChallengeRun) {
     totalPhases: run.phases.length, currentPhasePosition: current?.position ?? null },
     phase: run.status === 'ACTIVE' && current ? publicPhase(current) : null,
     ...(run.status === 'COMPLETED' ? { result: { correctItems: run.correctItems!, totalItems: run.totalItems,
-      percentage: Math.round(run.correctItems! / run.totalItems * 100), passed: run.passed!, passingScore: run.passingScoreSnapshot } } : {}) };
+      percentage: publicPercentage(run.correctItems!, run.totalItems), passed: run.passed!, passingScore: run.passingScoreSnapshot } } : {}) };
 }
 
 export class UnitChallengeService {
@@ -49,7 +53,7 @@ export class UnitChallengeService {
         topic: { id: c.topic.id, title: c.topic.title, position: c.topic.position },
         course: { id: course.id, title: course.title, level: course.level } },
         progress: { passed: c.progress.length > 0, attemptCount: c.runs.length,
-          bestScore: completed.length ? Math.round(Math.max(...completed.map(r => r.correctItems! / r.totalItems * 100))) : null },
+          bestScore: completed.length ? Math.max(...completed.map(r => publicPercentage(r.correctItems!, r.totalItems))) : null },
         activeRun: active ? { id: active.id, currentPhasePosition: active.phases.find(p => !p.submittedAt)?.position ?? null,
           completedPhases: active.phases.filter(p => p.submittedAt).length, totalPhases: active.phases.length } : null,
         access: node.access, progression: node.progression };

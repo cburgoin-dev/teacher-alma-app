@@ -1535,7 +1535,8 @@ If an ACTIVE run exists:
 Rules:
 - Read-only; never creates a run/progress.
 - `phaseTypes` exposes mechanic names only, not phase content/answer keys.
-- `bestScore` is derived from COMPLETED run history as an integer percentage (or null with no completed runs).
+- `bestScore` is the maximum truncated integer percentage from COMPLETED run history (or null with no completed runs).
+- Unit Challenge Result percentages (including historical completed-run GET) and `bestScore` use `Math.floor(correctItems * 100 / totalItems)`. This public presentation value never decides `passed`: a configured threshold uses the exact comparison `correctItems * 100 >= passingScoreSnapshot * totalItems`; a null threshold still passes any valid completed run.
 - A challenge may be progression-unlocked but commercially blocked.
 - If an owned ACTIVE run exists, `access.hasAccess` represents effective ability to resume that frozen-authorized run even when the current entitlement itself has expired.
 - A passed challenge remains discoverable/replayable subject to current access.
