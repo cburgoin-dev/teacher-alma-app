@@ -168,11 +168,13 @@ Unit Challenge is an assessment, not ordinary guided practice.
 
 Therefore v1 minimizes correctness feedback during the challenge.
 
-After submitting an evaluable response:
-- record it;
+During a phase, Mobile may advance through local interaction state without revealing correctness. The durable server submission boundary in v1 is the **whole phase**, not each individual Conversation choice/crossword word.
+
+When the phase is submitted:
+- record the complete phase answer set;
 - do not reveal correct/incorrect;
 - do not provide corrective explanation;
-- continue the phase/challenge.
+- continue to the next phase/challenge.
 
 Neutral interaction feedback such as “respuesta registrada” or phase-transition affordances is allowed, provided it does not reveal correctness.
 
@@ -182,12 +184,14 @@ Academic correctness, score and areas to reinforce are concentrated in the final
 
 There is no same-run retry of a submitted evaluable item/phase.
 
-Before submitting a phase, the learner may edit answers freely.
+Before submitting a phase, the learner may edit answers freely and Mobile may progress through a Conversation locally.
 
 After phase submission:
 - the submitted answers are final for that run;
 - the phase cannot be retried;
 - the learner advances.
+
+If the app is interrupted in the middle of an **unsubmitted** phase, v1 only guarantees resume from the last durably submitted phase boundary. Unsaved local choices/cells inside the current phase may need to be entered again. This keeps v1 persistence small and deterministic; finer-grained draft persistence can be added later if physical testing shows it is necessary.
 
 After the Unit Challenge run ends, the whole Unit Challenge may be replayed later from the Roadmap, subject to commercial access.
 
@@ -266,10 +270,7 @@ Contains:
 
 Each Choice step contributes one evaluable item.
 
-After the learner submits a choice:
-- it is persisted;
-- correctness is not revealed;
-- the conversation continues.
+Selecting a choice advances the Conversation interaction locally without revealing correctness. The complete set of selected Choice answers is persisted when the Conversation phase is submitted.
 
 Open text, speech recognition and multiple-correct-option semantics are outside v1.
 
