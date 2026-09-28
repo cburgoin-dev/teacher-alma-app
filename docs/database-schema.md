@@ -121,6 +121,77 @@ Notes:
 
 ---
 
+
+## unit_challenges
+
+Defines the single Unit Challenge milestone associated with a Topic.
+
+- `id uuid primary key`
+- `topic_id uuid not null unique references topics(id) on delete restrict`
+- `title text not null`
+- `description text null`
+- `passing_score integer null`
+- `access_type text not null default 'FREE'`
+- `status text not null default 'DRAFT'`
+- `created_at timestamptz not null default now()`
+- `updated_at timestamptz not null default now()`
+
+Recommended values:
+
+- `access_type`: `FREE`, `PAID`
+- `status`: `DRAFT`, `PUBLISHED`, `ARCHIVED`
+
+Constraints / indexes:
+
+- unique `(topic_id)`.
+- check `passing_score is null or (passing_score between 0 and 100)`.
+- index `(access_type)` if access filtering becomes common.
+- index `(status)` if publication filtering becomes common.
+
+Notes:
+
+- One-to-one Topic -> Unit Challenge is represented by the unique `topic_id`.
+- PostgreSQL cannot conveniently enforce “every published Topic must have a child Unit Challenge” with a simple FK/check on `topics`; publication/import validation must enforce that learner-facing Topics have exactly one published/valid Unit Challenge.
+- `passing_score = null` means any valid completed run passes for progression. A configured threshold is compared against exact item counts rather than a separately persisted rounded percentage.
+- `PAID` uses the existing entitlement/access layer and must not be interpreted as subscription-only.
+- Published Unit Challenges should be archived/statused rather than destructively deleted once referenced by run history.
+
+---
+
+## unit_challenge_phases
+
+Ordered authored phase definitions for a Unit Challenge.
+
+- `id uuid primary key`
+- `unit_challenge_id uuid not null references unit_challenges(id) on delete restrict`
+- `type text not null`
+- `position integer not null`
+- `config jsonb not null`
+- `created_at timestamptz not null default now()`
+- `updated_at timestamptz not null default now()`
+
+Initial phase types:
+
+- `CONVERSATION`
+- `CROSSWORD`
+
+Constraints / indexes:
+
+- unique `(unit_challenge_id, position)`.
+- index `(unit_challenge_id)`.
+- check/application validation restricts `type` to the supported values for the current implementation.
+- `position >= 1`.
+
+Notes:
+
+- Stable identity/order is relational; mechanic-specific authored structure lives in `config jsonb`.
+- `CONVERSATION` config contains scene/participants/steps and private correctness metadata for Choice steps.
+- `CROSSWORD` config contains width/height plus deterministic entries with canonical answers, clues, direction and coordinates.
+- Content validation must reject structurally invalid phase config before publication/seed import.
+- Learner-facing GET payloads must sanitize private correctness/canonical-answer fields.
+
+---
+
 ## activities
 
 Reusable activity definitions.
@@ -182,6 +253,123 @@ Notes:
 
 - `content` stores block-specific content/configuration.
 - Multiple blocks may later be grouped by the frontend into a single presentation step.
+
+---
+
+
+## unit_challenge_runs
+
+Durable learner attempt/session for one Unit Challenge.
+
+- `id uuid primary key`
+- `user_id uuid not null references users(id) on delete cascade`
+- `unit_challenge_id uuid not null references unit_challenges(id) on delete restrict`
+- `request_key text not null`
+- `status text not null default 'ACTIVE'`
+- `passing_score_snapshot integer null`
+- `correct_items integer null`
+- `total_items integer not null`
+- `passed boolean null`
+- `started_at timestamptz not null default now()`
+- `updated_at timestamptz not null default now()`
+- `completed_at timestamptz null`
+- `abandoned_at timestamptz null`
+
+Statuses:
+
+- `ACTIVE`
+- `COMPLETED`
+- `ABANDONED`
+
+Constraints / indexes:
+
+- unique `(user_id, unit_challenge_id, request_key)` for start/replay idempotency.
+- partial unique index `(user_id, unit_challenge_id) where status = 'ACTIVE'` to enforce at most one live run per learner/challenge.
+- index `(unit_challenge_id)`.
+- index `(user_id, status)`.
+- check `passing_score_snapshot is null or (passing_score_snapshot between 0 and 100)`.
+- check `total_items > 0`.
+- lifecycle check:
+  - `ACTIVE`: `completed_at is null`, `abandoned_at is null`, `correct_items is null`, `passed is null`.
+  - `COMPLETED`: `completed_at is not null`, `abandoned_at is null`, `correct_items is not null`, `0 <= correct_items <= total_items`, `passed is not null`.
+  - `ABANDONED`: `abandoned_at is not null`, `completed_at is null`, `correct_items is null`, `passed is null`.
+
+Notes:
+
+- A separate persisted percentage is intentionally omitted; percentage is derived from `correct_items / total_items`.
+- Threshold comparison should avoid rounded-percentage ambiguity. Conceptually, when a threshold exists, pass if `correct_items * 100 >= passing_score_snapshot * total_items`.
+- Run creation must snapshot the authored phase set/order and the configured passing threshold in the same transaction.
+- Access is checked before creating/resuming an allowed run. Once an `ACTIVE` run exists, entitlement expiration does not invalidate that run; creating a new replay later revalidates access.
+- There is no persisted “current phase” pointer. Resume/current phase is derived as the lowest-position run-phase whose `submitted_at` is null. This avoids pointer/snapshot drift.
+
+---
+
+## unit_challenge_run_phases
+
+Frozen per-run phase snapshot and one-time submission boundary.
+
+- `id uuid primary key`
+- `run_id uuid not null references unit_challenge_runs(id) on delete cascade`
+- `source_phase_id uuid not null references unit_challenge_phases(id) on delete restrict`
+- `position integer not null`
+- `type text not null`
+- `content_snapshot jsonb not null`
+- `answer_data jsonb null`
+- `correct_items integer null`
+- `total_items integer not null`
+- `submission_request_key text null`
+- `submission_request_hash text null`
+- `submitted_at timestamptz null`
+- `created_at timestamptz not null default now()`
+- `updated_at timestamptz not null default now()`
+
+Constraints / indexes:
+
+- unique `(run_id, position)`.
+- unique `(run_id, source_phase_id)`.
+- unique `(run_id, submission_request_key)`; PostgreSQL permits multiple null values, so this only constrains submitted/idempotent requests.
+- index `(source_phase_id)`.
+- index `(run_id, submitted_at, position)`.
+- check `position >= 1`.
+- check `total_items > 0`.
+- check `type in ('CONVERSATION', 'CROSSWORD')` for the v1 implementation.
+- submission-state check:
+  - before submission: `submitted_at is null`, `answer_data is null`, `correct_items is null`, `submission_request_key is null`, `submission_request_hash is null`;
+  - after submission: `submitted_at is not null`, `answer_data is not null`, `correct_items is not null`, `0 <= correct_items <= total_items`, `submission_request_key is not null`, `submission_request_hash is not null`.
+
+Notes:
+
+- `content_snapshot` is authoritative for an already-started/historical run; later edits to authored phase config do not affect it.
+- Snapshot content may include private validation data because it is server persistence. Public APIs must sanitize it.
+- One row represents one phase, not one individual evaluable item. Conversation choices/crossword entries remain inside the snapshot/answer JSONB because v1 does not require independent item lifecycle/querying.
+- Phase submission is one-time. The service should row-lock this record, use `submission_request_key` + payload hash for transport idempotency, return the existing accepted result for an exact retry, and reject a conflicting key/payload or a new submission after the phase is already final.
+- Immediate correctness detail must not be returned to Mobile; aggregate scoring remains server-side until Result.
+
+---
+
+## unit_challenge_progress
+
+Consolidated progression completion for a Unit Challenge.
+
+- `id uuid primary key`
+- `user_id uuid not null references users(id) on delete cascade`
+- `unit_challenge_id uuid not null references unit_challenges(id) on delete restrict`
+- `passed_run_id uuid not null unique references unit_challenge_runs(id) on delete restrict`
+- `completed_at timestamptz not null default now()`
+- `updated_at timestamptz not null default now()`
+
+Constraints / indexes:
+
+- unique `(user_id, unit_challenge_id)`.
+- index `(unit_challenge_id)`.
+- index `(user_id)`.
+
+Notes:
+
+- Absence means the challenge has not yet been passed for progression.
+- Creation must occur atomically with completion of the first qualifying run.
+- The service transaction must verify that `passed_run_id` belongs to the same `user_id` and `unit_challenge_id`, is `COMPLETED` and has `passed = true`. This mirrors existing progress/run patterns; a simple single-column FK does not encode all same-owner/same-content invariants.
+- Later replays do not replace/delete this row and cannot revoke progression.
 
 ---
 
@@ -691,8 +879,13 @@ Premium subscription:
 users 1---N course_progress N---1 courses
 users 1---N lesson_progress N---1 lessons
 users 1---N lesson_block_progress N---1 lesson_blocks
+users 1---N unit_challenge_runs N---1 unit_challenges
+users 1---N unit_challenge_progress N---1 unit_challenges
 
-courses 1---N topics 1---N lessons 1---N lesson_blocks
+courses 1---N topics
+topics 1---N lessons 1---N lesson_blocks
+topics 1---1 unit_challenges 1---N unit_challenge_phases
+unit_challenges 1---N unit_challenge_runs 1---N unit_challenge_run_phases
 lesson_blocks N---0..1 activities
 
 users 1---N activity_attempts N---1 activities
@@ -719,11 +912,11 @@ purchases 1---N/0..N entitlements
 
 Use destructive cascades mainly for private user-owned history when an account is deleted:
 
-- user -> progress/attempts/review/diagnostics/gamification/commercial local records: `ON DELETE CASCADE` where legally/product-wise appropriate.
+- user -> progress/attempts/review/diagnostics/Unit-Challenge runs/gamification/commercial local records: `ON DELETE CASCADE` where legally/product-wise appropriate.
 
 Use `RESTRICT` for published/shared learning content referenced by history:
 
-- course/topic/lesson/block/activity deletion should normally be prevented once referenced.
+- course/topic/lesson/block/activity/unit-challenge/phase deletion should normally be prevented once referenced.
 - prefer `ARCHIVED` / inactive status instead of deleting published content.
 
 Use `SET NULL` where historical records remain useful even if a recommendation/source link is no longer active:
@@ -741,10 +934,11 @@ Initially derive rather than store:
 - Home state (`NEW`, `ASSESSED`, `ACTIVE`, etc.).
 - current coin balance (`sum(coin_transactions.amount)`).
 - current streak / longest streak from `learning_days`.
-- course progress percentage from required lesson completion.
+- course/roadmap progress percentage from required progression nodes (required Lessons plus required Unit Challenge milestones), using one consistent API denominator.
+- Unit Challenge percentage from persisted correct/total item counts.
 - lesson score/result variant from attempts/review data.
 - Premium boolean from current valid entitlements.
-- locked/unlocked UI state from lesson access + progression + entitlements.
+- locked/unlocked/current UI state from learning progression + access + entitlements; Unit Challenge adds a node type, not a parallel persisted state system.
 
 Caching/denormalization can be added later if actual performance requires it.
 
@@ -758,7 +952,7 @@ Do not add yet unless implementation requirements make them necessary:
 - rankings/leagues.
 - complex achievements system.
 - cosmetics/avatar inventory.
-- minigames.
+- challenge mechanics beyond Unit Challenge v1 `CONVERSATION` / `CROSSWORD` (for example Sentence Builder, Listening Challenge or unrelated minigames).
 - spaced-repetition scheduling beyond current Review lifecycle.
 - AI-generated-content audit tables.
 - advanced analytics/event warehouse.
@@ -835,3 +1029,40 @@ Review submissions also require durable request idempotency. Add the smallest sc
 
 No `review_sessions` or `review_session_items` table is required for Review v1. A Review batch is short-lived and authorized by an opaque token returned at batch start.
 
+
+
+## Unit Challenge v1 schema additions required before implementation
+
+The accepted semantics are defined in `docs/unit-challenge-semantics-v1.md`.
+
+The backend implementation should add a versioned migration for:
+
+- `unit_challenges`;
+- `unit_challenge_phases`;
+- `unit_challenge_runs`;
+- `unit_challenge_run_phases`;
+- `unit_challenge_progress`.
+
+Implementation requirements:
+
+- Add the corresponding Prisma models/relations while preserving the repository convention of text statuses plus SQL CHECK constraints.
+- Use a PostgreSQL partial unique index to enforce at most one `ACTIVE` run per `(user_id, unit_challenge_id)`; Prisma schema alone cannot express that partial index.
+- Keep phase content/config/snapshots in JSONB but validate their discriminated shapes in application/content-import code.
+- Start-run creation, run-phase snapshots and `total_items` calculation must be transactional.
+- Phase submission must row-lock the run/run-phase as needed, enforce ordered traversal, and be idempotent under network retry.
+- The mutation that submits the final pending phase should also finalize the run and, when qualifying, create `unit_challenge_progress` / advance course progression in the same transaction. Failure rolls back the submission and progression side effects together.
+- `ABANDONED` runs never create progression.
+- Do not add Unit Challenge answers to `activity_attempts` or Unit Challenge mistakes to `review_items` in v1.
+- Do not persist route geometry, bus coordinates or animation history. Those remain Mobile presentation derived from roadmap/progression data.
+
+### Publication/content validation
+
+Database constraints protect structural relationships, but publication/import validation must additionally ensure:
+
+- every learner-facing published Topic has exactly one valid Unit Challenge;
+- a published Unit Challenge has at least one phase and all phase positions are contiguous/ordered according to the import contract;
+- `CONVERSATION` has at least one evaluable Choice and exactly one correct option per Choice in v1;
+- `CROSSWORD` entries fit the declared grid, have non-empty canonical answers, valid `ACROSS|DOWN` directions, unique ids and compatible crossing letters;
+- challenge `total_items` computed at run start is greater than zero.
+
+No admin/CMS tables are introduced for this validation.
