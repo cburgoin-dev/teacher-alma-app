@@ -25,8 +25,8 @@ This document records agreed or provisional product rules for the MVP. Rules may
 
 ## Course access and progression
 
-- Course structure is currently `Course -> Topic/Unit -> Lesson`.
-- Courses and lessons have separate **learning-progress state** and **commercial access state**. These concepts should not be collapsed into one status.
+- Lesson content remains structured as `Course -> Topic/Unit -> Lesson`; each published Topic also ends with exactly one Unit Challenge milestone.
+- Courses, roadmap nodes and Unit Challenges have separate **learning-progress state** and **commercial access state**. These concepts should not be collapsed into one status.
 - A course can conceptually be available, in progress, completed, access-locked or coming soon.
 - Lesson roadmap nodes can conceptually be completed, current, available, prerequisite-locked or access-locked.
 - Completed lessons remain available for Replay, subject to current commercial access.
@@ -39,10 +39,11 @@ This document records agreed or provisional product rules for the MVP. Rules may
 
 Current provisional direction:
 
-- The course roadmap progresses sequentially.
-- Completing the required content of the current lesson unlocks the next required lesson.
-- Do not hard-code a minimum score as an unlock requirement until this is validated with the client.
-- Exact free-navigation versus strict-sequential behavior remains a client-validation item.
+- The course roadmap progresses sequentially through required Lesson nodes and the Topic's Unit Challenge milestone.
+- Completing the required content of the current lesson unlocks the next required Lesson; after the final required Lesson in a Topic, it unlocks that Topic's Unit Challenge.
+- Optional Lessons, if introduced later, do not block Unit Challenge unlock.
+- Unit Challenge passing may use a configurable nullable passing threshold as defined in `unit-challenge-semantics-v1.md`; Lesson completion itself remains independent from correctness.
+- Exact free-navigation versus strict-sequential behavior outside these required progression boundaries remains a client-validation item.
 
 ### Course start and resume
 
@@ -59,8 +60,9 @@ Current provisional direction:
 
 ### Course completion
 
-- A course is completed when all lessons required by that course have met their completion conditions.
-- The completed course and roadmap remain accessible for review.
+- A Topic is complete for progression when its Unit Challenge has been passed according to its configured threshold semantics.
+- A course is completed when all required Topic progression milestones, including their Unit Challenges, are complete.
+- The completed course and roadmap remain accessible for review/replay, subject to current commercial access.
 - Completing a course should not automatically imply ownership/access to a subsequent premium course.
 
 ## Course catalog and detail
@@ -167,11 +169,11 @@ Before Result is rendered, the system should be able to provide or derive:
 
 ### Result actions
 
-- `Siguiente lección` is the preferred primary CTA when a next accessible lesson exists.
-- `Volver a la ruta` remains available as a secondary action.
+- The preferred progression CTA after a completed normal Lesson is now `Continuar en la ruta` / `Ver progreso`, returning to the Roadmap so the learner can see progression and unlocking.
+- Do not bypass the Roadmap by default with a direct `Siguiente lección` action.
 - `Repasar errores` is shown only when review items exist.
-- In `REVIEW_PENDING`, `Repasar errores` receives greater visual prominence but does not automatically replace progression as the primary action.
-- If there is no accessible next lesson, the primary CTA must adapt to the situation (for example returning to the route, course completion, or contextual access flow) rather than leading to an unavailable lesson.
+- In `REVIEW_PENDING`, `Repasar errores` may receive greater visual prominence but does not replace the main route/progression action.
+- The Roadmap is responsible for presenting the actual next progression/access state, including Premium/access locks.
 
 ### Perfect result and rewards
 
@@ -330,14 +332,23 @@ Additional items may be added later only when they provide clear value relative 
 
 Avoid adding items solely to create a circular economy such as spending coins primarily to multiply future coin earnings.
 
-## Assessments
+## Assessments / Unit Challenge
 
-- Formal assessments should reuse the same activity engine where possible.
-- An assessment can differ from normal practice through configuration, for example:
-  - feedback at the end rather than immediately;
-  - total score;
-  - configurable passing threshold;
-  - retry rules.
+Unit Challenge v1 is defined by `docs/unit-challenge-semantics-v1.md`.
+
+Core rules:
+- Every published Topic has exactly one Unit Challenge milestone.
+- It unlocks after all required Lessons in that Topic are completed; optional Lessons do not block it.
+- v1 learner-facing phases are `CONVERSATION` and `CROSSWORD`. Internal UI/domain primitives may be reused, but a generic normal `ACTIVITY` phase is not part of the learner-facing v1 experience.
+- Correctness feedback is withheld during the challenge and concentrated in Result.
+- Submitted phase answers are final for that run; there is no same-run phase retry.
+- The whole challenge can be replayed later from the Roadmap.
+- A nullable configurable passing score determines whether merely completing a run is sufficient to pass the Topic milestone.
+- Unit Challenge errors do not mutate ReviewItem lifecycle in v1.
+- Active runs are resumable after accidental interruption; explicit early exit abandons the run.
+- Commercial access is frozen for an already-started run, while a new run/replay revalidates current access.
+- Assessment run/history and content snapshots are durable enough to preserve the meaning of historical results.
+- Do not build an admin/CMS as a side effect of this vertical.
 
 ## Premium / payments
 
