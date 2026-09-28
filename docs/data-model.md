@@ -266,7 +266,7 @@ Conceptual fields:
 - `completed_at` (nullable)
 - `abandoned_at` (nullable)
 
-A run is resumable while `ACTIVE`. Explicit learner exit marks it `ABANDONED`; accidental interruption does not.
+A run is resumable while `ACTIVE`. Explicit learner exit marks it `ABANDONED`; accidental interruption does not. Resume is guaranteed at the last submitted phase boundary; unsent local interaction state inside the current phase is not durable in v1.
 
 `passing_score_snapshot` and the persisted `passed` result prevent later content/configuration changes from rewriting historical meaning.
 
