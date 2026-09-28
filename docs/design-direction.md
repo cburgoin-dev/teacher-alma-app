@@ -66,14 +66,15 @@ Visual layout can change, but the roadmap still needs to communicate:
 
 - Course progress.
 - Topic/unit grouping.
-- Completed lessons.
-- Current/recommended lesson.
+- Completed progression nodes.
+- Current/recommended progression node.
+- Distinct Unit Challenge milestone nodes.
 - Accessible upcoming content.
 - Prerequisite locks.
 - Commercial/premium locks.
 - Clear next action.
 
-Conceptual lesson-node states remain:
+Conceptual roadmap-node states remain and are shared by Lesson and Unit Challenge node types:
 
 - `COMPLETED`
 - `CURRENT`
@@ -91,6 +92,8 @@ Preferred qualities:
 - Prominent, recognizable nodes.
 - Strong sense of progression and unlocking.
 - The current node should immediately answer: **what do I do next?**
+- Unit Challenge should read as a special Topic milestone rather than another ordinary Lesson node.
+- Integrate the London-style bus/current-position marker as a visual representation of derived learner progression; it must not become domain state.
 - Topic/unit sections should remain understandable without turning the route into a conventional list of cards.
 - Cards may be used selectively for the current node or expanded information, but should not dominate the entire roadmap.
 - The screen should feel visually attractive, playful and motivating enough to encourage repeated use.
@@ -117,6 +120,14 @@ It should guide visual richness, stronger differentiation between lesson states,
 The earlier roadmap mockup remains useful as historical context and should not be deleted solely because this newer direction is preferred.
 
 No single roadmap mockup should currently be treated as final.
+
+### Progress-transition motion
+
+When the learner returns to the Roadmap immediately after newly completing a Lesson or passing a Unit Challenge, mobile may animate the change from its previously known state to the newly returned progression state: node completion, route-segment fill, bus movement and next-node reveal/unlock.
+
+Normal later visits should show the current state directly rather than replaying historical progression animations.
+
+Sound/motion can begin in this vertical as reusable polish primitives; they are not backend progression state and must respect reduced-motion/accessibility expectations.
 
 The latest exploration produced several useful directions. The more gamified alternatives are preferred for future refinement, but the final composition should be validated during frontend implementation with Alma.
 
