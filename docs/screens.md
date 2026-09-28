@@ -250,9 +250,13 @@ Represent the learner's progression through a course in a visually motivating wa
 
 The route is vertically scrollable and organized conceptually as:
 
-`Course -> Topic/Unit -> Lesson`
+`Course -> Topic/Unit -> Roadmap nodes`
 
-Topics/modules divide the roadmap into recognizable learning sections. Lessons are represented as roadmap nodes/stops rather than a plain list.
+Roadmap node content types now include:
+- `LESSON`
+- `UNIT_CHALLENGE`
+
+Topics/modules divide the roadmap into recognizable learning sections. Lessons remain ordinary route nodes; each Topic's Unit Challenge is a visually distinct milestone node near its end.
 
 ### Current visual direction
 
@@ -267,13 +271,15 @@ Desired qualities:
 - Progress and unlocking should provide most of the gamified feeling.
 - Avoid decorative overload and unnecessary motivational slogans.
 
-### Lesson-node states
+### Roadmap node states
+
+The existing state vocabulary applies to both Lesson and Unit Challenge nodes; adding Unit Challenge adds a node **type**, not a second state system.
 
 Conceptual states:
 
-- `COMPLETED`: lesson finished; show clear completion indicator/check.
-- `CURRENT`: the learner's current recommended lesson; visually emphasized and may expose a `Continuar` CTA.
-- `AVAILABLE`: accessible but not currently selected/in progress.
+- `COMPLETED`: node completed/passed for progression; show clear completion treatment.
+- `CURRENT`: the learner's current recommended progression node; visually emphasized and may expose a `Continuar` CTA.
+- `AVAILABLE`: progression-available but not currently selected/in progress.
 - `LOCKED_PREREQUISITE`: unavailable because progression requirements are not yet satisfied.
 - `LOCKED_ACCESS`: unavailable because the learner lacks the required entitlement/payment access.
 
@@ -281,9 +287,9 @@ Conceptual states:
 
 ### Node interaction
 
-- `COMPLETED`: can be reopened/repeated.
-- `CURRENT`: opens/resumes the lesson.
-- `AVAILABLE`: opens/starts the lesson if progression rules permit it.
+- `COMPLETED`: can be reopened/replayed, subject to current commercial access.
+- `CURRENT`: opens/resumes the underlying Lesson or Unit Challenge.
+- `AVAILABLE`: opens/starts the node if progression and access rules permit it.
 - `LOCKED_PREREQUISITE`: explain what must be completed first.
 - `LOCKED_ACCESS`: open contextual Premium/unlock information.
 
@@ -293,8 +299,8 @@ When opening an already-started course, the roadmap should not force the learner
 
 Preferred behavior:
 
-- On initial entry to an `IN_PROGRESS` roadmap, automatically position the viewport around the `CURRENT` lesson node.
-- For a completed course, position near the last relevant/final lesson segment rather than always at the top.
+- On initial entry to an `IN_PROGRESS` roadmap, automatically position the viewport around the `CURRENT` progression node.
+- For a completed course, position near the last relevant/final route segment rather than always at the top.
 - Prefer a short animated initial scroll after the relevant path geometry has been measured instead of an abrupt visual teleport.
 - The animation should orient the learner, not become a long cinematic transition; once it finishes, the viewport belongs entirely to the learner.
 - Keep the learner free to scroll anywhere immediately after that initial positioning.
@@ -313,24 +319,27 @@ A topic may display:
 
 ### Progression
 
-Sequential unlocking is the current provisional direction because it matches the roadmap concept and the client's interest in progressive unlocking. The exact rule is **not yet final** and must be validated with the client.
+Sequential unlocking is the approved v1 direction for required progression.
 
-Possible provisional behavior:
+- Completing required content in the current Lesson unlocks the next required Lesson.
+- After the final required Lesson of a Topic, its Unit Challenge becomes progression-available/current.
+- Optional Lessons, if introduced later, do not block Unit Challenge unlock.
+- Passing the Unit Challenge completes the Topic for progression and exposes the next required progression node, subject to commercial access.
+- A Unit Challenge may have a nullable configurable passing threshold; see `unit-challenge-semantics-v1.md`.
+- Completed Lessons and Unit Challenges remain replayable, subject to current commercial access.
+- Premium access and learning prerequisites remain separate concerns.
 
-- Completing required content in the current lesson unlocks the next lesson.
-- Completed lessons remain repeatable.
-- Premium access and learning prerequisites are separate concerns.
-
-Do not hard-code a passing-score requirement for unlocking until the client confirms it.
+The learner's current route position is the first required progression node not yet completed/passed. A commercially locked node can still be that curricular current position.
 
 ### Course completion
 
-When the final required lesson is completed:
+When the final required Lesson in a Topic is completed, its Unit Challenge becomes the next progression milestone rather than completing the Topic immediately.
 
-- Mark the course as completed.
-- Show course completion feedback/result.
-- Keep the route accessible for review.
-- Surface an appropriate next course/review action elsewhere in the app.
+When the final Topic's Unit Challenge is passed:
+- mark the course as completed;
+- show the appropriate completion/progression feedback;
+- keep the route accessible for review/replay;
+- surface an appropriate next course/review action elsewhere in the app.
 
 ---
 
@@ -556,18 +565,15 @@ Gamification rewards such as coins/streak should only appear after real reward d
 
 ### Actions
 
-Primary action:
+Primary progression action:
 
-- `Siguiente lección` when another accessible lesson exists.
-- When the next lesson is commercially blocked, present it contextually as the **next step** with Premium/access-required state and an `Obtener acceso` / `Desbloquear` action rather than as an unrelated payment card.
+- `Continuar en la ruta` / `Ver progreso`.
+- Return to the Roadmap so completion, route advancement, current position and the next access/progression state can be seen in context.
+- Do not bypass the Roadmap by default with `Siguiente lección`.
 
-Secondary action:
+`Repasar errores` remains a contextual secondary action only when real Review items exist.
 
-- `Volver a la ruta`.
-
-`Repasar errores` should become actionable when the real Review session flow exists. Until then, pending review may be shown informationally (for example, `2 ejercicios para reforzar`) without a dead CTA.
-
-If there is no next accessible lesson, the primary action should adapt instead of showing a dead-end `Siguiente lección` button.
+The Roadmap owns presentation of whether the next node is accessible, prerequisite-locked or Premium/access-locked.
 
 ### Result states
 
@@ -584,7 +590,7 @@ Typical content:
 - Standard reward.
 - Course progress.
 - Small pending-review card.
-- `Siguiente lección` as the main CTA.
+- Route/progression CTA as the main action.
 
 #### PERFECT
 
