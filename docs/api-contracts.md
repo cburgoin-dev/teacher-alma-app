@@ -452,6 +452,8 @@ Rules:
 
 A progression-unlocked node can still be commercially inaccessible. In that case `unlocked = true`, `access.hasAccess = false`, and `lockReason = "ACCESS"`.
 
+For a Unit Challenge with an owned `ACTIVE` run, the run's frozen authorization makes that specific run effectively resumable even if the underlying entitlement has since expired. Roadmap/Unit-Challenge state must therefore treat the node as enterable for **resume** and must not show an ACCESS lock that would strand the active run. Starting a later new run/replay still revalidates current entitlement.
+
 ### Current node / bus source
 
 `currentNode` is the first required progression node not yet completed/passed after the course has started.
@@ -1535,6 +1537,7 @@ Rules:
 - `phaseTypes` exposes mechanic names only, not phase content/answer keys.
 - `bestScore` is derived from COMPLETED run history as an integer percentage (or null with no completed runs).
 - A challenge may be progression-unlocked but commercially blocked.
+- If an owned ACTIVE run exists, `access.hasAccess` represents effective ability to resume that frozen-authorized run even when the current entitlement itself has expired.
 - A passed challenge remains discoverable/replayable subject to current access.
 
 Failures:
