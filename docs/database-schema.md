@@ -151,7 +151,7 @@ Constraints / indexes:
 Notes:
 
 - One-to-one Topic -> Unit Challenge is represented by the unique `topic_id`.
-- PostgreSQL cannot conveniently enforce “every published Topic must have a child Unit Challenge” with a simple FK/check on `topics`; publication/import validation must enforce that learner-facing Topics have exactly one published/valid Unit Challenge.
+- PostgreSQL cannot conveniently enforce “every learner-facing Topic must have a child Unit Challenge” with a simple FK/check on `topics`; publication/import validation must enforce that Topics exposed through published/available course content have exactly one valid Unit Challenge. This does not require a new `topics.status` column.
 - `passing_score = null` means any valid completed run passes for progression. A configured threshold is compared against exact item counts rather than a separately persisted rounded percentage.
 - `PAID` uses the existing entitlement/access layer and must not be interpreted as subscription-only.
 - Published Unit Challenges should be archived/statused rather than destructively deleted once referenced by run history.
@@ -1059,7 +1059,7 @@ Implementation requirements:
 
 Database constraints protect structural relationships, but publication/import validation must additionally ensure:
 
-- every learner-facing published Topic has exactly one valid Unit Challenge;
+- every Topic exposed through published/available course content has exactly one valid Unit Challenge;
 - a published Unit Challenge has at least one phase and all phase positions are contiguous/ordered according to the import contract;
 - `CONVERSATION` has at least one evaluable Choice and exactly one correct option per Choice in v1;
 - `CROSSWORD` entries fit the declared grid, have non-empty canonical answers, valid `ACROSS|DOWN` directions, unique ids and compatible crossing letters;
