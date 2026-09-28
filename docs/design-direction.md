@@ -115,7 +115,7 @@ A newer gamified roadmap reference is now the preferred **art-direction referenc
 docs/mockups/courses/roadmap-gamified-reference.png
 ```
 
-It should guide visual richness, stronger differentiation between lesson states, ambient illustration and emphasis of the current lesson. It is a visual reference rather than a rigid screen specification: existing business rules, progression/access semantics and responsive path geometry remain authoritative.
+It should guide visual richness, stronger differentiation between roadmap-node states, ambient illustration and emphasis of the current progression node. It is a visual reference rather than a rigid screen specification: existing business rules, progression/access semantics and responsive path geometry remain authoritative.
 
 The earlier roadmap mockup remains useful as historical context and should not be deleted solely because this newer direction is preferred.
 
@@ -161,7 +161,7 @@ The next visual iteration should prioritize fidelity and composition rather than
 
 ### Motion and transitions
 
-- Roadmap initial positioning should preserve the current one-time positioning behavior but avoid a visually abrupt teleport. Prefer a short animated scroll after layout measurement so the learner perceives movement toward the current lesson.
+- Roadmap initial positioning should preserve the current one-time positioning behavior but avoid a visually abrupt teleport. Prefer a short animated scroll after layout measurement so the learner perceives movement toward the current progression node.
 - The lesson loading state should remain lightweight. Avoid showing a prominent `Volver a la ruta` action during a very short loading state.
 - A richer branded lesson-entry transition may be explored later, but V3 should not add a fake or over-engineered animation solely for decoration.
 
@@ -226,7 +226,7 @@ For example, the backend can expose:
 - order;
 - progress;
 - access entitlement;
-- current lesson;
+- current progression node;
 - completed lessons;
 - locked lessons.
 
