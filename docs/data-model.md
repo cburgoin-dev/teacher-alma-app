@@ -10,6 +10,8 @@ It deliberately models the **domain**, not individual screens. UI states such as
 erDiagram
     USERS ||--o{ COURSE_PROGRESS : has
     USERS ||--o{ LESSON_PROGRESS : has
+    USERS ||--o{ UNIT_CHALLENGE_PROGRESS : has
+    USERS ||--o{ UNIT_CHALLENGE_RUNS : starts
     USERS ||--o{ ACTIVITY_ATTEMPTS : makes
     USERS ||--o{ REVIEW_ITEMS : has
     USERS ||--o{ DIAGNOSTIC_ATTEMPTS : takes
@@ -22,6 +24,11 @@ erDiagram
 
     COURSES ||--o{ TOPICS : contains
     TOPICS ||--o{ LESSONS : contains
+    TOPICS ||--|| UNIT_CHALLENGES : ends_with
+    UNIT_CHALLENGES ||--|{ UNIT_CHALLENGE_PHASES : contains
+    UNIT_CHALLENGES ||--o{ UNIT_CHALLENGE_RUNS : attempted_as
+    UNIT_CHALLENGE_RUNS ||--|{ UNIT_CHALLENGE_RUN_PHASES : snapshots
+    UNIT_CHALLENGES ||--o{ UNIT_CHALLENGE_PROGRESS : tracked_by
     LESSONS ||--o{ LESSON_BLOCKS : contains
     LESSON_BLOCKS }o--o| ACTIVITIES : references
 
@@ -109,6 +116,55 @@ Conceptual fields:
 
 `PAID` means the learner requires valid access, not necessarily a subscription. A paid lesson can be unlocked either by an active membership or by permanent ownership of its course.
 
+
+
+### `unit_challenges`
+
+Special assessment milestone that closes a Topic for learning progression.
+
+Each learner-facing/published Topic has exactly one Unit Challenge in v1. Draft/import content may be incomplete while being prepared, but publication validation should not allow a Topic intended for learners to remain without its challenge.
+
+Conceptual fields:
+
+- `id`
+- `topic_id` (unique)
+- `title`
+- `description` (optional)
+- `passing_score` (nullable integer percentage)
+- `access_type` (`FREE`, `PAID`)
+- `status` (`DRAFT`, `PUBLISHED`)
+- timestamps
+
+`passing_score = null` means that completing a valid run is sufficient to pass the challenge. A configured threshold means that a completed run can exist without yet passing the Topic milestone.
+
+Commercial access remains independent from progression. `PAID` uses the same entitlement layer as paid learning content; it must not mean subscription-only.
+
+Relationship: `Topic 1 -> 1 UnitChallenge` for published learner-facing content.
+
+### `unit_challenge_phases`
+
+Ordered authored phase definitions inside a Unit Challenge.
+
+Conceptual fields:
+
+- `id`
+- `unit_challenge_id`
+- `type` (`CONVERSATION`, `CROSSWORD`)
+- `position`
+- `config` (`JSONB`)
+- timestamps
+
+The relational row owns stable identity/order; `config JSONB` contains mechanic-specific content because the two phase types have different shapes and future challenge mechanics should not require a new relational table per presentation type.
+
+For v1:
+
+- `CONVERSATION` config contains the scene/participants/ordered steps, including private correctness metadata for evaluable Choice steps.
+- `CROSSWORD` config contains grid dimensions and deterministic entries with clue, canonical answer, direction and starting coordinates.
+
+Private answer/correctness configuration is storage/domain data and must be stripped from learner-facing read contracts.
+
+A generic learner-facing `ACTIVITY` phase is intentionally not part of Unit Challenge v1, even though lower-level validation/UI primitives may be reused internally.
+
 ### `lesson_blocks`
 
 Ordered reusable content units inside a lesson.
@@ -185,6 +241,73 @@ Useful contexts:
 
 This allows the same activity engine to be reused across learning flows.
 
+
+## Unit Challenge runs and submissions
+
+### `unit_challenge_runs`
+
+Durable attempt/session for one learner traversing one Unit Challenge.
+
+Conceptual fields:
+
+- `id`
+- `user_id`
+- `unit_challenge_id`
+- `request_key` / equivalent start-idempotency key
+- `status` (`ACTIVE`, `COMPLETED`, `ABANDONED`)
+- `current_phase_position` or equivalent current-phase pointer
+- `passing_score_snapshot` (nullable)
+- `correct_items` (nullable until completion)
+- `total_items` (nullable until completion)
+- `score_percent` (nullable until completion)
+- `passed` (nullable until completion; frozen result for this run)
+- `started_at`
+- `updated_at`
+- `completed_at` (nullable)
+- `abandoned_at` (nullable)
+
+A run is resumable while `ACTIVE`. Explicit learner exit marks it `ABANDONED`; accidental interruption does not.
+
+`passing_score_snapshot` and the persisted `passed` result prevent later content/configuration changes from rewriting historical meaning.
+
+Each replay creates a new run. Earlier runs are never overwritten by a later score.
+
+Commercial access is checked at run start. Access is then frozen for that active run; a new run/replay revalidates current access.
+
+### `unit_challenge_run_phases`
+
+Per-run ordered snapshot and submission boundary for challenge phases.
+
+Conceptual fields:
+
+- `id`
+- `run_id`
+- `source_phase_id` (reference to authored phase)
+- `position`
+- `type` (`CONVERSATION`, `CROSSWORD`)
+- `content_snapshot` (`JSONB`)
+- `answer_data` (`JSONB`, nullable until submission)
+- `correct_items` (nullable until submission)
+- `total_items`
+- `submission_request_key` or equivalent idempotency boundary (nullable before submission)
+- `submitted_at` (nullable)
+- timestamps as needed
+
+The run-phase snapshot is authoritative for the already-started run. Later edits to `unit_challenge_phases.config` must not alter an active or historical run.
+
+A submitted run phase is immutable for that run. There is no same-run retry.
+
+`answer_data` stores the learner's submitted answers in the shape required by the phase type. Unanswered evaluable items are represented deterministically and score as incorrect.
+
+Scoring remains item-based:
+- each Conversation Choice = one evaluable item;
+- each Crossword answer word = one evaluable item;
+- v1 has no weighting.
+
+A separate row per individual crossword cell or conversation choice is not required for v1 because those items do not have independent lifecycle/query needs. Their authored definition and submitted answers can remain inside the phase snapshot/answer JSONB while aggregate phase scoring is relationally visible.
+
+Do not route Unit Challenge v1 answers through `activity_attempts`. That table remains appropriate for reusable Activity definitions, but Unit Challenge v1 deliberately uses challenge-specific `CONVERSATION` and `CROSSWORD` mechanics and does not create Review state.
+
 ## Learning progress
 
 ### `course_progress`
@@ -219,6 +342,34 @@ Conceptual fields:
 - `updated_at`
 
 Absence means no completed lesson. Temporary traversal belongs to LessonRun; the completed run holds its first-attempt score snapshot.
+
+### `unit_challenge_progress`
+
+Consolidated durable indication that a learner has passed a Unit Challenge for progression.
+
+Conceptual fields:
+
+- `id`
+- `user_id`
+- `unit_challenge_id`
+- `passed_run_id`
+- `completed_at`
+- `updated_at`
+
+Absence means the Unit Challenge has not yet been passed for progression.
+
+A row is created only by a qualifying `COMPLETED` run:
+- any completed run when `passing_score_snapshot = null`;
+- otherwise a completed run whose score meets/exceeds that snapshot.
+
+The first qualifying run establishes progression completion. Later replays may improve or worsen score history but never remove this progress row or relock later content.
+
+Topic completion is derived from its Unit Challenge progress rather than stored as a screen-specific Topic status.
+
+Course completion must account for required Topic Unit Challenges; it must not be inferred solely from required Lesson completion once Unit Challenge v1 is active.
+
+Course/Roadmap percentage is derived presentation data rather than a stored percentage. The API contract must define its denominator consistently so a learner cannot be shown as 100% complete while a required Unit Challenge is still unpassed.
+
 
 ## Review
 
@@ -439,8 +590,8 @@ else:
 - Learning progression and commercial access are separate concerns.
 - Completion and correctness are separate concerns.
 - Do not persist screen-specific derived states unless there is a real domain reason.
-- Reuse the activity engine across lesson, review, assessment and diagnostic contexts.
-- Use relational structure for stable domain relationships and `JSONB` only where configuration/content is genuinely variable.
+- Reuse lower-level activity/presentation primitives where appropriate, but do not force Unit Challenge v1 mechanics into `activities` when they have their own phase/session semantics.
+- Use relational structure for stable domain relationships and lifecycle/query boundaries; use `JSONB` where challenge/content shape is genuinely mechanic-specific or snapshot-oriented.
 - Keep provider-specific payment details behind the payments/access module where possible.
 - This is a **conceptual MVP model**. PostgreSQL types, indexes, unique constraints, cascade behavior and exact foreign-key rules belong to the next logical-schema step.
 
@@ -449,7 +600,7 @@ else:
 Not required in the initial data model unless scope changes:
 
 - rankings/social features;
-- minigames;
+- challenge mechanics beyond v1 `CONVERSATION` and `CROSSWORD` (for example Sentence Builder, Listening Challenge or unrelated minigames);
 - advanced cosmetics/customization;
 - complex achievements catalog;
 - AI-generated-content history;
@@ -496,3 +647,17 @@ Implemented by migration `20260925000000_lesson_runs`.
 - Review v1 intentionally adds no persisted `review_sessions` or `review_session_items` entity. The active batch is ephemeral and represented to Mobile by an opaque short-lived batch authorization token.
 - Review submissions require durable idempotency. The implementation may add the smallest request-key field/constraint necessary to ActivityAttempt or an equivalent persistence boundary; do not model a full session solely for this purpose.
 
+
+
+## Unit Challenge v1 model clarifications
+
+`docs/unit-challenge-semantics-v1.md` is the accepted lifecycle/product source of truth.
+
+- Published learner-facing Topic -> UnitChallenge cardinality is one-to-one.
+- Unit Challenge phase identity/order is relational; mechanic-specific authored content remains in `unit_challenge_phases.config JSONB`.
+- Durable runs are required because the experience spans multiple phases, must survive accidental interruption and must preserve historical meaning across content edits.
+- Per-run phase snapshots/submissions use `unit_challenge_run_phases`; do not create one relational row per crossword cell or conversation choice unless future query/lifecycle requirements justify it.
+- `unit_challenge_progress` represents consolidated progression completion and is independent from run history. A later replay never revokes it.
+- Unit Challenge v1 does not create `ActivityAttempt` or `ReviewItem` rows.
+- Correct answers/canonical crossword solutions remain private server-side content and are never part of learner-facing GET payloads.
+- A dedicated admin/CMS remains out of MVP scope. Seed/import validation should operate on the same conceptual content model without introducing authoring entities merely for UI convenience.
