@@ -581,7 +581,7 @@ It does **not** create `lesson_progress`. A lesson becomes started only through 
 
 ### Empty published course
 
-A `PUBLISHED` course with zero relevant (`PUBLISHED`) lessons cannot be started. This is treated as a content/state conflict rather than as a missing course.
+A `PUBLISHED` course with no valid learner-facing required progression node cannot be started. In normal v1 content this means no valid required Lesson/Topic challenge path exists. This is treated as a content/state conflict rather than a missing course.
 
 Return `409 Conflict`:
 
@@ -600,21 +600,21 @@ The start operation must not create `course_progress` in this case.
 
 Starting a course never creates or modifies `purchase` or `entitlement` records.
 
-The service may allow a user without full commercial access to start a course when its first required published lesson (or first published lesson if none is required) is accessible free content.
+The service may allow a user without full commercial access to start a course when its first required progression node is accessible free content.
 
 Conceptually:
 
 ```text
-First relevant lesson is FREE
+First required progression node is FREE
   -> start allowed
 
-First relevant lesson is PAID
+First required progression node is PAID
   -> valid course purchase? -> allowed
   -> valid Premium subscription? -> allowed
   -> otherwise -> denied
 ```
 
-If the user has no access to that initial lesson with which to begin the course, return `403 Forbidden`:
+If the user has no access to that initial required progression node, return `403 Forbidden`:
 
 ```json
 {
@@ -672,8 +672,8 @@ Conceptually, the service/controller flow should enforce:
 2. Require authenticated user.
 3. Resolve visible course.
 4. Reject COMING_SOON for start.
-5. Resolve relevant lessons and reject an empty published course.
-6. Determine whether the user can access the first required published lesson (falling back to the first published lesson when none is required).
+5. Resolve the learner-facing required progression path and reject an invalid/empty published course.
+6. Determine whether the user can access the first required progression node.
 7. Reuse existing course_progress or create it once.
 8. Derive current combined required-node progress and current/next progression node.
 9. Return response.
