@@ -25,7 +25,7 @@ This document records agreed or provisional product rules for the MVP. Rules may
 
 ## Course access and progression
 
-- Lesson content remains structured as `Course -> Topic/Unit -> Lesson`; each published Topic also ends with exactly one Unit Challenge milestone.
+- Lesson content remains structured as `Course -> Topic/Unit -> Lesson`; each Topic exposed to learners through published/available course content also ends with exactly one Unit Challenge milestone.
 - Courses, roadmap nodes and Unit Challenges have separate **learning-progress state** and **commercial access state**. These concepts should not be collapsed into one status.
 - A course can conceptually be available, in progress, completed, access-locked or coming soon.
 - Lesson roadmap nodes can conceptually be completed, current, available, prerequisite-locked or access-locked.
@@ -337,7 +337,7 @@ Avoid adding items solely to create a circular economy such as spending coins pr
 Unit Challenge v1 is defined by `docs/unit-challenge-semantics-v1.md`.
 
 Core rules:
-- Every published Topic has exactly one Unit Challenge milestone.
+- Every Topic exposed to learners through published/available course content has exactly one Unit Challenge milestone.
 - It unlocks after all required Lessons in that Topic are completed; optional Lessons do not block it.
 - v1 learner-facing phases are `CONVERSATION` and `CROSSWORD`. Internal UI/domain primitives may be reused, but a generic normal `ACTIVITY` phase is not part of the learner-facing v1 experience.
 - Correctness feedback is withheld during the challenge and concentrated in Result.
