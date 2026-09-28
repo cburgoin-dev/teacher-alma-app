@@ -53,13 +53,25 @@ Read only the relevant group.
 - `docs/design-direction.md`
 - `docs/mockups/courses/`
 
+### Unit Challenge / Assessment
+- `docs/unit-challenge-semantics-v1.md`
+- `docs/unit-challenge-assessment-concept-v0.md` for historical/product rationale only
+- `docs/business-rules.md`
+- `docs/data-model.md`
+- `docs/database-schema.md`
+- `docs/api-contracts.md`
+- `docs/screens.md`
+- `docs/design-direction.md`
+
 Do not load unrelated verticals unless a dependency actually crosses them.
 
 ## Stable product rules
 
 Do not change these unless the user explicitly asks to change product behavior.
 
-- Course -> Topic -> Lesson.
+- Course -> Topic -> Lesson remains the lesson-content hierarchy; each published Topic also ends with exactly one Unit Challenge milestone.
+- Unit Challenge v1 unlocks after all required Topic lessons and uses CONVERSATION/CROSSWORD phases; do not insert a generic learner-facing ACTIVITY phase.
+- Unit Challenge and Lesson/Roadmap learning state must reuse existing progression/access concepts rather than invent duplicate lock-state vocabularies.
 - Lesson block types: TEXT, VIDEO, IMAGE, EXAMPLE, ACTIVITY, SUMMARY.
 - Completion and correctness are separate.
 - Wrong answers do not block lesson completion.
