@@ -48,8 +48,8 @@ Current provisional direction:
 ### Course start and resume
 
 - Starting a course creates/establishes learner progress for that course.
-- Home should then treat the learner as active and surface the current lesson.
-- Home's `Continuar` action may navigate directly to the current lesson instead of forcing the user through Courses -> Detail -> Roadmap.
+- Home should then treat the learner as active and surface the current required progression node (Lesson or Unit Challenge).
+- Home's `Continuar` action may navigate directly to that current node instead of forcing the user through Courses -> Detail -> Roadmap.
 - Course-card navigation should depend on derived course state rather than always forcing Course Detail:
   - not started / available -> Course Detail;
   - in progress -> Roadmap;
