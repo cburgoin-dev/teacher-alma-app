@@ -109,7 +109,7 @@ Show:
 
 - Current course.
 - Current topic/unit.
-- Current lesson.
+- Current required progression node (Lesson or Unit Challenge).
 - Course progress.
 - Primary `Continuar` action.
 
@@ -190,7 +190,7 @@ Course-card navigation should reduce unnecessary intermediate screens:
 - `LOCKED_ACCESS`: open Course Detail so the restriction and unlock action can be explained contextually.
 - `COMING_SOON`: open Course Detail in a non-actionable/unavailable state.
 
-Home's `Continuar` action may bypass Courses/Detail/Roadmap and go directly to the current lesson.
+Home's `Continuar` action may bypass Courses/Detail/Roadmap and go directly to the current required progression node.
 
 Premium/access-locked content should explain the restriction instead of silently disabling interaction.
 
@@ -236,7 +236,7 @@ Primary flows:
 - `Courses -> Roadmap` for an in-progress or completed course.
 - `Courses -> Course Detail` for locked-access or coming-soon states.
 
-For an active learner, shortcuts from Home can go directly to the current lesson to reduce friction.
+For an active learner, shortcuts from Home can go directly to the current required progression node to reduce friction.
 
 ---
 
