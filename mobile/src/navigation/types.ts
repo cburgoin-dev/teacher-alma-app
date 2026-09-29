@@ -4,10 +4,10 @@ import type { LessonOutcome } from '../features/lessons/types';
 export type CoursesStackParamList = {
   Courses: undefined;
   CourseDetail: { courseId: string };
-  Roadmap: { courseId: string };
-  UnitChallenge: { courseId: string; unitChallengeId: string };
-  Lesson: { courseId: string; lessonId: string };
-  LessonResult: { courseId: string; result: LessonOutcome };
+  Roadmap: { courseId: string; completionTicket?: number };
+  UnitChallenge: { courseId: string; unitChallengeId: string; completionTicket?: number };
+  Lesson: { courseId: string; lessonId: string; completionTicket?: number };
+  LessonResult: { courseId: string; result: LessonOutcome; completionTicket?: number };
   Review: { courseId?: string; preferredLessonId?: string };
 };
 

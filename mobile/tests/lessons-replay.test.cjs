@@ -171,7 +171,7 @@ test('Replay Result renders 50%/100%, no historical Review/course progress/Next,
     assert.doesNotMatch(copy, /SIGUIENTE LECCIÓN|Progreso del curso|Guardado|reforzar/);
     const buttons = tree.filter(n => n.type === 'Button');
     assert.deepEqual(buttons.map(n => n.props.title), ['Continuar en la ruta']); buttons[0].props.onPress();
-    assert.deepEqual(navigationCalls, [['Roadmap', { courseId: 'c' }]]);
+    assert.deepEqual(navigationCalls, [['Roadmap', { courseId: 'c', completionTicket: undefined }]]);
   }
 });
 test('Replay Activity starts neutral without visited action; feedback never promises Review persistence', () => {
@@ -264,13 +264,13 @@ test('Lesson Result has one red Roadmap CTA with accessible, locked or absent ne
     const buttons = tree.filter(n => n.type === 'Button');
     assert.equal(buttons.length, 1); assert.equal(buttons[0].props.title, 'Continuar en la ruta');
     assert.ok(!buttons[0].props.tone || buttons[0].props.tone === 'red');
-    buttons[0].props.onPress(); assert.deepEqual(calls[0], ['Roadmap', { courseId: 'c' }]);
+    buttons[0].props.onPress(); assert.deepEqual(calls[0], ['Roadmap', { courseId: 'c', completionTicket: undefined }]);
     tree.find(n => n.type === 'Pressable').props.onPress();
     assert.deepEqual(calls[1], ['Review', { courseId: 'c', preferredLessonId: 'l' }]);
   }
 });
 
-test('Conversation final Continue closes and submits in one tap, preserving blanks and rejecting a second stale tap', () => {
+test('Conversation closes for reading before the single final CTA submits, preserving blanks and rejecting double taps', () => {
   const values = []; let cursor = 0;
   const closing = { current: false };
   const hooks = { useRef: () => closing, useState: initial => { const i = cursor++; if (!(i in values)) values[i] = initial; return [values[i], value => { values[i] = typeof value === 'function' ? value(values[i]) : value; }]; } };
@@ -292,9 +292,12 @@ test('Conversation final Continue closes and submits in one tap, preserving blan
   advance(render()); // No selection: the first choice must remain omitted.
   let tree = render(); tree.find(n => n.type === 'Pressable').props.onPress();
   tree = render(); assert.equal(tree.find(n => n.type === 'Pressable').props.accessibilityState.checked, true);
-  advance(tree); assert.equal(submissions.length, 1);
-  advance(tree); assert.equal(submissions.length, 1); // Same handler before the disabled render.
+  advance(tree); assert.equal(submissions.length, 0);
+  advance(tree); assert.equal(submissions.length, 0); // Closing the transcript never submits.
   tree = render(); assert.ok(tree.includes('Nice to meet you!')); assert.ok(tree.includes('See you!'));
+  const final = tree.find(n => n.type === 'Button');
+  assert.equal(final.props.title, 'Continuar al crucigrama');
+  final.props.onPress(); final.props.onPress();
   assert.deepEqual(submissions, [{ choices: [{ stepId: 'q2', optionId: 'c' }] }]);
   assert.equal(render(true).find(n => n.type === 'Button').props.disabled, true);
 });

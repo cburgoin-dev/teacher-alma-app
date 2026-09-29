@@ -27,7 +27,7 @@ export function LessonScreen({ route, navigation }: NativeStackScreenProps<Cours
   const scroll = useRef<ScrollView>(null);
   useEffect(() => { void flow.load(); return () => flow.dispose(); }, [flow]);
   useEffect(() => { scroll.current?.scrollTo({ y: 0, animated: false }); }, [state.stepId]);
-  useEffect(() => { if (state.result) navigation.replace('LessonResult', { courseId, result: state.result }); }, [state.result, courseId, navigation]);
+  useEffect(() => { if (state.result) navigation.replace('LessonResult', { courseId, result: state.result, completionTicket: route.params.completionTicket }); }, [state.result, courseId, navigation]);
   const exit = useCallback(() => navigation.popTo('Roadmap', { courseId }), [navigation, courseId]);
   useEffect(() => { if (state.exited) exit(); }, [state.exited, exit]);
   useEffect(() => {

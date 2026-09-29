@@ -1,34 +1,51 @@
+import type { ProgressTransition } from '../completionMotion';
+import { useProgressMotion } from './useProgressMotion';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { NavigationIcon } from '../../../components/NavigationIcon';
 import { colors, shadows } from '../../../theme';
 import type { Lesson, Roadmap } from '../types';
 import { lessonLabels, lessonState } from '../presentation';
 import { Button } from './ui';
-import { curvedDashes, courseStops } from './pathGeometry';
+import { busStops, curvedDashes, courseStops } from './pathGeometry';
 import { PathScenery } from './PathScenery';
 import { RouteBus, Trophy } from '../../unit-challenges/ChallengeArt';
 
-export function CoursePath({ topics, onLessonPress, targetId, onTargetLayout, currentNodeId }: {
+export function CoursePath({ topics, onLessonPress, targetId, onTargetLayout, currentNodeId, transition = null, motionReady = false, onMotionEnd }: {
   topics: Roadmap['topics']; onLessonPress: (lesson: Lesson) => void;
-  targetId?: string | null; onTargetLayout?: (id: string, y: number) => void;
+  targetId?: string | null; onTargetLayout?: (id: string, y: number, range?: { top: number; bottom: number }) => void;
   currentNodeId?: string | null;
+  transition?: ProgressTransition | null; motionReady?: boolean; onMotionEnd: () => void;
 }) {
   const [width, setWidth] = useState(0);
   const { fontScale } = useWindowDimensions();
   const entries = useMemo(() => topics.flatMap((topic, topicIndex) => topic.nodes.map((lesson, index) => ({ lesson, topic, topicIndex, sectionStart: index === 0 }))), [topics]);
   const expanded = entries.map(({ lesson }) => lessonState(lesson) === 'CURRENT' || (lesson.progression.isCurrent && lessonState(lesson) === 'LOCKED_ACCESS'));
   const stops = courseStops(width, expanded, entries.map(entry => entry.sectionStart), fontScale);
-  const targetY = stops[entries.findIndex(entry => entry.lesson.id === targetId)]?.y;
+  const progress = useProgressMotion(transition, motionReady, onMotionEnd);
+  const fromIndex = entries.findIndex(entry => entry.lesson.id === transition?.from);
+  const toIndex = entries.findIndex(entry => entry.lesson.id === transition?.to);
+  const moving = !!transition && fromIndex >= 0 && toIndex >= 0;
+  const targetY = moving ? (stops[fromIndex].y + stops[toIndex].y) / 2 : stops[entries.findIndex(entry => entry.lesson.id === targetId)]?.y;
+  const busPoints = moving ? busStops(stops[fromIndex], stops[toIndex], entries[toIndex].sectionStart) : [];
+  const inputRange = busPoints.map((_, i) => i / (busPoints.length - 1) * .86).concat(1);
+  const busX = moving ? progress.interpolate({ inputRange, outputRange: busPoints.map(p => p.x - 22).concat(busPoints.at(-1)!.x - 22) }) : 0;
+  const busY = moving ? progress.interpolate({ inputRange, outputRange: busPoints.map(p => p.y - 42).concat(busPoints.at(-1)!.y - 42) }) : 0;
+  const arrivalScale = progress.interpolate({ inputRange: [0, .86, .93, 1], outputRange: [1, 1, 1.06, 1] });
+  const arrivalOpacity = progress.interpolate({ inputRange: [0, .86, 1], outputRange: [0, 0, 1] });
   useEffect(() => {
-    if (width > 0 && targetId && targetY !== undefined) onTargetLayout?.(targetId, targetY);
-  }, [width, targetId, targetY, onTargetLayout]);
+    if (width > 0 && targetId && targetY !== undefined) onTargetLayout?.(targetId + ':' + (transition?.from ?? ''), targetY, moving ? { top: stops[fromIndex].y - stops[fromIndex].size / 2 - 44, bottom: stops[toIndex].y + 110 * Math.min(fontScale, 1.5) } : undefined);
+  }, [width, targetId, targetY, onTargetLayout, transition]);
   const dots = stops.slice(0, -1).flatMap((stop, index) => curvedDashes(stop, stops[index + 1], entries[index + 1].sectionStart)
-    .map(dot => ({ ...dot, color: lessonState(entries[index].lesson) === 'COMPLETED' ? '#55A9E8' : '#A2B6CC' })));
-  return <View onLayout={event => setWidth(event.nativeEvent.layout.width)}>
+    .map((dot, dotIndex, segmentDots) => ({ ...dot,
+      threshold: moving && index === fromIndex ? (dotIndex + 1) / (segmentDots.length + 1) * .86 : null,
+      color: lessonState(entries[index].lesson) === 'COMPLETED' ? '#55A9E8' : '#A2B6CC' })));
+  return <View pointerEvents={moving ? "none" : "auto"} accessibilityState={{ busy: moving }} onLayout={event => setWidth(event.nativeEvent.layout.width)}>
     {width > 0 ? <>
       <View pointerEvents="none" accessible={false} style={StyleSheet.absoluteFill}>
-        {dots.map((dot, index) => <View key={index} style={[s.dash, { left: dot.x - 4.5, top: dot.y - 2.2, backgroundColor: dot.color, transform: [{ rotate: dot.angle + 'deg' }] }]} />)}
+        {dots.map((dot, index) => <View key={index} style={[s.dash, { left: dot.x - 4.5, top: dot.y - 2.2, backgroundColor: dot.threshold === null ? dot.color : '#A2B6CC', transform: [{ rotate: dot.angle + 'deg' }] }]}>
+          {dot.threshold !== null ? <Animated.View style={[StyleSheet.absoluteFill, { borderRadius: 3, backgroundColor: '#55A9E8', opacity: progress.interpolate({ inputRange: [0, Math.max(0, dot.threshold - .015), dot.threshold, 1], outputRange: [0, 0, 1, 1] }) }]} /> : null}
+        </View>)}
       </View>
       {entries.map(({ lesson, topic, topicIndex, sectionStart }, index) => {
         const stop = stops[index];
@@ -49,8 +66,10 @@ export function CoursePath({ topics, onLessonPress, targetId, onTargetLayout, cu
             <View style={s.sectionTop}><View style={s.sectionMark}><Text style={s.sectionNumber}>{topicIndex + 1}</Text></View><Text maxFontSizeMultiplier={1.5} style={s.eyebrow}>TEMA {topicIndex + 1}</Text></View>
             <Text numberOfLines={2} maxFontSizeMultiplier={1.5} style={s.sectionTitle}>{topic.title}</Text>
           </View> : null}
-          <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={() => onLessonPress(lesson)}
-            style={({ pressed }) => [s.halo, { position: 'absolute', left: stop.x - radius, top: stop.y - stop.top - radius, width: stop.size, height: stop.size, borderRadius: radius, backgroundColor: ring, opacity: pressed ? .75 : 1 }]}>
+          <Animated.View style={{ position: 'absolute', left: stop.x - radius, top: stop.y - stop.top - radius, width: stop.size, height: stop.size, transform: [{ scale: moving && index === toIndex ? arrivalScale : 1 }] }}>
+          <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={moving} onPress={() => onLessonPress(lesson)}
+            style={({ pressed }) => [s.halo, { flex: 1, borderRadius: radius, backgroundColor: ring, opacity: pressed ? .75 : 1 }]}>
+
             <View style={[s.disc, { backgroundColor: fill, borderColor: state === 'AVAILABLE' ? colors.blue : '#FFFFFF90' }]}>
               <View pointerEvents="none" style={s.shine} />
               {locked ? <View><View style={s.shackle} /><View style={s.lockBody}><View style={[s.keyhole, { backgroundColor: fill }]} /></View></View>
@@ -59,17 +78,18 @@ export function CoursePath({ topics, onLessonPress, targetId, onTargetLayout, cu
                 : state === 'COMPLETED' ? <View style={s.check} /> : <Text style={s.symbol}>›</Text>}
             </View>
             {expanded[index] ? <View style={[s.currentDot, { backgroundColor: paid ? '#D79920' : colors.red }]} /> : null}
-          </Pressable>
-          <View style={[s.label, { left: labelLeft, width: labelWidth, top: stop.y - stop.top - (expanded[index] ? 82 : 32) * Math.min(fontScale, 1.5), alignItems: stop.right ? 'flex-end' : 'flex-start' }, expanded[index] && s.currentCard, expanded[index] && paid && { borderColor: '#D9AA43', backgroundColor: '#FFF1D3' }]}>
+          </Pressable></Animated.View>
+          <Animated.View style={[s.label, moving && index === toIndex && { opacity: arrivalOpacity }, { left: labelLeft, width: labelWidth, top: stop.y - stop.top - (expanded[index] ? 82 : 32) * Math.min(fontScale, 1.5), alignItems: stop.right ? 'flex-end' : 'flex-start' }, expanded[index] && s.currentCard, expanded[index] && paid && { borderColor: '#D9AA43', backgroundColor: '#FFF1D3' }]}>
             {expanded[index] ? <><View pointerEvents="none" style={[s.cardJoin, stop.right ? { right: -9 } : { left: -9 }, paid && { backgroundColor: '#FFF1D3' }]} /><Text maxFontSizeMultiplier={1.5} style={[s.cardEyebrow, paid && { color: colors.gold }]}>{paid ? 'ACCESO PREMIUM' : 'SIGUIENTE PASO'}</Text></> : null}
             <Text numberOfLines={2} maxFontSizeMultiplier={1.5} style={[s.title, expanded[index] && !paid && { color: '#FFF', fontSize: 18, lineHeight: 23 }, { textAlign: stop.right ? 'right' : 'left' }]}>{index + 1}. {lesson.title}</Text>
             <Text numberOfLines={2} maxFontSizeMultiplier={1.5} style={[s.meta, expanded[index] && !paid && { color: '#E4F2FF' }, { textAlign: stop.right ? 'right' : 'left' }]}>{lesson.type === 'UNIT_CHALLENGE' ? `Reto de unidad · ${lessonLabels[state]}` : current ? `Paso ${index + 1} de ${entries.length}` : lessonLabels[state]}</Text>
             {locked && lesson.progressStatus === 'COMPLETED' ? <Text style={s.meta}>Completada</Text> : null}
             {expanded[index] ? <View style={{ width: '100%', marginTop: 5 }}><Button compact arrow={!paid} title={paid ? 'Ver acceso' : 'Continuar'} tone={paid ? 'gold' : 'red'} onPress={() => onLessonPress(lesson)} /></View> : null}
-          </View>
-          {lesson.id === currentNodeId ? <View pointerEvents="none" accessible={false} style={{ position: 'absolute', left: stop.x - 22, top: stop.y - stop.top - radius - 44 }}><RouteBus /></View> : null}
+          </Animated.View>
+          {!moving && lesson.id === currentNodeId ? <View pointerEvents="none" accessible={false} style={{ position: 'absolute', left: stop.x - 22, top: stop.y - stop.top - radius - 44 }}><RouteBus /></View> : null}
         </View>;
       })}
+      {moving ? <Animated.View pointerEvents="none" accessible={false} style={{ position: 'absolute', left: 0, top: 0, transform: [{ translateX: busX }, { translateY: busY }] }}><RouteBus /></Animated.View> : null}
       {entries.length ? <View style={s.finish}><View accessible={false} style={s.destination}><View style={s.flagPole} /><View style={s.finishFlag}><View style={s.flagSquare} /><View style={[s.flagSquare, { alignSelf: 'flex-end' }]} /></View></View><Text style={s.finishText}>Fin de la ruta</Text></View> : null}
     </> : null}
   </View>;

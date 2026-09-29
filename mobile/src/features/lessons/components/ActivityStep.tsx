@@ -25,6 +25,24 @@ export function ActivityStep({ activity, feedback, busy, onSubmit, onRetry, onCo
   const input = useRef<TextInput>(null);
   const viewport = useRef(0);
   const scrollY = useRef(0);
+  const feedbackBox = useRef<{ y: number; height: number } | null>(null);
+  const revealFrame = useRef<number | undefined>(undefined);
+  const revealFeedback = () => {
+    if (revealFrame.current !== undefined) cancelAnimationFrame(revealFrame.current);
+    revealFrame.current = requestAnimationFrame(() => {
+      const box = feedbackBox.current;
+      if (!feedback || !box) return;
+      const target = feedbackScrollTarget(scrollY.current, viewport.current, box.y, box.height);
+      if (target !== null) scroll.current?.scrollTo({ y: target, animated: true });
+    });
+  };
+  useEffect(() => () => { if (revealFrame.current !== undefined) cancelAnimationFrame(revealFrame.current); }, []);
+  useEffect(() => {
+    if (!feedback) { feedbackBox.current = null; return; }
+    const sub = Keyboard.addListener('keyboardDidHide', revealFeedback);
+    revealFeedback();
+    return () => sub.remove();
+  }, [feedback]);
   const [focused, setFocused] = useState(false);
   useEffect(() => {
     if (!focused) return;
@@ -61,7 +79,8 @@ export function ActivityStep({ activity, feedback, busy, onSubmit, onRetry, onCo
     : pairs.length === activity.words.length ? { pairs } : null;
   return <View style={local.activity}>
     <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag"
-      onLayout={event => { viewport.current = event.nativeEvent.layout.height; }}
+      onLayout={event => { viewport.current = event.nativeEvent.layout.height; if (feedback) revealFeedback(); }}
+      onContentSizeChange={() => { if (feedback) revealFeedback(); }}
       onScroll={event => { scrollY.current = event.nativeEvent.contentOffset.y; }} scrollEventThrottle={16}
       contentContainerStyle={local.body}>
     {error ? <Text accessibilityLiveRegion="polite" style={s.error}>{error}</Text> : null}
@@ -103,7 +122,7 @@ export function ActivityStep({ activity, feedback, busy, onSubmit, onRetry, onCo
     {matching ? <MatchingPairs activity={activity} pairs={pairs} word={draft.word} image={draft.image} feedback={feedback} disabled={disabled} onSelect={word => { const next = matchingDraft(draft, { type: 'select', word }); dispatch({ type: 'select', word }); onAnswerChange?.({ pairs: next.pairs }); }} onConnect={image => { const next = matchingDraft(draft, { type: 'connect', image }); dispatch({ type: 'connect', image }); onAnswerChange?.({ pairs: next.pairs }); }} /> : null}
     {mode !== 'REVIEW' && hint && activity.hint && !feedback ? <Text accessibilityLiveRegion="polite" style={[s.body, local.hint]}>{activity.hint}</Text> : null}
     </View>
-    {feedback ? <View onLayout={event => { const target = feedbackScrollTarget(scrollY.current, viewport.current, event.nativeEvent.layout.y, event.nativeEvent.layout.height); if (target !== null) scroll.current?.scrollTo({ y: target, animated: true }); }} accessibilityLiveRegion="polite" style={[local.feedback, { backgroundColor: feedbackCorrect(feedback) ? '#EDF9F2' : '#FFF3F1', borderColor: feedbackCorrect(feedback) ? '#D8EFE2' : '#F4DDD9' }]}>
+    {feedback ? <View onLayout={event => { feedbackBox.current = event.nativeEvent.layout; revealFeedback(); }} accessibilityLiveRegion="polite" style={[local.feedback, { backgroundColor: feedbackCorrect(feedback) ? '#EDF9F2' : '#FFF3F1', borderColor: feedbackCorrect(feedback) ? '#D8EFE2' : '#F4DDD9' }]}>
         <View style={local.contextText}><LearningIcon kind={feedbackCorrect(feedback) ? 'completion' : 'pencil'} rose={!feedbackCorrect(feedback)} /><Text style={[s.heading, { flex: 1, fontSize: 21, lineHeight: 28, color: feedbackCorrect(feedback) ? '#13874C' : '#A33C25' }]}>{feedbackTitle(feedback)}</Text></View>
         {matchingCorrection ? <Text style={s.body}>Revisa las conexiones marcadas en rojo.</Text> : feedback.feedback.explanation ? <Text style={s.body}>{feedback.feedback.explanation}</Text> : null}
         {!feedbackCorrect(feedback) && correctAnswer ? <Text style={s.body}>{matching ? 'Respuesta correcta:\n' : 'Respuesta esperada: '}{correctAnswer}</Text> : null}

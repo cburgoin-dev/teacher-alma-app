@@ -1,6 +1,15 @@
 export type MapPoint = { x: number; y: number };
 export type MapStop = MapPoint & { top: number; height: number; size: number; right: boolean };
 
+// Bus bottom-center follows the exact painted connector and parks above each node.
+export function busStops(from: MapStop, to: MapStop, sectionTransition: boolean): MapPoint[] {
+  return [
+    { x: from.x, y: from.y - from.size / 2 - 2 },
+    ...curvedDashes(from, to, sectionTransition),
+    { x: to.x, y: to.y - to.size / 2 - 2 },
+  ];
+}
+
 // Section markers add room inside a single global coordinate system.
 // Neither ordering nor learning/access states are decided here.
 export function courseStops(width: number, expanded: boolean[], sectionStarts: boolean[], fontScale = 1): MapStop[] {

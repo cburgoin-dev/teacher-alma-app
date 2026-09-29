@@ -12,13 +12,15 @@ export function ConversationView({ content, disabled, busy = false, submit }: { 
   const steps = content.steps.filter(step => step.kind === 'CHOICE');
   const active = steps[cursor];
   const boundary = active ? content.steps.findIndex(step => step.id === active.id) : content.steps.length;
-  const send = () => submit({ choices: Object.entries(choices).map(([stepId, optionId]) => ({ stepId, optionId })) });
+  const send = () => {
+    if (disabled || closing.current) return;
+    closing.current = true;
+    submit({ choices: Object.entries(choices).map(([stepId, optionId]) => ({ stepId, optionId })) });
+  };
   const advance = () => {
     if (disabled || closing.current) return;
     if (cursor === steps.length - 1) {
-      closing.current = true; // Covers a second tap before React commits the disabled state.
       setCursor(steps.length);
-      send();
     } else setCursor(cursor + 1);
   };
   return <View style={s.stack}>
@@ -40,7 +42,7 @@ export function ConversationView({ content, disabled, busy = false, submit }: { 
           </Pressable>;
         })}
         <Button title="Continuar" disabled={disabled} busy={busy} onPress={advance} />
-      </> : <Button title="Continuar" disabled={disabled} busy={busy} onPress={send} />}
+      </> : <Button title="Continuar al crucigrama" disabled={disabled} busy={busy} onPress={send} />}
     </View>
   </View>;
 }

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
+import { finishCompletion } from '../courses/completionMotion';
+import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import { ActivityIndicator, Alert, BackHandler, KeyboardAvoidingView, Platform, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { useFocusEffect, usePreventRemove } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -21,7 +22,14 @@ export function UnitChallengeScreen({ route, navigation }: NativeStackScreenProp
   const state = useSyncExternalStore(flow.subscribe, flow.snapshot);
   const insets = useSafeAreaInsets();
   const { fontScale } = useWindowDimensions();
-  const exit = useCallback(() => navigation.popTo('Roadmap', { courseId }), [navigation, courseId]);
+  const leaving = useRef(false);
+  const exit = useCallback(() => {
+    if (leaving.current) return;
+    leaving.current = true;
+    const snapshot = flow.snapshot();
+    const progressed = snapshot.response?.run.status === 'COMPLETED' && snapshot.response.result?.passed === true && !snapshot.metadata?.progress.passed;
+    navigation.popTo('Roadmap', { courseId, completionTicket: finishCompletion(route.params.completionTicket, progressed) });
+  }, [navigation, courseId, flow, route.params.completionTicket]);
   useEffect(() => { void flow.load(); return flow.dispose; }, [flow]);
   const active = state.response?.run.status === 'ACTIVE' || (!state.response && !!state.metadata?.activeRun);
   const guarded = !state.exited && (active || state.pending || state.busy);
@@ -41,7 +49,7 @@ export function UnitChallengeScreen({ route, navigation }: NativeStackScreenProp
   const canStart = metadata?.access.hasAccess && metadata.progression.unlocked;
   return <KeyboardAvoidingView style={s.page} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <View pointerEvents="none" accessible={false} style={{ position: 'absolute', top: 100, bottom: 0, left: 0, right: 0, opacity: phase ? .35 : .85 }}><ChallengeBackdrop /></View>
-    <ContextualHeader title="Reto de unidad" safeTop onBack={requestExit} disabled={state.busy} position={phase && metadata ? `${phase.position} de ${state.response?.run.totalPhases ?? metadata.challenge.phaseCount}` : undefined} />
+    <ContextualHeader prominent title="Reto de unidad" safeTop onBack={requestExit} disabled={state.busy} position={phase && metadata ? `${phase.position} de ${state.response?.run.totalPhases ?? metadata.challenge.phaseCount}` : undefined} />
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[s.content, { paddingBottom: insets.bottom + 24 }]}>
       {state.busy && !metadata ? <ActivityIndicator color="#0062E9" accessibilityLabel="Cargando reto" /> : null}
       {state.error ? <View style={s.card}><Text accessibilityRole="alert" style={s.body}>{state.error}</Text><Button title="Reintentar" disabled={state.busy} busy={state.busy} onPress={() => { void flow.retry(); }} /></View> : null}

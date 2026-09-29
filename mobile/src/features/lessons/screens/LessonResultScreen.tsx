@@ -1,3 +1,5 @@
+import { useRef } from 'react';
+import { finishCompletion } from '../../courses/completionMotion';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import ChevronRight from 'lucide-react-native/icons/chevron-right';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
@@ -26,7 +28,12 @@ export function CompletionHero({ perfect }: { perfect: boolean }) {
 export function LessonResultScreen({ route, navigation }: NativeStackScreenProps<CoursesStackParamList, 'LessonResult'>) {
   const { courseId, result: response } = route.params;
   const insets = useSafeAreaInsets();
-  const exit = () => navigation.popTo('Roadmap', { courseId });
+  const leaving = useRef(false);
+  const exit = () => {
+    if (leaving.current) return;
+    leaving.current = true;
+    navigation.popTo('Roadmap', { courseId, completionTicket: finishCompletion(route.params.completionTicket, response.mode !== 'REPLAY') });
+  };
   if (response.mode === 'REPLAY') return <ScrollView style={s.page} contentContainerStyle={[s.content, local.content, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 24 }]}>
     <View style={local.hero}><CompletionHero perfect={response.result.isPerfect} /><Text style={[s.title, local.center]}>¡Repaso completado!</Text></View>
     <View style={local.identity}>
@@ -72,7 +79,7 @@ export function LessonResultScreen({ route, navigation }: NativeStackScreenProps
       accessibilityRole="button"
       accessibilityLabel={`${result.pendingReviewCount} ${result.pendingReviewCount === 1 ? 'ejercicio' : 'ejercicios'} para repasar. De esta lección`}
       accessibilityHint="Abre el repaso de ejercicios pendientes"
-      onPress={() => navigation.navigate('Review', { courseId, preferredLessonId: response.lesson.id })}
+      onPress={() => { finishCompletion(route.params.completionTicket, false); navigation.navigate('Review', { courseId, preferredLessonId: response.lesson.id }); }}
       style={({ pressed }) => [local.reviewPending, pressed && local.reviewPressed]}>
         <View style={local.reviewBadge}><LearningIcon kind="pencil" plain color="#D72E50" size={27} /></View>
         <View style={{ flex: 1, gap: 3 }}><Text style={local.reviewTitle}>{result.pendingReviewCount} {result.pendingReviewCount === 1 ? 'ejercicio para repasar' : 'ejercicios para repasar'}</Text><Text style={local.reviewCaption}>De esta lección</Text></View>

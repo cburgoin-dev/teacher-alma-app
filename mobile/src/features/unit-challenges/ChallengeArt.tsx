@@ -17,11 +17,9 @@ export function ChallengeHero() {
     <Path d="M152 43h46v38q0 28-23 28t-23-28Zm18 61h10v23h15v9h-40v-9h15" fill={colors.white} />
     <Path d="m175 56 6 12 13 2-10 9 2 13-11-6-11 6 2-13-10-9 13-2Z" fill={colors.red} />
     <Path d="m93 30-12-11m21 1-3-14m148 122 13 5m-19 1 8 15" stroke="#8CCAFF" strokeWidth="7" strokeLinecap="round" />
-    <Rect x="9" y="51" width="65" height="49" rx="15" fill="#FFF" stroke="#CCE7FF" />
-    <Path d="m50 96 9 14 2-15" fill="#FFF" />
+    <Path d="M24 51h35q15 0 15 15v19q0 15-13 15l-2 10-9-10H24Q9 100 9 85V66q0-15 15-15Z" fill="#FFF" stroke="#CCE7FF" strokeLinejoin="round" />
     <Circle cx="27" cy="74" r="4" fill="#0980F5" /><Circle cx="42" cy="74" r="4" fill="#0980F5" /><Circle cx="57" cy="74" r="4" fill="#0980F5" />
-    <Rect x="275" y="42" width="62" height="53" rx="15" fill="#FFF" stroke="#FFC7D3" />
-    <Path d="m286 90-4 14 15-12" fill="#FFF" /><Path d="M289 58h32m-32 12h25m-25 12h19" stroke={brandColors.red} strokeWidth="4" strokeLinecap="round" />
+    <Path d="M290 42h32q15 0 15 15v23q0 15-15 15h-25l-15 9 4-10q-11-2-11-14V57q0-15 15-15Z" fill="#FFF" stroke="#FFC7D3" strokeLinejoin="round" /><Path d="M289 58h32m-32 12h25m-25 12h19" stroke={brandColors.red} strokeWidth="4" strokeLinecap="round" />
   </Svg>;
 }
 export function RouteBus() {
@@ -33,7 +31,7 @@ export function RouteBus() {
 }
 export function ChallengeBackdrop() {
   return <Svg pointerEvents="none" width="100%" height="100%" viewBox="0 0 400 800" preserveAspectRatio="xMidYMin slice" accessible={false}>
-    <Circle cx="413" cy="26" r="100" fill="#E4F3ED" /><Circle cx="-45" cy="300" r="100" fill="#DFF1FD" /><Circle cx="400" cy="735" r="110" fill="#E6F3ED" />
+    <Circle cx="413" cy="115" r="100" fill="#E4F3ED" /><Circle cx="-45" cy="300" r="100" fill="#DFF1FD" /><Circle cx="420" cy="680" r="110" fill="#E6F3ED" />
     <Path d="M284 147q-1-18 17-20 10-28 30-13 16 1 16 18 22 2 22 18 0 13-18 13h-51q-20 0-16-16ZM12 492q0-14 15-16 10-24 28-11 15 0 15 17 18 0 18 15 0 10-17 10H29q-18 0-17-15" fill="#D7EDFC" />
     <Path d="M351 230v-25m-20 80 20-56 20 56Zm-2 0h44v46h-44Zm-6 46h56v137h-56Z" fill="#C3E3F7" stroke="#C3E3F7" strokeWidth="4" strokeLinejoin="round" />
     <Circle cx="351" cy="355" r="20" fill="#EFF9FF" /><Path d="M351 343v14l10 5m-24 31v57m14-57v57m14-57v57" stroke="#AAD3EE" strokeWidth="4" fill="none" strokeLinecap="round" />
