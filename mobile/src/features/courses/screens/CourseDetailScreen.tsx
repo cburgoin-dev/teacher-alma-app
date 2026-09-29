@@ -76,7 +76,7 @@ export function CourseDetailScreen({ route, navigation }: NativeStackScreenProps
         {roadmap.topics.length ? roadmap.topics.map((topic, index) => <View key={topic.id} style={local.topic}>
           <View style={local.number}><Text style={local.numberText}>{index + 1}</Text></View>
           <Text style={local.topicTitle}>{topic.title}</Text>
-          <Text style={local.topicMeta}>{topic.lessons.length}{'\n'}lecc.</Text>
+          <Text style={local.topicMeta}>{topic.nodes.filter(node => node.type === 'LESSON').length}{'\n'}lecc.</Text>
         </View>) : <Text style={styles.body}>Los temas estarán disponibles próximamente.</Text>}
       </View>
       {startError ? <Text accessibilityRole="alert" style={[styles.body, { color: '#B21F36' }]}>{errorMessage(startError)}</Text> : null}

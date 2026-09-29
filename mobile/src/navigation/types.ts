@@ -5,6 +5,7 @@ export type CoursesStackParamList = {
   Courses: undefined;
   CourseDetail: { courseId: string };
   Roadmap: { courseId: string };
+  UnitChallenge: { courseId: string; unitChallengeId: string };
   Lesson: { courseId: string; lessonId: string };
   LessonResult: { courseId: string; result: LessonOutcome };
   Review: { courseId?: string; preferredLessonId?: string };

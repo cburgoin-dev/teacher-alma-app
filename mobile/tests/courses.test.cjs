@@ -56,7 +56,7 @@ test('one course path connects all topic boundaries, preserves order and trims o
 
 const course = { id: '550e8400-e29b-41d4-a716-446655440000', status: 'PUBLISHED', progress: null, access: { hasFullAccess: false, hasFreeContent: true, source: 'NONE' } };
 const lesson = { progressStatus: 'NOT_STARTED', access: { type: 'FREE', hasAccess: true }, progression: { unlocked: true, isCurrent: false, lockReason: null } };
-const roadmap = { topics: [{ lessons: [lesson] }] };
+const roadmap = { topics: [{ nodes: [lesson] }] };
 
 test('responsive path alternates sides with wide amplitude and keeps nodes inside the viewport', () => {
   for (const width of [280, 320, 360, 600]) {
@@ -94,8 +94,8 @@ test('coming soon never offers a start, even if progress exists', () => {
 });
 test('start uses first lesson access, not existence of any free lesson', () => {
   assert.equal(detailAction(course, roadmap), 'START');
-  assert.equal(detailAction(course, { topics: [{ lessons: [{ ...lesson, access: { type: 'PAID', hasAccess: false } }, lesson] }] }), 'ACCESS');
-  assert.equal(detailAction(course, { topics: [{ lessons: [{ ...lesson, access: { type: 'PAID', hasAccess: true } }] }] }), 'START');
+  assert.equal(detailAction(course, { topics: [{ nodes: [{ ...lesson, access: { type: 'PAID', hasAccess: false } }, lesson] }] }), 'ACCESS');
+  assert.equal(detailAction(course, { topics: [{ nodes: [{ ...lesson, access: { type: 'PAID', hasAccess: true } }] }] }), 'START');
 });
 test('empty course cannot start; existing progress offers route', () => {
   assert.equal(detailAction(course, { topics: [] }), 'EMPTY');

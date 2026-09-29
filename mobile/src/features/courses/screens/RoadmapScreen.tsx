@@ -14,7 +14,7 @@ import { initialRoadmapOffset, roadmapTarget } from '../roadmapPosition';
 
 function openLesson(lesson: Lesson, enter: () => void) {
   const state = lessonState(lesson);
-  if (state === 'LOCKED_PREREQUISITE') Alert.alert('Una lección a la vez', 'Completa primero la lección anterior de la ruta para desbloquear esta lección.');
+  if (state === 'LOCKED_PREREQUISITE') Alert.alert('Continúa en orden', 'Completa los pasos anteriores de la ruta, incluido el reto de unidad cuando corresponda.');
   else if (state === 'LOCKED_ACCESS') showAccessInfo();
   else enter();
 }
@@ -56,11 +56,11 @@ export function RoadmapScreen({ route, navigation }: NativeStackScreenProps<Cour
     <View style={local.summary}>
       <Text style={local.courseChip}>{roadmap.course.title}</Text>
       <ProgressBar percentage={roadmap.progress.percentage} />
-      <Text style={local.summaryText}>{roadmap.progress.completedLessons} de {roadmap.progress.totalLessons} lecciones completadas</Text>
+      <Text style={local.summaryText}>{roadmap.progress.completedRequiredNodes} de {roadmap.progress.totalRequiredNodes} pasos completados</Text>
     </View>
-    {roadmap.progress.totalLessons > 0 && roadmap.progress.completedLessons === roadmap.progress.totalLessons
+    {roadmap.progress.totalRequiredNodes > 0 && roadmap.progress.completedRequiredNodes === roadmap.progress.totalRequiredNodes
       ? <Text style={local.complete}>¡Curso completado! Tu ruta sigue aquí para repasar.</Text> : null}
-    {!roadmap.topics.length ? <ResourceState empty="La ruta de este curso estará disponible próximamente." /> : <View style={local.map} onLayout={e => setMapY(e.nativeEvent.layout.y)}><CoursePath topics={roadmap.topics} targetId={target} onTargetLayout={onTargetLayout} onLessonPress={lesson => openLesson(lesson, () => navigation.navigate('Lesson', { courseId: route.params.courseId, lessonId: lesson.id }))} /></View>}
+    {!roadmap.topics.length ? <ResourceState empty="La ruta de este curso estará disponible próximamente." /> : <View style={local.map} onLayout={e => setMapY(e.nativeEvent.layout.y)}><CoursePath topics={roadmap.topics} currentNodeId={roadmap.currentNode?.id} targetId={target} onTargetLayout={onTargetLayout} onLessonPress={lesson => openLesson(lesson, () => lesson.type === 'UNIT_CHALLENGE' ? navigation.navigate('UnitChallenge', { courseId: route.params.courseId, unitChallengeId: lesson.id }) : navigation.navigate('Lesson', { courseId: route.params.courseId, lessonId: lesson.id }))} /></View>}
   </ScrollView>;
 }
 const local = StyleSheet.create({

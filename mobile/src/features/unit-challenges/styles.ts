@@ -1,0 +1,20 @@
+import { StyleSheet } from 'react-native';
+export const challengeStyles = StyleSheet.create({
+  page: { flex: 1, backgroundColor: '#EFF8FE' },
+  content: { padding: 20, gap: 18, maxWidth: 640, width: '100%', alignSelf: 'center' },
+  stack: { gap: 14 }, title: { color: '#101B4D', fontSize: 29, fontWeight: '800', lineHeight: 36 },
+  heading: { color: '#101B4D', fontSize: 21, fontWeight: '700', lineHeight: 28 },
+  body: { color: '#61759D', fontSize: 17, lineHeight: 25 }, caption: { color: '#61759D', fontSize: 14, lineHeight: 20 },
+  chip: { alignSelf: 'flex-start', backgroundColor: '#DDEFFF', paddingVertical: 7, paddingHorizontal: 14, color: '#0062E9', borderRadius: 22, fontWeight: '800', fontSize: 15 },
+  card: { backgroundColor: '#FFFFFFE8', borderRadius: 25, borderWidth: 1, borderColor: '#C4E2FF', padding: 16, gap: 14 },
+  includes: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }, tile: { flex: 1, minWidth: 120, gap: 8, alignItems: 'center', padding: 12, borderRadius: 20, backgroundColor: '#F3F9FF' },
+  note: { textAlign: 'center', backgroundColor: '#FFF0F3', color: '#E93254', padding: 14, borderRadius: 18, fontSize: 14, fontWeight: '600', lineHeight: 21 },
+  chatRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 9 }, avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#C9E6FF', alignItems: 'center', justifyContent: 'center' }, avatarText: { color: '#0062E9', fontWeight: '800', fontSize: 19 },
+  bubble: { flexShrink: 1, borderRadius: 22, backgroundColor: '#FFF', padding: 15, gap: 4, borderWidth: 1, borderColor: '#D9EDFC' }, reply: { alignSelf: 'flex-end', marginLeft: 40, backgroundColor: '#FFE8EE', borderColor: '#FFF' },
+  speaker: { fontSize: 13, color: '#61759D', fontWeight: '600' }, chatText: { fontSize: 19, color: '#101B4D', lineHeight: 27 },
+  option: { borderWidth: 1.5, borderColor: '#B7DAFF', borderRadius: 24, minHeight: 52, padding: 14, justifyContent: 'center', backgroundColor: '#FFF' }, optionText: { color: '#0062E9', fontWeight: '700', fontSize: 18, textAlign: 'center', lineHeight: 25 },
+  selected: { backgroundColor: '#FFE9EF', borderColor: '#FF8098' },
+  cell: { width: 44, height: 48, borderWidth: 1, borderColor: '#8FC4FF', borderRadius: 5, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF' }, blocked: { backgroundColor: '#233F69' }, letter: { color: '#101B4D', fontSize: 23, fontWeight: '700' }, cellNumber: { position: 'absolute', left: 3, top: 0, fontSize: 10, color: '#42638B' },
+  input: { minHeight: 52, borderWidth: 1.5, borderColor: '#97C9FD', borderRadius: 14, padding: 12, color: '#101B4D', fontSize: 21, backgroundColor: '#FFF', letterSpacing: 3 }, clue: { minHeight: 46, padding: 9, borderRadius: 12, borderWidth: 1, borderColor: 'transparent' },
+  score: { alignItems: 'center', gap: 12 }, scoreNumber: { color: '#101B4D', fontSize: 34, fontWeight: '800' },
+});

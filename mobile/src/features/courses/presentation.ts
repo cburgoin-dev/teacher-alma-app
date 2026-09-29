@@ -15,7 +15,7 @@ export function catalogLabel(course: Course): string {
 }
 export function detailAction(course: CourseDetail, roadmap: Roadmap): 'SOON' | 'EMPTY' | 'ROUTE' | 'ACCESS' | 'START' {
   if (course.status === 'COMING_SOON') return 'SOON';
-  const firstLesson = roadmap.topics.flatMap(topic => topic.lessons)[0];
+  const firstLesson = roadmap.topics.flatMap(topic => topic.nodes)[0];
   if (!firstLesson) return 'EMPTY';
   if (course.progress && course.progress.status !== 'NOT_STARTED') return 'ROUTE';
   return firstLesson.access.hasAccess ? 'START' : 'ACCESS';
@@ -28,6 +28,6 @@ export function lessonState(lesson: Lesson) {
   return 'AVAILABLE';
 }
 export const lessonLabels = {
-  COMPLETED: 'Completada', CURRENT: 'Tu siguiente lección', AVAILABLE: 'Disponible',
-  LOCKED_PREREQUISITE: 'Completa la lección anterior', LOCKED_ACCESS: 'Requiere acceso',
+  COMPLETED: 'Completado', CURRENT: 'Tu siguiente paso', AVAILABLE: 'Disponible',
+  LOCKED_PREREQUISITE: 'Completa los pasos anteriores', LOCKED_ACCESS: 'Requiere acceso',
 };

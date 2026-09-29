@@ -42,9 +42,9 @@ export function LessonResultScreen({ route, navigation }: NativeStackScreenProps
     </View> : null}
     <Button title="Continuar mi ruta" arrow onPress={exit} />
   </ScrollView>;
-  const { result, nextLesson, courseProgress, course } = response;
-  const access = nextLesson?.lockReason === 'ACCESS';
-  const accessible = nextLesson?.accessible && !access;
+  const { result, nextNode, courseProgress, course } = response;
+  const access = nextNode?.lockReason === 'ACCESS';
+  const accessible = nextNode?.accessible && !access;
   return <ScrollView style={s.page} contentContainerStyle={[s.content, local.content, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 24 }]}>
     <View style={local.hero}>
       <CompletionHero perfect={result.isPerfect} />
@@ -62,12 +62,12 @@ export function LessonResultScreen({ route, navigation }: NativeStackScreenProps
     </View> : null}
     <View style={local.progress}>
       <View style={local.progressHeading}><Text style={[s.heading, { flex: 1 }]}>Progreso del curso</Text><Text style={[s.heading, local.courseTitle]}>{Math.round(courseProgress.percentage)}%</Text></View>
-      <View style={local.track} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: courseProgress.percentage }} accessibilityLabel="Progreso de lecciones obligatorias">
+      <View style={local.track} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: courseProgress.percentage }} accessibilityLabel="Progreso de pasos obligatorios">
         <View style={[local.fill, { width: `${Math.max(0, Math.min(100, courseProgress.percentage))}%` }]} />
       </View>
       <View style={local.courseMetadata}>
         {courseLabel(course) ? <Text style={s.chip}>{courseLabel(course)}</Text> : null}
-        <Text accessibilityLabel={`${courseProgress.completedLessons} de ${courseProgress.totalLessons} lecciones completadas`} style={s.caption}>{courseProgress.completedLessons} de {courseProgress.totalLessons}</Text>
+        <Text accessibilityLabel={`${courseProgress.completedRequiredNodes} de ${courseProgress.totalRequiredNodes} pasos completados`} style={s.caption}>{courseProgress.completedRequiredNodes} de {courseProgress.totalRequiredNodes}</Text>
       </View>
     </View>
     {result.pendingReviewCount > 0 ? <Pressable
@@ -82,11 +82,11 @@ export function LessonResultScreen({ route, navigation }: NativeStackScreenProps
     </Pressable> : result.isPerfect ? <View style={[local.review, local.positive]}>
       <LearningIcon kind="completion" /><Text style={[s.heading, { flex: 1, color: '#13874C' }]}>¡Sin errores para repasar!</Text>
     </View> : null}
-    {nextLesson ? <View style={[local.next, access && local.premium]}>
-      <Text style={[s.caption, { color: access ? '#84550C' : '#0062E9', fontWeight: '700' }]}>SIGUIENTE LECCIÓN</Text>
-      <Text style={s.heading}>{nextLesson.title}</Text>
+    {nextNode ? <View style={[local.next, access && local.premium]}>
+      <Text style={[s.caption, { color: access ? '#84550C' : '#0062E9', fontWeight: '700' }]}>SIGUIENTE PASO</Text>
+      <Text style={s.heading}>{nextNode.title}</Text>
       {access ? <Text style={[s.body, { color: '#84550C' }]}>Contenido Premium · Requiere acceso</Text> : null}
-      {accessible ? <Button title="Siguiente lección" arrow onPress={() => navigation.replace('Lesson', { courseId, lessonId: nextLesson.id })} />
+      {accessible ? <Button title="Continuar en la ruta" arrow onPress={exit} />
         : access ? <Button title="Obtener acceso" tone="gold" onPress={showAccessInfo} />
           : <Text style={s.body}>Completa los pasos anteriores en la ruta.</Text>}
     </View> : <Text style={[s.heading, local.center]}>{courseProgress.status === 'COMPLETED' ? '¡Completaste este curso!' : 'Has llegado al final de la ruta disponible.'}</Text>}

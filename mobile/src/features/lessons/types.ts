@@ -45,8 +45,8 @@ export type LessonResult = {
   course?: { id: string; title: string; level: string | null };
   lesson: { id: string; title: string };
   result: { correctAnswers: number; totalActivities: number; isPerfect: boolean; pendingReviewCount: number };
-  courseProgress: { completedLessons: number; totalLessons: number; percentage: number; status: string };
-  nextLesson: { id: string; title: string; accessible: boolean; lockReason: string | null } | null;
+  courseProgress: import('../courses/types').Progress;
+  nextNode: import('../courses/types').NextNode | null;
 };
 export type ReplayCheckResponse = { isCorrect: boolean; feedback: AttemptResponse['feedback'] };
 // This is local UI history, not a persisted attempt or an API response.

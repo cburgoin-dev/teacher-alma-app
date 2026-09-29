@@ -96,7 +96,7 @@ test('incomplete starts NORMAL_RUN; completion racing with start switches to fre
 });
 test('Roadmap targets current lesson 5 after replay of completed lesson 3', () => {
   const { roadmapTarget, initialRoadmapOffset } = require('../src/features/courses/roadmapPosition.ts');
-  const roadmap = { progress: { completedLessons: 4, totalLessons: 8 }, topics: [{ lessons: Array.from({ length: 8 }, (_, i) => ({ id: String(i + 1), progression: { isCurrent: i === 4 }, progress: { status: i < 4 ? 'COMPLETED' : 'NOT_STARTED' } })) }] };
+  const roadmap = { progress: { completedLessons: 4, totalLessons: 8 }, currentNode: { type: 'LESSON', id: '5' }, topics: [{ nodes: Array.from({ length: 8 }, (_, i) => ({ id: String(i + 1), progression: { isCurrent: i === 4 }, progress: { status: i < 4 ? 'COMPLETED' : 'NOT_STARTED' } })) }] };
   assert.equal(roadmapTarget(structuredClone(roadmap)), '5'); assert.equal(initialRoadmapOffset(1000, 100, 600, 2000), 884);
 });
 
@@ -223,7 +223,7 @@ test('V6 normal Result names the course once and retains first-attempt score for
     const tree = nodes(LessonResultScreen({ route: { params: { courseId: 'c', result: {
       mode: 'NORMAL_RUN', lesson: { title: 'Nice to meet you!' }, course: { title: 'Inglés A1', level: 'A1' },
       result: { totalActivities: 2, correctAnswers, isPerfect: correctAnswers === 2, pendingReviewCount: correctAnswers === 1 ? 1 : 0 },
-      courseProgress: { completedLessons: 3, totalLessons: 8, percentage: 37.5, status: 'IN_PROGRESS' }, nextLesson: null,
+      courseProgress: { completedLessons: 3, totalLessons: 8, percentage: 37.5, status: 'IN_PROGRESS' }, nextNode: null,
     } } }, navigation: { popTo() {} } }));
     assert.equal(tree.filter(n => n === 'Inglés A1').length, 1);
     assert.ok(tree.includes(correctAnswers * 50));

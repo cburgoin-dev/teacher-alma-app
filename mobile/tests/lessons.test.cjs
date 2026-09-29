@@ -31,10 +31,10 @@ test('feedback and matching use only returned feedback, including successful ret
 test('roadmap targets current including ACCESS, completed last segment, and clamps layout-based positioning', () => {
   const { roadmapTarget, initialRoadmapOffset } = require('../src/features/courses/roadmapPosition.ts');
   const lessons = [{ id: 'a', progressStatus: 'COMPLETED', progression: { isCurrent: false } }, { id: 'b', progressStatus: 'NOT_STARTED', progression: { isCurrent: true, lockReason: 'ACCESS' } }];
-  const roadmap = { progress: { totalLessons: 2, completedLessons: 1 }, topics: [{ lessons }] };
+  const roadmap = { progress: { totalRequiredNodes: 2, completedRequiredNodes: 1 }, currentNode: { type: 'UNIT_CHALLENGE', id: 'b' }, topics: [{ nodes: lessons }] };
   assert.equal(roadmapTarget(roadmap), 'b');
-  assert.equal(roadmapTarget({ ...roadmap, progress: { totalLessons: 1, completedLessons: 1 } }), 'a');
-  assert.equal(roadmapTarget({ progress: { totalLessons: 0, completedLessons: 0 }, topics: [] }), null);
+  assert.equal(roadmapTarget({ ...roadmap, progress: { totalRequiredNodes: 1, completedRequiredNodes: 1 } }), 'a');
+  assert.equal(roadmapTarget({ progress: { totalRequiredNodes: 0, completedRequiredNodes: 0 }, topics: [] }), null);
   assert.equal(initialRoadmapOffset(80, 100, 700, 300), 0);
   assert.equal(initialRoadmapOffset(1200, 100, 700, 2500), 1048);
   assert.equal(initialRoadmapOffset(2400, 100, 700, 2500), 1800);

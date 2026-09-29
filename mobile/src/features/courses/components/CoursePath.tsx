@@ -7,14 +7,16 @@ import { lessonLabels, lessonState } from '../presentation';
 import { Button } from './ui';
 import { curvedDashes, courseStops } from './pathGeometry';
 import { PathScenery } from './PathScenery';
+import { RouteBus, Trophy } from '../../unit-challenges/ChallengeArt';
 
-export function CoursePath({ topics, onLessonPress, targetId, onTargetLayout }: {
+export function CoursePath({ topics, onLessonPress, targetId, onTargetLayout, currentNodeId }: {
   topics: Roadmap['topics']; onLessonPress: (lesson: Lesson) => void;
   targetId?: string | null; onTargetLayout?: (id: string, y: number) => void;
+  currentNodeId?: string | null;
 }) {
   const [width, setWidth] = useState(0);
   const { fontScale } = useWindowDimensions();
-  const entries = useMemo(() => topics.flatMap((topic, topicIndex) => topic.lessons.map((lesson, index) => ({ lesson, topic, topicIndex, sectionStart: index === 0 }))), [topics]);
+  const entries = useMemo(() => topics.flatMap((topic, topicIndex) => topic.nodes.map((lesson, index) => ({ lesson, topic, topicIndex, sectionStart: index === 0 }))), [topics]);
   const expanded = entries.map(({ lesson }) => lessonState(lesson) === 'CURRENT' || (lesson.progression.isCurrent && lessonState(lesson) === 'LOCKED_ACCESS'));
   const stops = courseStops(width, expanded, entries.map(entry => entry.sectionStart), fontScale);
   const targetY = stops[entries.findIndex(entry => entry.lesson.id === targetId)]?.y;
@@ -52,6 +54,7 @@ export function CoursePath({ topics, onLessonPress, targetId, onTargetLayout }: 
             <View style={[s.disc, { backgroundColor: fill, borderColor: state === 'AVAILABLE' ? colors.blue : '#FFFFFF90' }]}>
               <View pointerEvents="none" style={s.shine} />
               {locked ? <View><View style={s.shackle} /><View style={s.lockBody}><View style={[s.keyhole, { backgroundColor: fill }]} /></View></View>
+                : lesson.type === 'UNIT_CHALLENGE' ? <Trophy size={44} color="#FFF" />
                 : current ? <NavigationIcon name="CoursesTab" size={34} color="#FFF" filled />
                 : state === 'COMPLETED' ? <View style={s.check} /> : <Text style={s.symbol}>›</Text>}
             </View>
@@ -60,10 +63,11 @@ export function CoursePath({ topics, onLessonPress, targetId, onTargetLayout }: 
           <View style={[s.label, { left: labelLeft, width: labelWidth, top: stop.y - stop.top - (expanded[index] ? 82 : 32) * Math.min(fontScale, 1.5), alignItems: stop.right ? 'flex-end' : 'flex-start' }, expanded[index] && s.currentCard, expanded[index] && paid && { borderColor: '#D9AA43', backgroundColor: '#FFF1D3' }]}>
             {expanded[index] ? <><View pointerEvents="none" style={[s.cardJoin, stop.right ? { right: -9 } : { left: -9 }, paid && { backgroundColor: '#FFF1D3' }]} /><Text maxFontSizeMultiplier={1.5} style={[s.cardEyebrow, paid && { color: colors.gold }]}>{paid ? 'ACCESO PREMIUM' : 'SIGUIENTE PASO'}</Text></> : null}
             <Text numberOfLines={2} maxFontSizeMultiplier={1.5} style={[s.title, expanded[index] && !paid && { color: '#FFF', fontSize: 18, lineHeight: 23 }, { textAlign: stop.right ? 'right' : 'left' }]}>{index + 1}. {lesson.title}</Text>
-            <Text numberOfLines={2} maxFontSizeMultiplier={1.5} style={[s.meta, expanded[index] && !paid && { color: '#E4F2FF' }, { textAlign: stop.right ? 'right' : 'left' }]}>{current ? `Lección ${index + 1} de ${entries.length}` : lessonLabels[state]}</Text>
+            <Text numberOfLines={2} maxFontSizeMultiplier={1.5} style={[s.meta, expanded[index] && !paid && { color: '#E4F2FF' }, { textAlign: stop.right ? 'right' : 'left' }]}>{lesson.type === 'UNIT_CHALLENGE' ? `Reto de unidad · ${lessonLabels[state]}` : current ? `Paso ${index + 1} de ${entries.length}` : lessonLabels[state]}</Text>
             {locked && lesson.progressStatus === 'COMPLETED' ? <Text style={s.meta}>Completada</Text> : null}
             {expanded[index] ? <View style={{ width: '100%', marginTop: 5 }}><Button compact arrow={!paid} title={paid ? 'Ver acceso' : 'Continuar'} tone={paid ? 'gold' : 'red'} onPress={() => onLessonPress(lesson)} /></View> : null}
           </View>
+          {lesson.id === currentNodeId ? <View pointerEvents="none" accessible={false} style={{ position: 'absolute', left: stop.x - 22, top: stop.y - stop.top - radius - 44 }}><RouteBus /></View> : null}
         </View>;
       })}
       {entries.length ? <View style={s.finish}><View accessible={false} style={s.destination}><View style={s.flagPole} /><View style={s.finishFlag}><View style={s.flagSquare} /><View style={[s.flagSquare, { alignSelf: 'flex-end' }]} /></View></View><Text style={s.finishText}>Fin de la ruta</Text></View> : null}
