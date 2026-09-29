@@ -139,6 +139,25 @@ function nodes(node) {
   if (!node || typeof node === 'boolean') return [];
   return typeof node === 'object' ? [node, ...nodes(node.props?.children)] : [node];
 }
+
+test('shared CTA owns the full painted touch surface; busy preserves its label layout and blocks repeat taps', () => {
+  const { Button } = component('../src/features/courses/components/ui.tsx', {
+    '../../../theme': { colors: { red: '#F52A46', blue: '#0062E9' }, radius: { pill: 999 }, type: {} },
+    './CourseVisualIcon': { CourseVisualIcon: 'Icon' }, './CourseCover': { CourseCover: 'Cover' },
+  });
+  let taps = 0;
+  const idle = Button({ title: 'Comenzar reto', onPress: () => taps++ });
+  assert.equal(idle.type, 'Pressable'); idle.props.onPress(); assert.equal(taps, 1);
+  assert.equal(idle.props.children.props.pointerEvents, 'none');
+  const resting = idle.props.style({ pressed: false }).filter(Boolean);
+  const pressed = idle.props.style({ pressed: true }).filter(Boolean);
+  assert.ok(resting[0].minHeight >= 48);
+  assert.equal(resting[0], pressed[0]); assert.ok(pressed.at(-1).opacity < resting.at(-1).opacity);
+  const busy = Button({ title: 'Comenzar reto', onPress: () => taps++, busy: true });
+  assert.equal(busy.props.disabled, true); assert.equal(busy.props.accessibilityState.busy, true);
+  assert.ok(nodes(busy).includes('Comenzar reto'), 'Invisible label reserves identical layout during loading');
+  assert.deepEqual(busy.props.children.props.style, idle.props.children.props.style);
+});
 test('Replay Result renders 50%/100%, no historical Review/course progress/Next, and one route CTA', () => {
   const { LessonResultScreen } = component('../src/features/lessons/screens/LessonResultScreen.tsx');
   for (const correctAnswers of [1, 2]) {
@@ -251,9 +270,10 @@ test('Lesson Result has one red Roadmap CTA with accessible, locked or absent ne
   }
 });
 
-test('Conversation has one Continue per turn and at its natural close, preserving blanks and one phase payload', () => {
+test('Conversation final Continue closes and submits in one tap, preserving blanks and rejecting a second stale tap', () => {
   const values = []; let cursor = 0;
-  const hooks = { useState: initial => { const i = cursor++; if (!(i in values)) values[i] = initial; return [values[i], value => { values[i] = typeof value === 'function' ? value(values[i]) : value; }]; } };
+  const closing = { current: false };
+  const hooks = { useRef: () => closing, useState: initial => { const i = cursor++; if (!(i in values)) values[i] = initial; return [values[i], value => { values[i] = typeof value === 'function' ? value(values[i]) : value; }]; } };
   const { ConversationView } = component('../src/features/unit-challenges/phaseViews.tsx', { react: hooks, './styles': { challengeStyles: {} } });
   const content = { participants: [{ id: 'emma', name: 'Emma' }], steps: [
     { id: 'm1', kind: 'MESSAGE', speakerId: 'emma', text: 'Hello' },
@@ -272,9 +292,10 @@ test('Conversation has one Continue per turn and at its natural close, preservin
   advance(render()); // No selection: the first choice must remain omitted.
   let tree = render(); tree.find(n => n.type === 'Pressable').props.onPress();
   tree = render(); assert.equal(tree.find(n => n.type === 'Pressable').props.accessibilityState.checked, true);
-  advance(tree); assert.equal(submissions.length, 0);
+  advance(tree); assert.equal(submissions.length, 1);
+  advance(tree); assert.equal(submissions.length, 1); // Same handler before the disabled render.
   tree = render(); assert.ok(tree.includes('Nice to meet you!')); assert.ok(tree.includes('See you!'));
-  advance(tree); assert.deepEqual(submissions, [{ choices: [{ stepId: 'q2', optionId: 'c' }] }]);
+  assert.deepEqual(submissions, [{ choices: [{ stepId: 'q2', optionId: 'c' }] }]);
   assert.equal(render(true).find(n => n.type === 'Button').props.disabled, true);
 });
 

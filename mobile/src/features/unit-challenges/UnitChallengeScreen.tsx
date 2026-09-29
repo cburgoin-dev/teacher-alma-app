@@ -43,8 +43,8 @@ export function UnitChallengeScreen({ route, navigation }: NativeStackScreenProp
     <View pointerEvents="none" accessible={false} style={{ position: 'absolute', top: 100, bottom: 0, left: 0, right: 0, opacity: phase ? .35 : .85 }}><ChallengeBackdrop /></View>
     <ContextualHeader title="Reto de unidad" safeTop onBack={requestExit} disabled={state.busy} position={phase && metadata ? `${phase.position} de ${state.response?.run.totalPhases ?? metadata.challenge.phaseCount}` : undefined} />
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[s.content, { paddingBottom: insets.bottom + 24 }]}>
-      {state.busy ? <ActivityIndicator color="#0062E9" accessibilityLabel="Cargando reto" /> : null}
-      {state.error ? <View style={s.card}><Text accessibilityRole="alert" style={s.body}>{state.error}</Text><Button title="Reintentar" disabled={state.busy} onPress={() => { void flow.retry(); }} /></View> : null}
+      {state.busy && !metadata ? <ActivityIndicator color="#0062E9" accessibilityLabel="Cargando reto" /> : null}
+      {state.error ? <View style={s.card}><Text accessibilityRole="alert" style={s.body}>{state.error}</Text><Button title="Reintentar" disabled={state.busy} busy={state.busy} onPress={() => { void flow.retry(); }} /></View> : null}
       {metadata ? <>
         <Text style={s.chip}>TEMA {metadata.challenge.topic.position}</Text>
         <Text style={s.title}>{complete ? result.passed ? '¡Reto aprobado!' : 'Reto no aprobado' : phase?.type === 'CONVERSATION' ? phase.content.title : metadata.challenge.title}</Text>
@@ -52,15 +52,15 @@ export function UnitChallengeScreen({ route, navigation }: NativeStackScreenProp
           <Text style={s.body}>{metadata.challenge.title}</Text><ChallengeHero />
           <View style={[s.card, s.score]}>
             <View style={{ width: 180, height: 180, alignItems: 'center', justifyContent: 'center' }}>
-              <Svg width={180} height={180} style={{ position: 'absolute' }} accessible={false}><Circle cx={90} cy={90} r={78} fill="none" stroke="#DAEBFF" strokeWidth={13} /><Circle cx={90} cy={90} r={78} fill="none" stroke="#006FFF" strokeWidth={13} strokeDasharray={`${result.percentage / 100 * 490.09} 490.09`} rotation={-90} origin="90,90" strokeLinecap="round" /></Svg>
+              <Svg pointerEvents="none" width={180} height={180} style={{ position: 'absolute' }} accessible={false}><Circle cx={90} cy={90} r={78} fill="none" stroke="#DAEBFF" strokeWidth={13} /><Circle cx={90} cy={90} r={78} fill="none" stroke="#006FFF" strokeWidth={13} strokeDasharray={`${result.percentage / 100 * 490.09} 490.09`} rotation={-90} origin="90,90" strokeLinecap="round" /></Svg>
               <Text style={s.scoreNumber}>{result.percentage}%</Text><Text style={s.caption}>{result.correctItems}/{result.totalItems} correctas</Text>
             </View>
             <Text style={s.body}>{result.passed ? '¡Buen trabajo! Sigue aprendiendo en tu ruta.' : metadata.progress.passed || state.response?.topic?.completed ? 'Tu avance anterior se conserva. Puedes volver a intentarlo desde la ruta.' : 'Puedes volver a intentarlo desde la ruta.'}</Text>
           </View>
           <Button title="Continuar en la ruta" arrow onPress={exit} />
         </> : phase ? phase.type === 'CONVERSATION'
-          ? <ConversationView key={phase.id} content={phase.content} disabled={disabled} submit={answer => { void flow.submit(answer); }} />
-          : <CrosswordView key={phase.id} content={phase.content} disabled={disabled} submit={answer => { void flow.submit(answer); }} />
+          ? <ConversationView key={phase.id} content={phase.content} disabled={disabled} busy={state.busy} submit={answer => { void flow.submit(answer); }} />
+          : <CrosswordView key={phase.id} content={phase.content} disabled={disabled} busy={state.busy} submit={answer => { void flow.submit(answer); }} />
         : state.response?.run.status === 'ABANDONED' ? <><Text style={s.body}>Este intento fue abandonado.</Text><Button title="Volver a la ruta" onPress={exit} /></> : <>
           {metadata.challenge.description ? <Text style={s.body}>{metadata.challenge.description}</Text> : null}
           <ChallengeHero />
@@ -71,7 +71,7 @@ export function UnitChallengeScreen({ route, navigation }: NativeStackScreenProp
           {metadata.challenge.passingScore !== null ? <Text style={s.caption}>Para aprobar: {metadata.challenge.passingScore}% de respuestas correctas.</Text> : null}
           {metadata.progress.bestScore !== null ? <Text style={s.body}>Mejor resultado: {metadata.progress.bestScore}%</Text> : null}
           {!canStart ? <Text style={s.body}>{metadata.progression.lockReason === 'PREREQUISITE' ? 'Completa los pasos anteriores de la ruta para desbloquear este reto.' : 'Este reto requiere acceso al contenido.'}</Text> : null}
-          <Button title={metadata.activeRun ? 'Reanudar reto' : metadata.progress.passed ? 'Repetir reto completo' : 'Comenzar reto'} disabled={disabled || !canStart} onPress={() => { void flow.start(); }} />
+          <Button title={metadata.activeRun ? 'Reanudar reto' : metadata.progress.passed ? 'Repetir reto completo' : 'Comenzar reto'} disabled={disabled || !canStart} busy={state.busy} onPress={() => { void flow.start(); }} />
           <Button title="Más tarde" tone="blue" disabled={disabled} onPress={exit} />
         </>}
       </> : null}

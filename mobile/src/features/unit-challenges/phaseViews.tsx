@@ -1,16 +1,26 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Pressable, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { Button } from '../courses/components/ui';
 import { AudioButton } from '../lessons/components/AudioButton';
 import { cellsFor, crosswordLayout, entryNumber, readEntry, writeEntry } from './crossword';
 import type { Answer, Conversation, Crossword } from './types';
 import { challengeStyles as s } from './styles';
-export function ConversationView({ content, disabled, submit }: { content: Conversation; disabled: boolean; submit: (answer: Answer) => void }) {
+export function ConversationView({ content, disabled, busy = false, submit }: { content: Conversation; disabled: boolean; busy?: boolean; submit: (answer: Answer) => void }) {
+  const closing = useRef(false);
   const [cursor, setCursor] = useState(0);
   const [choices, setChoices] = useState<Record<string, string>>({});
   const steps = content.steps.filter(step => step.kind === 'CHOICE');
   const active = steps[cursor];
   const boundary = active ? content.steps.findIndex(step => step.id === active.id) : content.steps.length;
+  const send = () => submit({ choices: Object.entries(choices).map(([stepId, optionId]) => ({ stepId, optionId })) });
+  const advance = () => {
+    if (disabled || closing.current) return;
+    if (cursor === steps.length - 1) {
+      closing.current = true; // Covers a second tap before React commits the disabled state.
+      setCursor(steps.length);
+      send();
+    } else setCursor(cursor + 1);
+  };
   return <View style={s.stack}>
     {content.scenario ? <Text style={s.body}>{content.scenario}</Text> : null}
     <Text style={s.body}>Elige cómo responder en cada turno.</Text>
@@ -29,12 +39,12 @@ export function ConversationView({ content, disabled, submit }: { content: Conve
             <Text style={[s.optionText, selected && s.optionTextSelected]}>{option.text}</Text>
           </Pressable>;
         })}
-        <Button title="Continuar" disabled={disabled} onPress={() => setCursor(cursor + 1)} />
-      </> : <Button title="Continuar" disabled={disabled} onPress={() => submit({ choices: Object.entries(choices).map(([stepId, optionId]) => ({ stepId, optionId })) })} />}
+        <Button title="Continuar" disabled={disabled} busy={busy} onPress={advance} />
+      </> : <Button title="Continuar" disabled={disabled} busy={busy} onPress={send} />}
     </View>
   </View>;
 }
-export function CrosswordView({ content, disabled, submit }: { content: Crossword; disabled: boolean; submit: (answer: Answer) => void }) {
+export function CrosswordView({ content, disabled, busy = false, submit }: { content: Crossword; disabled: boolean; busy?: boolean; submit: (answer: Answer) => void }) {
   const { fontScale } = useWindowDimensions();
   const [width, setWidth] = useState(0);
   const layout = crosswordLayout(content.entries, width);
@@ -58,6 +68,6 @@ export function CrosswordView({ content, disabled, submit }: { content: Crosswor
       <TextInput accessibilityLabel={`Respuesta: ${entry.clue}, ${entry.length} letras`} editable={!disabled} value={readEntry(cells, entry)} autoCapitalize="characters" autoCorrect={false} spellCheck={false} maxLength={entry.length} placeholder="Escribe aquí" style={s.input} onChangeText={text => setCells(previous => writeEntry(previous, entry, text))} />
     </View> : null}
     <View style={s.clueColumns}>{(['ACROSS', 'DOWN'] as const).map(direction => <View key={direction} style={[s.clueColumn, { minWidth: Math.min(width, 130 * fontScale) }]}><Text style={s.clueHeading}>{direction === 'ACROSS' ? 'Horizontales' : 'Verticales'}</Text>{content.entries.filter(e => e.direction === direction).map(e => <Pressable accessibilityRole="button" accessibilityState={{ selected: e.id === selected, disabled }} key={e.id} disabled={disabled} onPress={() => setSelected(e.id)} style={[s.clue, e.id === selected && s.selected]}><Text style={[s.body, e.id === selected && s.clueSelected]}>{entryNumber(content.entries, e)}. {e.clue} ({e.length})</Text></Pressable>)}</View>)}</View>
-    <Button title="Continuar" disabled={disabled} onPress={() => submit({ entries: content.entries.map(e => ({ entryId: e.id, text: readEntry(cells, e) })) })} />
+    <Button title="Continuar" disabled={disabled} busy={busy} onPress={() => submit({ entries: content.entries.map(e => ({ entryId: e.id, text: readEntry(cells, e) })) })} />
   </View>;
 }

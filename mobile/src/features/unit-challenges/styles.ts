@@ -1,11 +1,11 @@
 import { StyleSheet } from 'react-native';
-import { colors, radius, space, type } from '../../theme';
+import { brandColors, colors, radius, space, type } from '../../theme';
 export const challengeStyles = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#EFF8FE' },
   content: { padding: space.xl, gap: space.lg, maxWidth: 640, width: '100%', alignSelf: 'center' },
   stack: { gap: space.md }, compact: { gap: space.sm },
-  title: { ...type.title, fontSize: 26, lineHeight: 32 },
-  heading: type.heading, body: type.body, caption: type.caption,
+  title: { ...type.title, fontSize: 26, lineHeight: 32, color: brandColors.navy },
+  heading: { ...type.heading, color: brandColors.navy }, body: type.body, caption: type.caption,
   chip: { ...type.caption, alignSelf: 'flex-start', backgroundColor: '#E3F0FF', paddingVertical: 4, paddingHorizontal: 12, color: colors.blue, borderRadius: radius.pill, fontWeight: '700' },
   card: { backgroundColor: colors.white, borderRadius: radius.card, borderWidth: 1, borderColor: colors.border, padding: space.lg, gap: space.md },
   includes: { gap: space.md }, tile: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },

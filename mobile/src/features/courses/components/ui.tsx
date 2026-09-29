@@ -12,11 +12,13 @@ export function Button({ title, onPress, disabled, busy, tone = 'red', compact =
   return <Pressable accessibilityRole="button" accessibilityState={{ disabled: disabled || busy, busy }}
     disabled={disabled || busy} onPress={onPress} accessibilityLabel={title}
     style={({ pressed }) => [styles.button, compact && styles.compactButton, buttonColors[tone], { opacity: disabled || busy ? .55 : pressed ? .78 : 1 }]}>
-    {busy ? <ActivityIndicator color={tone === 'red' ? '#FFF' : colors.blue} /> :
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+      <View pointerEvents="none" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', maxWidth: '100%', minHeight: compact ? 19 : 23 }}>
+        <View style={{ flexDirection: 'row', flexShrink: 1, alignItems: 'center', gap: 10, opacity: busy ? 0 : 1 }}>
         <Text maxFontSizeMultiplier={1.5} style={[styles.buttonText, { flexShrink: 1 }, compact && { fontSize: 14, lineHeight: 19 }, { color: textColors[tone] }]}>{title}</Text>
         {arrow ? <CourseVisualIcon name="arrow" color={textColors[tone]} size={compact ? 18 : 21} /> : null}
-      </View>}
+        </View>
+        {busy ? <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}><ActivityIndicator color={tone === 'red' ? '#FFF' : colors.blue} /></View> : null}
+      </View>
   </Pressable>;
 }
 const buttonColors = StyleSheet.create({

@@ -54,7 +54,7 @@ export function CoursePath({ topics, onLessonPress, targetId, onTargetLayout, cu
             <View style={[s.disc, { backgroundColor: fill, borderColor: state === 'AVAILABLE' ? colors.blue : '#FFFFFF90' }]}>
               <View pointerEvents="none" style={s.shine} />
               {locked ? <View><View style={s.shackle} /><View style={s.lockBody}><View style={[s.keyhole, { backgroundColor: fill }]} /></View></View>
-                : lesson.type === 'UNIT_CHALLENGE' ? <Trophy size={44} color="#FFF" />
+                : lesson.type === 'UNIT_CHALLENGE' ? <Trophy size={44} color="#FFF" accent={fill} />
                 : current ? <NavigationIcon name="CoursesTab" size={34} color="#FFF" filled />
                 : state === 'COMPLETED' ? <View style={s.check} /> : <Text style={s.symbol}>›</Text>}
             </View>

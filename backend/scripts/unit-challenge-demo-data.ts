@@ -14,17 +14,18 @@ export function unitChallengeDemo(topicId: string, topicNumber: number, accessTy
           { id: 'm1', kind: 'MESSAGE', speakerId: 'emma', text: "Hi! I'm Emma. What's your name?" },
           { id: 'q1', kind: 'CHOICE', prompt: 'Preséntate.',
             options: [{ id: 'a', text: "I'm Alex." }, { id: 'b', text: 'Good night!' }], correctOptionId: 'a' },
-          { id: 'm2', kind: 'MESSAGE', speakerId: 'emma', text: 'Nice to meet you, Alex!' },
+          // Linear content: this transition must work after either option or no answer.
+          { id: 'm2', kind: 'MESSAGE', speakerId: 'emma', text: "Before class, let's practise a greeting: nice to meet you!" },
           { id: 'q2', kind: 'CHOICE', prompt: 'Responde a Emma.',
             options: [{ id: 'a', text: 'Nice to meet you too!' }, { id: 'b', text: 'See you tomorrow!' }], correctOptionId: 'a' },
         ] } },
     { id: demoId(60001 + topicNumber * 2), unitChallengeId: challenge.id, type: 'CROSSWORD', position: 2,
-      config: { width: 9, height: 5, entries: [
-        { id: 'e1', clue: 'Hola', answer: 'HELLO', direction: 'ACROSS', row: 0, column: 0 },
-        { id: 'e2', clue: 'Él', answer: 'HE', direction: 'DOWN', row: 0, column: 0 },
-        { id: 'e3', clue: 'Nombre', answer: 'NAME', direction: 'ACROSS', row: 2, column: 0 },
-        { id: 'e4', clue: 'Yo', answer: 'I', direction: 'ACROSS', row: 4, column: 0 },
-        { id: 'e5', clue: 'Tú', answer: 'YOU', direction: 'DOWN', row: 1, column: 8 },
+      config: { width: 7, height: 7, entries: [
+        { id: 'e1', clue: 'Nombre', answer: 'NAME', direction: 'DOWN', row: 0, column: 3 },
+        { id: 'e2', clue: 'Hola', answer: 'HELLO', direction: 'ACROSS', row: 3, column: 2 },
+        { id: 'e3', clue: 'Casa', answer: 'HOME', direction: 'DOWN', row: 3, column: 2 },
+        { id: 'e4', clue: 'Conocer: Nice to ___ you!', answer: 'MEET', direction: 'ACROSS', row: 5, column: 2 },
+        { id: 'e5', clue: 'Adiós', answer: 'BYE', direction: 'ACROSS', row: 6, column: 0 },
       ] } },
   ];
   // Validate before a caller opens/imports database writes.
