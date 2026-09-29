@@ -85,3 +85,43 @@ After measuring and centering the relevant segment, a layout frame settles befor
 Physical acceptance: complete a pending Lesson from Roadmap, return through Result and observe the segment/bus/arrival; repeat for a first passed Challenge. Check failed Challenge, completed-node replay, normal entry and app reload do not travel. Repeat with Android Remove animations/Reduce Motion enabled, large fonts, narrow screen, and leaving the screen mid-animation. Inspect logo edges and the full feedback for Lesson 3 MC with the fixed Continue visible. These are device checks still to be performed by the user, not claims of physical acceptance.
 
 Validation: TypeScript and all 89 Mobile tests passed, including Courses/Lessons/Unit Challenge and motion eligibility, geometry, reduced motion, native animation cleanup, viewport fit and feedback visibility. Android export and git diff --check passed. No seed/backend validation was needed because neither changed. Physical acceptance remains pending.
+
+## Iteration 5 acceptance
+
+This section supersedes iteration 4's 3-second timing, whole-segment viewport requirement and full-resolution logo decode. Backend contracts, lifecycle, progression, scoring, passing, replay, resume and abandonment are unchanged.
+
+Motion uses one native Animated progress value: 3500ms travel plus 450ms arrival (3950ms total). Arc-length samples of the existing connector drive the bus, dash painting thresholds and camera target. Rotation follows neighboring sample tangents, unwrapped to avoid full spins; the bus returns upright on arrival. A 1.2dp suspension movement and three faint exhaust dots run only during travel. The scroll camera follows those same samples via the native value listener, without per-frame React state or overlapping scroll animations. Reduced Motion resolves immediately. Frame smoothness and bridge latency still require physical acceptance; automated geometry checks cannot prove on-device synchronization.
+
+The DEV-only `DEV · Replay motion · 1×` button is above the course summary. Scroll back to the top after a preview to repeat it. It reuses CoursePath and the same timing/camera/arrival renderer using the completed predecessor of the real current node. It makes no API calls, changes no progress and creates/consumes no completion ticket. It is absent from production. Normal product navigation still needs the existing single-use, backend-confirmed completion ticket; failed challenges, replay and normal entry do not animate.
+
+Conversation shows the learner bubble, waits 400ms (including its entrance), types three dots for 600ms before each following authored message, then reveals it. No authored following message means no invented Emma response. The final learner reply remains readable before the single `Continuar al crucigrama` CTA appears; only that CTA submits. Timers/animations clean up on unmount and Reduced Motion skips the sequence. Tails are presentation only. No branching or immediate correctness.
+
+Crossword has a separate local input draft. Switching clues empties the TextInput without touching the shared grid. Existing crossing letters stay visible only in their cells. Typing starts at the word's first position and updates shared cells; deleting affects only positions typed in the current draft. Five connected demo words and backend coordinates are unchanged.
+
+### Logo asset preparation
+
+The original official PNG remains byte-for-byte unchanged (SHA-256 listed above). `assets/branding/la-teacher-alma-mobile.png` and @2x/@3x/@4x are transparent 60x44dp canvases with the original proportions, prepared using Lanczos3 downsampling. Metro selects the device-density variant. Even the 4x decode is only 165 KiB, versus ~28.5 MiB previously. No redraw, sharpening, recoloring or runtime dependency was added. Optional regeneration: `node scripts/prepare-logo.cjs <path-to-sharp>` from mobile, using an externally available development copy of Sharp. The source has sufficient pixels; perfect preservation of tiny strokes at this footprint is not guaranteed. An official SVG or brand-authored small-size export remains the appropriate future asset, not an automatically traced substitute. Physical sharpness remains unverified.
+
+### Reproducible physical route
+
+The explicit reset wrapper below calls the existing guarded local seed. It resets the configured demo learner's progress in `teacher_alma_dev`; it is never run by tests, app startup or export. Use it only when you want a fresh acceptance route. No production seed logic or Admin tool was added.
+
+1. In `backend`, run `npm run demo:lessons:reset`, then `npm run demo:check`. Use the existing local backend/Expo setup above. Lessons 1–2 are complete, Lesson 3 is pending; Challenge and Lesson 5 unlock through real completion/passing.
+2. Open Roadmap, finish Lesson 3, then tap its Result route CTA.
+3. Observe one completion transition and arrival pulse. It should take about 3.95 seconds, with no second animation on normal re-entry.
+4. In a DEV build, scroll to the course summary and tap `DEV · Replay motion · 1×`; repeat without resetting progress. Production has no button.
+5. Watch the bus turn along the curve and return upright at its destination; test both alternating directions and the topic boundary.
+6. Confirm gray dashes turn blue as the bus reaches them, rather than painting the entire segment beforehand.
+7. Confirm the camera follows on a narrow Android screen and with large fonts; the route no longer skips travel just because the entire segment cannot fit.
+8. Inspect the subtle suspension/exhaust during travel and their disappearance at arrival. Leave the screen during motion and confirm no continuing animation or blocked navigation.
+9. Enter Challenge Conversation. Test correct, incorrect and blank choices: learner bubble, short pause, typing, next authored message. At the end read the final reply and tap the one final CTA. Double tapping must not duplicate submission; test the existing network retry path too.
+10. In Crossword, fill NAME, select HELLO (its shared E is intermediate): input is empty, E stays in the grid, typing HELLO starts with H. Repeat initial/final crossings and clue switching; verify shared edits, deletion, keyboard, blanks and no horizontal scrolling.
+11. Inspect the compact official logo on the physical phone, especially small letter strokes, proportions and the absence of density upscaling on supported 1–4x displays.
+12. Pass Challenge and return through Result: observe the real transition to Lesson 5. A failed attempt, completed-node replay or normal Roadmap entry must not trigger product completion motion. DEV preview is the explicit testing exception.
+13. Enable Android Remove animations/Reduce Motion and repeat: consolidated Roadmap appears immediately, chat reveals without typing/entrance delay, and all CTAs remain usable.
+
+Automated validation and export do not substitute for these physical checks. No sounds were introduced. Existing Lesson feedback layout, Review and Lesson scoring remain untouched.
+
+Iteration 5 validation: Mobile TypeScript, all 94 Mobile tests at the full-suite checkpoint plus the added chat timer/Reduced Motion cleanup test (17/17 Unit Challenge tests on the final targeted rerun), Android production export and diff whitespace checks passed. Production Hermes was checked for absence of the DEV preview label/helper. The explicit demo reset and subsequent check passed; two prerequisite lessons are complete and there are no active Challenge runs.
+
+On this Windows installation the npm launcher points to a missing roaming npm-cli.js. The wrappers were validated through the installed CLI: `node "C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js" run demo:lessons:reset`, followed by the same command with `demo:check`, from backend. This is an environment workaround; no global npm settings were changed.

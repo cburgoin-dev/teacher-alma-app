@@ -1,7 +1,7 @@
 import { beginCompletion, consumeCompletion, type ProgressTransition } from '../completionMotion';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
-import { Alert, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { CoursesStackParamList } from '../../../navigation/types';
 import { coursesApi } from '../api/courses';
@@ -52,6 +52,9 @@ export function RoadmapScreen({ route, navigation }: NativeStackScreenProps<Cour
     if (next) positioned.current = false;
     setTransition(next);
   }, [focused, resource.loading, resource.error, resource.data, route.params.completionTicket]);
+  const onMotionPosition = useCallback((y: number) => {
+    if (focused && mapY !== null && viewport > 0) scroll.current?.scrollTo({ y: motionViewportOffset(y, mapY, viewport, contentHeight), animated: false });
+  }, [focused, mapY, viewport, contentHeight]);
   const onTargetLayout = useCallback((id: string, y: number, range?: { top: number; bottom: number }) => setAnchor(previous => previous?.id === id && previous.y === y && previous.range?.top === range?.top && previous.range?.bottom === range?.bottom ? previous : { id, y, range }), []);
   useEffect(() => {
     // Wait for the focus reload (Result may have changed CURRENT) and measured path content.
@@ -59,9 +62,8 @@ export function RoadmapScreen({ route, navigation }: NativeStackScreenProps<Cour
     const frame = requestAnimationFrame(() => {
       if (positioned.current) return;
       const offset = transition && anchor.range
-        ? motionViewportOffset(anchor.range.top, anchor.range.bottom, mapY, viewport, contentHeight)
+        ? motionViewportOffset(anchor.y, mapY, viewport, contentHeight)
         : initialRoadmapOffset(anchor.y, mapY, viewport, contentHeight);
-      if (offset === null) { setTransition(null); return; }
       positioned.current = true;
       scroll.current?.scrollTo({ y: offset, animated: !transition });
       setMotionReady(true);
@@ -76,13 +78,20 @@ export function RoadmapScreen({ route, navigation }: NativeStackScreenProps<Cour
     onScrollBeginDrag={() => { positioned.current = true; }} style={[styles.page, { backgroundColor: '#F1F8FD' }]} contentContainerStyle={local.content}
     refreshControl={<RefreshControl refreshing={resource.loading} onRefresh={() => { if (!transition) resource.retry(); }} tintColor={colors.blue} />}>
     <View style={local.summary}>
+      {__DEV__ ? <Pressable accessibilityRole="button" accessibilityLabel="DEV: repetir transición de ruta" disabled={!!transition || resource.loading} onPress={() => {
+        const replay = (require('../devMotion') as typeof import('../devMotion')).devReplayTransition(roadmap);
+        if (!replay) { Alert.alert('DEV motion', 'Completa un paso para disponer de un tramo anterior al nodo actual.'); return; }
+        positioned.current = false;
+        setMotionReady(false);
+        setTransition(replay);
+      }} style={({ pressed }) => ({ alignSelf: 'flex-end', padding: 8, opacity: pressed || transition ? .5 : 1 })}><Text style={{ fontSize: 11, color: colors.muted }}>DEV · Replay motion · 1×</Text></Pressable> : null}
       <Text style={local.courseChip}>{roadmap.course.title}</Text>
       <ProgressBar percentage={roadmap.progress.percentage} />
       <Text style={local.summaryText}>{roadmap.progress.completedRequiredNodes} de {roadmap.progress.totalRequiredNodes} pasos completados</Text>
     </View>
     {roadmap.progress.totalRequiredNodes > 0 && roadmap.progress.completedRequiredNodes === roadmap.progress.totalRequiredNodes
       ? <Text style={local.complete}>¡Curso completado! Tu ruta sigue aquí para repasar.</Text> : null}
-    {!roadmap.topics.length ? <ResourceState empty="La ruta de este curso estará disponible próximamente." /> : <View style={local.map} onLayout={e => setMapY(e.nativeEvent.layout.y)}><CoursePath transition={focused ? transition : null} motionReady={focused && motionReady} onMotionEnd={onMotionEnd} topics={roadmap.topics} currentNodeId={roadmap.currentNode?.id} targetId={target} onTargetLayout={onTargetLayout} onLessonPress={lesson => {
+    {!roadmap.topics.length ? <ResourceState empty="La ruta de este curso estará disponible próximamente." /> : <View style={local.map} onLayout={e => setMapY(e.nativeEvent.layout.y)}><CoursePath transition={focused ? transition : null} motionReady={focused && motionReady} onMotionEnd={onMotionEnd} onMotionPosition={onMotionPosition} topics={roadmap.topics} currentNodeId={roadmap.currentNode?.id} targetId={target} onTargetLayout={onTargetLayout} onLessonPress={lesson => {
       if (transition || resource.loading || !checked.current || navigating.current) return;
       openLesson(lesson, () => {
         navigating.current = true;

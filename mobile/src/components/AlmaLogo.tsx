@@ -1,10 +1,10 @@
 import { Image } from 'react-native';
 
-// Preserve the official raster through decode. On Android, 'none' disables
-// Fresco downsampling as well as ResizeOptions; 'scale' alone does not.
-// The single cached 3178x2352 RGBA bitmap costs ~28.5 MiB. No upscaling.
+// Metro selects an offline Lanczos derivative for the device density.
+// Original mark/proportions preserved in a transparent 60x44dp canvas.
+// At 4x the decoded bitmap is ~165 KiB instead of ~28.5 MiB.
 export function AlmaLogo() {
-  return <Image source={require('../../assets/branding/la-teacher-alma-logo.png')}
+  return <Image source={require('../../assets/branding/la-teacher-alma-mobile.png')}
     resizeMode="contain" resizeMethod="none" fadeDuration={0}
-    accessibilityLabel="La Teacher Alma" style={{ height: 44, aspectRatio: 3178 / 2352, marginBottom: 6 }} />;
+    accessibilityLabel="La Teacher Alma" style={{ height: 44, width: 60, marginBottom: 6 }} />;
 }

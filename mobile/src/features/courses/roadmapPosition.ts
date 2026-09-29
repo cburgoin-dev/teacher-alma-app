@@ -9,8 +9,7 @@ export function initialRoadmapOffset(nodeY: number, mapY: number, viewport: numb
   return Math.max(0, Math.min(mapY + nodeY - viewport * .36, contentHeight - viewport));
 }
 
-export function motionViewportOffset(top: number, bottom: number, mapY: number, viewport: number, contentHeight: number): number | null {
-  // Large text/short windows must never play an invisible transition.
-  if (viewport <= 0 || bottom - top + 24 > viewport) return null;
-  return Math.max(0, Math.min(mapY + (top + bottom) / 2 - viewport / 2, contentHeight - viewport));
+// Keep the bus near the upper-middle; native travel drives this offset each frame.
+export function motionViewportOffset(busY: number, mapY: number, viewport: number, contentHeight: number): number {
+  return Math.max(0, Math.min(mapY + busY - viewport * .42, Math.max(0, contentHeight - viewport)));
 }

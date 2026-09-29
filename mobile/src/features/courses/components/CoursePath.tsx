@@ -1,50 +1,56 @@
+import { TravelBus } from './TravelBus';
+import { TRAVEL_END } from '../completionMotion';
 import type { ProgressTransition } from '../completionMotion';
 import { useProgressMotion } from './useProgressMotion';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { NavigationIcon } from '../../../components/NavigationIcon';
 import { colors, shadows } from '../../../theme';
 import type { Lesson, Roadmap } from '../types';
 import { lessonLabels, lessonState } from '../presentation';
 import { Button } from './ui';
-import { busStops, curvedDashes, courseStops } from './pathGeometry';
+import { busStops, travelSamples, travelPoint, curvedDashes, courseStops } from './pathGeometry';
 import { PathScenery } from './PathScenery';
 import { RouteBus, Trophy } from '../../unit-challenges/ChallengeArt';
 
-export function CoursePath({ topics, onLessonPress, targetId, onTargetLayout, currentNodeId, transition = null, motionReady = false, onMotionEnd }: {
+export function CoursePath({ topics, onLessonPress, targetId, onTargetLayout, currentNodeId, transition = null, motionReady = false, onMotionEnd, onMotionPosition }: {
   topics: Roadmap['topics']; onLessonPress: (lesson: Lesson) => void;
   targetId?: string | null; onTargetLayout?: (id: string, y: number, range?: { top: number; bottom: number }) => void;
   currentNodeId?: string | null;
-  transition?: ProgressTransition | null; motionReady?: boolean; onMotionEnd: () => void;
+  transition?: ProgressTransition | null; motionReady?: boolean; onMotionEnd: () => void; onMotionPosition?: (y: number) => void;
 }) {
   const [width, setWidth] = useState(0);
   const { fontScale } = useWindowDimensions();
   const entries = useMemo(() => topics.flatMap((topic, topicIndex) => topic.nodes.map((lesson, index) => ({ lesson, topic, topicIndex, sectionStart: index === 0 }))), [topics]);
   const expanded = entries.map(({ lesson }) => lessonState(lesson) === 'CURRENT' || (lesson.progression.isCurrent && lessonState(lesson) === 'LOCKED_ACCESS'));
   const stops = courseStops(width, expanded, entries.map(entry => entry.sectionStart), fontScale);
-  const progress = useProgressMotion(transition, motionReady, onMotionEnd);
   const fromIndex = entries.findIndex(entry => entry.lesson.id === transition?.from);
   const toIndex = entries.findIndex(entry => entry.lesson.id === transition?.to);
   const moving = !!transition && fromIndex >= 0 && toIndex >= 0;
-  const targetY = moving ? (stops[fromIndex].y + stops[toIndex].y) / 2 : stops[entries.findIndex(entry => entry.lesson.id === targetId)]?.y;
-  const busPoints = moving ? busStops(stops[fromIndex], stops[toIndex], entries[toIndex].sectionStart) : [];
-  const inputRange = busPoints.map((_, i) => i / (busPoints.length - 1) * .86).concat(1);
-  const busX = moving ? progress.interpolate({ inputRange, outputRange: busPoints.map(p => p.x - 22).concat(busPoints.at(-1)!.x - 22) }) : 0;
-  const busY = moving ? progress.interpolate({ inputRange, outputRange: busPoints.map(p => p.y - 42).concat(busPoints.at(-1)!.y - 42) }) : 0;
-  const arrivalScale = progress.interpolate({ inputRange: [0, .86, .93, 1], outputRange: [1, 1, 1.06, 1] });
-  const arrivalOpacity = progress.interpolate({ inputRange: [0, .86, 1], outputRange: [0, 0, 1] });
+  const targetY = moving ? stops[fromIndex].y - stops[fromIndex].size / 2 - 2 : stops[entries.findIndex(entry => entry.lesson.id === targetId)]?.y;
+  const samples = useMemo(() => moving ? travelSamples(busStops(stops[fromIndex], stops[toIndex], entries[toIndex].sectionStart)) : [], [width, fontScale, entries, transition]);
+  const follow = useCallback((value: number) => {
+    if (samples.length) onMotionPosition?.(travelPoint(samples, Math.min(1, value / TRAVEL_END)).y);
+  }, [samples, onMotionPosition]);
+  const { progress, animate } = useProgressMotion(transition, motionReady, onMotionEnd, follow);
+  const inputRange = samples.map(p => p.fraction * TRAVEL_END).concat(1);
+  const busX = moving ? progress.interpolate({ inputRange, outputRange: samples.map(p => p.x - 22).concat(samples.at(-1)!.x - 22) }) : 0;
+  const busY = moving ? progress.interpolate({ inputRange, outputRange: samples.map(p => p.y - 42).concat(samples.at(-1)!.y - 42) }) : 0;
+  const rotation = moving ? progress.interpolate({ inputRange, outputRange: samples.map((p, i) => (i ? p.angle : 0) + 'deg').concat('0deg') }) : '0deg';
+  const arrivalScale = progress.interpolate({ inputRange: [0, TRAVEL_END, (TRAVEL_END + 1) / 2, 1], outputRange: [1, 1, 1.06, 1] });
+  const arrivalOpacity = progress.interpolate({ inputRange: [0, TRAVEL_END, 1], outputRange: [0, 0, 1] });
   useEffect(() => {
     if (width > 0 && targetId && targetY !== undefined) onTargetLayout?.(targetId + ':' + (transition?.from ?? ''), targetY, moving ? { top: stops[fromIndex].y - stops[fromIndex].size / 2 - 44, bottom: stops[toIndex].y + 110 * Math.min(fontScale, 1.5) } : undefined);
   }, [width, targetId, targetY, onTargetLayout, transition]);
   const dots = stops.slice(0, -1).flatMap((stop, index) => curvedDashes(stop, stops[index + 1], entries[index + 1].sectionStart)
     .map((dot, dotIndex, segmentDots) => ({ ...dot,
-      threshold: moving && index === fromIndex ? (dotIndex + 1) / (segmentDots.length + 1) * .86 : null,
+      threshold: moving && index === fromIndex ? samples[dotIndex + 1].fraction * TRAVEL_END : null,
       color: lessonState(entries[index].lesson) === 'COMPLETED' ? '#55A9E8' : '#A2B6CC' })));
   return <View pointerEvents={moving ? "none" : "auto"} accessibilityState={{ busy: moving }} onLayout={event => setWidth(event.nativeEvent.layout.width)}>
     {width > 0 ? <>
       <View pointerEvents="none" accessible={false} style={StyleSheet.absoluteFill}>
         {dots.map((dot, index) => <View key={index} style={[s.dash, { left: dot.x - 4.5, top: dot.y - 2.2, backgroundColor: dot.threshold === null ? dot.color : '#A2B6CC', transform: [{ rotate: dot.angle + 'deg' }] }]}>
-          {dot.threshold !== null ? <Animated.View style={[StyleSheet.absoluteFill, { borderRadius: 3, backgroundColor: '#55A9E8', opacity: progress.interpolate({ inputRange: [0, Math.max(0, dot.threshold - .015), dot.threshold, 1], outputRange: [0, 0, 1, 1] }) }]} /> : null}
+          {dot.threshold !== null ? <Animated.View style={[StyleSheet.absoluteFill, { borderRadius: 3, backgroundColor: '#55A9E8', opacity: progress.interpolate({ inputRange: [0, dot.threshold, Math.min(1, dot.threshold + .006), 1], outputRange: [0, 0, 1, 1] }) }]} /> : null}
         </View>)}
       </View>
       {entries.map(({ lesson, topic, topicIndex, sectionStart }, index) => {
@@ -89,7 +95,7 @@ export function CoursePath({ topics, onLessonPress, targetId, onTargetLayout, cu
           {!moving && lesson.id === currentNodeId ? <View pointerEvents="none" accessible={false} style={{ position: 'absolute', left: stop.x - 22, top: stop.y - stop.top - radius - 44 }}><RouteBus /></View> : null}
         </View>;
       })}
-      {moving ? <Animated.View pointerEvents="none" accessible={false} style={{ position: 'absolute', left: 0, top: 0, transform: [{ translateX: busX }, { translateY: busY }] }}><RouteBus /></Animated.View> : null}
+      {moving ? <Animated.View pointerEvents="none" accessible={false} style={{ position: 'absolute', left: 0, top: 0, transform: [{ translateX: busX }, { translateY: busY }] }}><Animated.View style={{ width: 44, height: 42, transformOrigin: '50% 100%', transform: [{ rotate: rotation }] }}><TravelBus progress={progress} animate={animate} /></Animated.View></Animated.View> : null}
       {entries.length ? <View style={s.finish}><View accessible={false} style={s.destination}><View style={s.flagPole} /><View style={s.finishFlag}><View style={s.flagSquare} /><View style={[s.flagSquare, { alignSelf: 'flex-end' }]} /></View></View><Text style={s.finishText}>Fin de la ruta</Text></View> : null}
     </> : null}
   </View>;

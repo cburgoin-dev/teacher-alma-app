@@ -274,7 +274,7 @@ test('Conversation closes for reading before the single final CTA submits, prese
   const values = []; let cursor = 0;
   const closing = { current: false };
   const hooks = { useRef: () => closing, useState: initial => { const i = cursor++; if (!(i in values)) values[i] = initial; return [values[i], value => { values[i] = typeof value === 'function' ? value(values[i]) : value; }]; } };
-  const { ConversationView } = component('../src/features/unit-challenges/phaseViews.tsx', { react: hooks, './styles': { challengeStyles: {} } });
+  const { ConversationView } = component('../src/features/unit-challenges/phaseViews.tsx', { react: hooks, './ChatMotion': { ChatBubble: 'ChatBubble', TypingBubble: 'TypingBubble' }, './styles': { challengeStyles: {} }, './useConversationReveal': { useConversationReveal: (_, boundary) => ({ visible: boundary, reduced: true, pending: false }) } });
   const content = { participants: [{ id: 'emma', name: 'Emma' }], steps: [
     { id: 'm1', kind: 'MESSAGE', speakerId: 'emma', text: 'Hello' },
     { id: 'q1', kind: 'CHOICE', options: [{ id: 'a', text: 'Hi!' }, { id: 'b', text: 'Bye!' }] },
@@ -493,4 +493,19 @@ test('V10 only video posters use cover; activity images keep contain and Play re
   const preview = tree.find(n => n.type === 'View' && Array.isArray(n.props.style) && n.props.style[0]?.overflow === 'hidden');
   assert.ok(preview); assert.ok(nodes(preview).some(n => n.props?.pointerEvents === 'none'));
   assert.equal(tree.filter(n => n.type === 'Button').length, 0);
+});
+
+test('Crossword selecting clues leaves input empty without mutating completed crossings', () => {
+  const values=[]; let cursor=0,submitted;
+  const hooks={useState: initial=>{const i=cursor++; if(!(i in values))values[i]=initial;return [values[i],v=>values[i]=typeof v==='function'?v(values[i]):v];}};
+  const {CrosswordView}=component('../src/features/unit-challenges/phaseViews.tsx',{react:hooks,'./ChatMotion':{},'./useConversationReveal':{},'./styles':{challengeStyles:{}}});
+  const content={entries:[{id:'a',row:0,column:0,length:3,direction:'ACROSS',clue:'Across'},{id:'b',row:0,column:1,length:3,direction:'DOWN',clue:'Down'}]};
+  const render=()=>{cursor=0;return nodes(CrosswordView({content,disabled:false,submit:a=>submitted=a}));};
+  const input=()=>render().find(n=>n.type==='TextInput');
+  input().props.onChangeText('CAT');
+  const select=()=>render().find(n=>n.type==='Pressable' && !n.props.accessibilityState.selected).props.onPress();
+  select(); assert.equal(input().props.value,'');
+  render().find(n=>n.type==='Button').props.onPress(); assert.equal(submitted.entries[0].text,'CAT');
+  input().props.onChangeText('ANT'); select(); assert.equal(input().props.value,'');
+  render().find(n=>n.type==='Button').props.onPress(); assert.deepEqual(submitted.entries.map(e=>e.text),['CAT','ANT']);
 });

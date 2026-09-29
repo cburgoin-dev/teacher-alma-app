@@ -45,9 +45,9 @@ test('stale result cannot invent unlocks or animate a different course/frontier'
     assert.equal(consumeCompletion(ticket, final), null);
   }
 });
-test('reduced motion resolves without travel; ordinary timeline lasts three seconds', () => {
+test('reduced motion resolves without travel; ordinary timeline lasts 3.95 seconds', () => {
   assert.equal(motionDuration(true), 0);
-  assert.equal(motionDuration(false), 3000);
+  assert.equal(motionDuration(false), 3950);
 });
 test('feedback visibility uses its entire measured height, including the previously hidden tail', () => {
   assert.equal(feedbackScrollTarget(0, 400, 280, 180), 72);
@@ -77,32 +77,62 @@ test('motion hook honors reduce motion, native timing, cancellation and listener
     const module = { exports: {} };
     vm.runInNewContext(code, { requestAnimationFrame: fn => { fn(); return 1; }, cancelAnimationFrame() {}, module, exports: module.exports, require: id => {
       if (id === 'react') return { useRef: value => ({ current: value }), useState: () => [reduced, () => {}], useEffect: fn => { const cleanup = fn(); if (cleanup) cleanups.push(cleanup); } };
-      if (id === '../completionMotion') return { motionDuration };
+      if (id === '../completionMotion') return require('../src/features/courses/completionMotion.ts');
       if (id === 'react-native') return {
         AccessibilityInfo: { isReduceMotionEnabled: async () => reduced, addEventListener: () => ({ remove() { removed++; } }) },
         Easing: { inOut: x => x, cubic: 'cubic', linear: 'linear' },
-        Animated: { Value: class { setValue(value) { values.push(value); } }, timing: (_, options) => { timings.push(options); return options; }, sequence: () => ({ start(callback) { completion = callback; }, stop() { stopped++; } }) },
+        Animated: { Value: class { setValue(value) { values.push(value); } addListener() { return "frame"; } removeListener() { removed++; } }, timing: (_, options) => { timings.push(options); return options; }, sequence: () => ({ start(callback) { completion = callback; }, stop() { stopped++; } }) },
       };
       throw Error(id);
     } });
     module.exports.useProgressMotion({ from: 'a', to: 'b', type: 'LESSON' }, true, () => finished++);
     if (reduced) { assert.equal(finished, 1); assert.equal(timings.length, 0); assert.equal(values.at(-1), 1); }
     else {
-      assert.equal(timings.reduce((sum, t) => sum + t.duration, 0), 3000);
+      assert.equal(timings.reduce((sum, t) => sum + t.duration, 0), 3950);
       assert.ok(timings.every(t => t.useNativeDriver));
       completion({ finished: false }); assert.equal(finished, 0);
       completion({ finished: true }); assert.equal(finished, 1);
     }
     cleanups.forEach(fn => fn());
-    assert.equal(removed, 1); assert.equal(stopped, reduced ? 0 : 1);
+    assert.equal(removed, reduced ? 1 : 2); assert.equal(stopped, reduced ? 0 : 1);
     await Promise.resolve();
   }
 });
 
 const { motionViewportOffset } = require('../src/features/courses/roadmapPosition.ts');
-test('viewport contains travel and arrival; short/large-text windows skip offscreen motion', () => {
-  const offset = motionViewportOffset(200, 650, 100, 600, 2000);
-  assert.ok(200 + 100 >= offset);
-  assert.ok(650 + 100 <= offset + 600);
-  assert.equal(motionViewportOffset(200, 650, 100, 300, 2000), null);
+test('camera follows the bus even when the segment cannot fit and clamps document edges', () => {
+  assert.equal(motionViewportOffset(650, 100, 300, 2000), 624);
+  assert.equal(motionViewportOffset(200, 100, 600, 2000), 48);
+  assert.equal(motionViewportOffset(0, 0, 600, 2000), 0);
+  assert.equal(motionViewportOffset(1900, 100, 600, 2000), 1400);
+});
+
+const { travelSamples, travelPoint } = require('../src/features/courses/components/pathGeometry.ts');
+const { devReplayTransition } = require('../src/features/courses/devMotion.ts');
+test('arc distance drives both painted dash frontier and bus/camera coordinates; tangents turn continuously', () => {
+  for (const section of [false, true]) for (const width of [280, 400]) {
+    const stops = courseStops(width, [false, true], [true, section]);
+    const points = busStops(stops[0], stops[1], section), samples = travelSamples(points);
+    assert.equal(samples[0].fraction, 0); assert.equal(samples.at(-1).fraction, 1);
+    samples.forEach((sample, i) => {
+      const bus = travelPoint(samples, sample.fraction);
+      assert.ok(Math.abs(bus.x - sample.x) < .001 && Math.abs(bus.y - sample.y) < .001);
+      assert.ok(Number.isFinite(sample.angle));
+      if (i) { assert.ok(sample.fraction > samples[i-1].fraction); assert.ok(Math.abs(sample.angle - samples[i-1].angle) <= 180); }
+    });
+    assert.ok(samples.some(s => Math.abs(s.angle) > 15));
+    const mid = travelPoint(samples, (samples[1].fraction + samples[2].fraction) / 2);
+    assert.ok(Math.abs(mid.x - (samples[1].x + samples[2].x) / 2) < .001);
+  }
+  assert.equal(travelSamples([{x:0,y:0},{x:0,y:10}])[0].angle, 0);
+  assert.equal(travelSamples([{x:0,y:0},{x:10,y:0}])[0].angle, -90);
+});
+test('DEV replay uses real adjacent nodes repeatedly without consuming a completion or changing progress', () => {
+  const { before, after, from } = maps(); const snapshot = JSON.stringify(after);
+  const ticket = beginCompletion(before, from); finishCompletion(ticket, true);
+  const expected = {from:'first',to:'second',type:'LESSON'};
+  assert.deepEqual(devReplayTransition(after), expected); assert.deepEqual(devReplayTransition(after), expected);
+  assert.equal(JSON.stringify(after), snapshot); assert.deepEqual(consumeCompletion(ticket, after), expected);
+  assert.equal(devReplayTransition(before), null);
+  assert.equal(devReplayTransition({...after, currentNode:null}), null);
 });
