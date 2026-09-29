@@ -1,3 +1,4 @@
+import { colors } from '../../theme';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 export function Trophy({ size = 76, color = '#FFC433' }: { size?: number; color?: string }) {
   return <Svg width={size} height={size} viewBox="0 0 80 80" accessible={false}>
@@ -8,14 +9,14 @@ export function Trophy({ size = 76, color = '#FFC433' }: { size?: number; color?
   </Svg>;
 }
 export function ChallengeHero() {
-  return <Svg width="100%" height={180} viewBox="0 0 350 180" accessible={false}>
+  return <Svg width="100%" height={148} viewBox="0 0 350 180" accessible={false}>
     <Path d="M0 167Q90 68 170 133T350 105" fill="none" stroke="#64B6F6" strokeWidth="4" strokeDasharray="5 9" strokeLinecap="round" />
     <Circle cx="175" cy="88" r="75" fill="#FFE4E9" stroke="#FFF" strokeWidth="3" />
-    <Circle cx="175" cy="88" r="65" fill="#F6667C" />
-    <Path d="M153 56h-16v17q0 23 24 23m36-40h16v17q0 23-24 23" stroke="#FFD24B" strokeWidth="6" fill="none" />
-    <Path d="M152 43h46v38q0 28-23 28t-23-28Zm18 61h10v23h15v9h-40v-9h15" fill="#FFD044" />
-    <Path d="m175 56 6 12 13 2-10 9 2 13-11-6-11 6 2-13-10-9 13-2Z" fill="#F39B22" />
-    <Path d="m93 30-12-11m21 1-3-14m148 122 13 5m-19 1 8 15" stroke="#FFC735" strokeWidth="7" strokeLinecap="round" />
+    <Circle cx="175" cy="88" r="65" fill={colors.red} />
+    <Path d="M153 56h-16v17q0 23 24 23m36-40h16v17q0 23-24 23" stroke={colors.white} strokeWidth="6" fill="none" />
+    <Path d="M152 43h46v38q0 28-23 28t-23-28Zm18 61h10v23h15v9h-40v-9h15" fill={colors.white} />
+    <Path d="m175 56 6 12 13 2-10 9 2 13-11-6-11 6 2-13-10-9 13-2Z" fill={colors.red} />
+    <Path d="m93 30-12-11m21 1-3-14m148 122 13 5m-19 1 8 15" stroke="#8CCAFF" strokeWidth="7" strokeLinecap="round" />
     <Rect x="9" y="51" width="65" height="49" rx="15" fill="#FFF" stroke="#CCE7FF" />
     <Path d="m50 96 9 14 2-15" fill="#FFF" />
     <Circle cx="27" cy="74" r="4" fill="#0980F5" /><Circle cx="42" cy="74" r="4" fill="#0980F5" /><Circle cx="57" cy="74" r="4" fill="#0980F5" />

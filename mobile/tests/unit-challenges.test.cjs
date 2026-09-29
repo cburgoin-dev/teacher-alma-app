@@ -7,7 +7,7 @@ require.extensions['.ts'] = (module, filename) => module._compile(ts.transpileMo
 }).outputText, filename);
 const { ChallengeFlow } = require('../src/features/unit-challenges/flow.ts');
 const { ApiError } = require('../src/services/api/client.ts');
-const { cellsFor, writeEntry, readEntry, entryNumber } = require('../src/features/unit-challenges/crossword.ts');
+const { cellsFor, crosswordLayout, writeEntry, readEntry, entryNumber } = require('../src/features/unit-challenges/crossword.ts');
 const { roadmapTarget } = require('../src/features/courses/roadmapPosition.ts');
 const { lessonState } = require('../src/features/courses/presentation.ts');
 const metadata = { challenge: { phaseCount: 2 }, activeRun: null, progress: { passed: false }, access: { hasAccess: true }, progression: { unlocked: true } };
@@ -88,6 +88,38 @@ test('current challenge remains frontier after all lessons complete, including c
   const roadmap = { currentNode: { type: 'UNIT_CHALLENGE', id: 'c' }, progress: { completedLessons: 3, totalLessons: 3, completedRequiredNodes: 3, totalRequiredNodes: 4 }, topics: [{ nodes: [challenge] }] };
   assert.equal(roadmapTarget(roadmap), 'c'); assert.equal(lessonState(challenge), 'LOCKED_ACCESS');
   assert.equal(roadmapTarget({ ...roadmap, currentNode: null }), null);
+});
+
+test('nine-column crossword fits narrow Android content widths without changing coordinates', () => {
+  const entries = [
+    { id: 'a', row: 0, column: 0, direction: 'ACROSS', length: 5 },
+    { id: 'b', row: 1, column: 8, direction: 'DOWN', length: 3 },
+    { id: 'c', row: 4, column: 0, direction: 'ACROSS', length: 1 },
+  ];
+  for (const width of [216, 248, 288, 328, 568]) {
+    const layout = crosswordLayout(entries, width);
+    assert.equal(layout.columns, 9); assert.equal(layout.rows, 5);
+    assert.ok(layout.cellSize * layout.columns <= width + 1e-9);
+    assert.ok(layout.cellSize > 0 && layout.cellSize <= 38);
+  }
+  assert.deepEqual(cellsFor(entries[1]), ['1:8', '2:8', '3:8']);
+});
+test('presentation crops only unused outer margins and preserves internal gaps and shared starts', () => {
+  const across = { id: 'a', row: 3, column: 2, direction: 'ACROSS', length: 3 };
+  const down = { id: 'd', row: 3, column: 2, direction: 'DOWN', length: 2 };
+  const isolated = { id: 'i', row: 7, column: 8, direction: 'ACROSS', length: 1 };
+  const entries = [across, down, isolated];
+  const before = structuredClone(entries);
+  const layout = crosswordLayout(entries, 280);
+  assert.deepEqual({ row: layout.row, column: layout.column, rows: layout.rows, columns: layout.columns }, { row: 3, column: 2, rows: 5, columns: 7 });
+  assert.equal(entryNumber(entries, down), 1); assert.equal(entryNumber(entries, isolated), 2);
+  const cells = writeEntry(writeEntry({}, across, 'hey'), down, 'hi');
+  assert.equal(readEntry(cells, across), 'HEY'); assert.equal(readEntry(cells, down), 'HI');
+  assert.deepEqual(entries, before);
+});
+test('grid measurement safely waits for layout and handles an empty shape', () => {
+  assert.deepEqual(crosswordLayout([], 288), { row: 0, column: 0, rows: 0, columns: 0, cellSize: 0 });
+  assert.equal(crosswordLayout([{ row: 0, column: 0, length: 5, direction: 'ACROSS' }], 0).cellSize, 0);
 });
 test('API sends only phase answers to documented routes, with encoded identifiers', async () => {
   const { challengeApi } = require('../src/features/unit-challenges/api.ts');

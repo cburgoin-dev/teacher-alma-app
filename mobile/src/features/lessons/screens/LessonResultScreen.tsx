@@ -5,7 +5,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { CoursesStackParamList } from '../../../navigation/types';
 import { Button } from '../../courses/components/ui';
-import { showAccessInfo } from '../../courses/components/accessInfo';
 import { lessonStyles as s } from '../components/lessonStyles';
 import { LearningIcon } from '../components/LearningIcon';
 import { accuracy, courseLabel } from '../contentPresentation';
@@ -40,11 +39,10 @@ export function LessonResultScreen({ route, navigation }: NativeStackScreenProps
       <Text style={[s.body, local.center]}>{response.result.correctAnswers} de {response.result.totalActivities} correctas al primer intento</Text>
       <Text style={[s.caption, local.center]}>Basado en tu primer intento de esta repetición.</Text>
     </View> : null}
-    <Button title="Continuar mi ruta" arrow onPress={exit} />
+    <Button title="Continuar en la ruta" arrow onPress={exit} />
   </ScrollView>;
   const { result, nextNode, courseProgress, course } = response;
   const access = nextNode?.lockReason === 'ACCESS';
-  const accessible = nextNode?.accessible && !access;
   return <ScrollView style={s.page} contentContainerStyle={[s.content, local.content, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 24 }]}>
     <View style={local.hero}>
       <CompletionHero perfect={result.isPerfect} />
@@ -86,11 +84,9 @@ export function LessonResultScreen({ route, navigation }: NativeStackScreenProps
       <Text style={[s.caption, { color: access ? '#84550C' : '#0062E9', fontWeight: '700' }]}>SIGUIENTE PASO</Text>
       <Text style={s.heading}>{nextNode.title}</Text>
       {access ? <Text style={[s.body, { color: '#84550C' }]}>Contenido Premium · Requiere acceso</Text> : null}
-      {accessible ? <Button title="Continuar en la ruta" arrow onPress={exit} />
-        : access ? <Button title="Obtener acceso" tone="gold" onPress={showAccessInfo} />
-          : <Text style={s.body}>Completa los pasos anteriores en la ruta.</Text>}
+      {nextNode.lockReason === 'PREREQUISITE' ? <Text style={s.body}>Completa los pasos anteriores en la ruta.</Text> : null}
     </View> : <Text style={[s.heading, local.center]}>{courseProgress.status === 'COMPLETED' ? '¡Completaste este curso!' : 'Has llegado al final de la ruta disponible.'}</Text>}
-    <Button title="Volver a la ruta" tone="blue" onPress={exit} />
+    <Button title="Continuar en la ruta" arrow onPress={exit} />
   </ScrollView>;
 }
 const local = StyleSheet.create({

@@ -9,3 +9,15 @@ export function entryNumber(entries: Entry[], entry: Entry) {
   const starts = [...new Set(entries.map(e => `${e.row}:${e.column}`))];
   return starts.indexOf(`${entry.row}:${entry.column}`) + 1;
 }
+
+// Crop only unused outer margins. Internal gaps and all crossings retain the
+// authored coordinates; responsive cell size never changes answer geometry.
+export function crosswordLayout(entries: Entry[], availableWidth: number) {
+  const coordinates = entries.flatMap(cellsFor).map(cell => cell.split(':').map(Number));
+  if (!coordinates.length) return { row: 0, column: 0, rows: 0, columns: 0, cellSize: 0 };
+  const row = Math.min(...coordinates.map(c => c[0]));
+  const column = Math.min(...coordinates.map(c => c[1]));
+  const rows = Math.max(...coordinates.map(c => c[0])) - row + 1;
+  const columns = Math.max(...coordinates.map(c => c[1])) - column + 1;
+  return { row, column, rows, columns, cellSize: Math.min(38, Math.max(0, availableWidth) / columns) };
+}

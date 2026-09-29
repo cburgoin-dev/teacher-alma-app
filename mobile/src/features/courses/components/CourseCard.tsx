@@ -15,7 +15,7 @@ export function CourseCard({ course, onPress }: { course: CatalogCourse; onPress
   const tint = soon ? colors.muted : locked ? colors.gold : active ? '#FFF' : colors.blue;
   const background = soon ? '#E0E7F1' : locked ? colors.goldLight : active ? colors.red : '#DBEBFF';
   const metadata = course.progress
-    ? `${course.progress.completedLessons} de ${course.progress.totalLessons} lecciones`
+    ? `${course.progress.completedRequiredNodes} de ${course.progress.totalRequiredNodes} pasos`
     : soon ? 'Próximamente' : course.access.hasFullAccess ? 'Acceso completo' : course.access.hasFreeContent ? 'Incluye contenido gratuito' : 'Acceso requerido';
 
   return <Pressable accessibilityRole="button" accessibilityLabel={course.title + '. ' + catalogLabel(course)}

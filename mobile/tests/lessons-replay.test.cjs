@@ -151,7 +151,7 @@ test('Replay Result renders 50%/100%, no historical Review/course progress/Next,
     assert.ok(tree.some(n => n === correctAnswers * 50));
     assert.doesNotMatch(copy, /SIGUIENTE LECCIÓN|Progreso del curso|Guardado|reforzar/);
     const buttons = tree.filter(n => n.type === 'Button');
-    assert.deepEqual(buttons.map(n => n.props.title), ['Continuar mi ruta']); buttons[0].props.onPress();
+    assert.deepEqual(buttons.map(n => n.props.title), ['Continuar en la ruta']); buttons[0].props.onPress();
     assert.deepEqual(navigationCalls, [['Roadmap', { courseId: 'c' }]]);
   }
 });
@@ -232,6 +232,50 @@ test('V6 normal Result names the course once and retains first-attempt score for
     assert.doesNotMatch(copy, /obligatorias/);
     assert.match(copy, correctAnswers === 2 ? /¡Excelente trabajo!/ : /¡Lección completada!/);
   }
+});
+
+test('Lesson Result has one red Roadmap CTA with accessible, locked or absent next node; Review is retained', () => {
+  const { LessonResultScreen } = component('../src/features/lessons/screens/LessonResultScreen.tsx');
+  for (const nextNode of [null, { type: 'UNIT_CHALLENGE', id: 'challenge', title: 'Challenge', accessible: true, lockReason: null }, { type: 'LESSON', id: 'next', title: 'Next', accessible: false, lockReason: 'ACCESS' }]) {
+    const calls = [];
+    const tree = nodes(LessonResultScreen({ route: { params: { courseId: 'c', result: {
+      lesson: { id: 'l', title: 'Lesson' }, result: { totalActivities: 2, correctAnswers: 1, isPerfect: false, pendingReviewCount: 1 },
+      courseProgress: { completedRequiredNodes: 3, totalRequiredNodes: 12, percentage: 25, status: 'IN_PROGRESS' }, nextNode,
+    } } }, navigation: { popTo: (...args) => calls.push(args), navigate: (...args) => calls.push(args) } }));
+    const buttons = tree.filter(n => n.type === 'Button');
+    assert.equal(buttons.length, 1); assert.equal(buttons[0].props.title, 'Continuar en la ruta');
+    assert.ok(!buttons[0].props.tone || buttons[0].props.tone === 'red');
+    buttons[0].props.onPress(); assert.deepEqual(calls[0], ['Roadmap', { courseId: 'c' }]);
+    tree.find(n => n.type === 'Pressable').props.onPress();
+    assert.deepEqual(calls[1], ['Review', { courseId: 'c', preferredLessonId: 'l' }]);
+  }
+});
+
+test('Conversation has one Continue per turn and at its natural close, preserving blanks and one phase payload', () => {
+  const values = []; let cursor = 0;
+  const hooks = { useState: initial => { const i = cursor++; if (!(i in values)) values[i] = initial; return [values[i], value => { values[i] = typeof value === 'function' ? value(values[i]) : value; }]; } };
+  const { ConversationView } = component('../src/features/unit-challenges/phaseViews.tsx', { react: hooks, './styles': { challengeStyles: {} } });
+  const content = { participants: [{ id: 'emma', name: 'Emma' }], steps: [
+    { id: 'm1', kind: 'MESSAGE', speakerId: 'emma', text: 'Hello' },
+    { id: 'q1', kind: 'CHOICE', options: [{ id: 'a', text: 'Hi!' }, { id: 'b', text: 'Bye!' }] },
+    { id: 'q2', kind: 'CHOICE', options: [{ id: 'c', text: 'Nice to meet you!' }, { id: 'd', text: 'Goodbye!' }] },
+    { id: 'm2', kind: 'MESSAGE', speakerId: 'emma', text: 'See you!' },
+  ] };
+  const submissions = [];
+  const render = (disabled = false) => { cursor = 0; return nodes(ConversationView({ content, disabled, submit: answer => submissions.push(answer) })); };
+  const advance = tree => {
+    const buttons = tree.filter(n => n.type === 'Button');
+    assert.deepEqual(buttons.map(n => n.props.title), ['Continuar']);
+    assert.doesNotMatch(tree.filter(n => typeof n === 'string').join(' '), /Sin pistas|corrección|enviar|fase|Revisar turno|Dejar sin/);
+    buttons[0].props.onPress();
+  };
+  advance(render()); // No selection: the first choice must remain omitted.
+  let tree = render(); tree.find(n => n.type === 'Pressable').props.onPress();
+  tree = render(); assert.equal(tree.find(n => n.type === 'Pressable').props.accessibilityState.checked, true);
+  advance(tree); assert.equal(submissions.length, 0);
+  tree = render(); assert.ok(tree.includes('Nice to meet you!')); assert.ok(tree.includes('See you!'));
+  advance(tree); assert.deepEqual(submissions, [{ choices: [{ stepId: 'q2', optionId: 'c' }] }]);
+  assert.equal(render(true).find(n => n.type === 'Button').props.disabled, true);
 });
 
 test('V7 Fill choice appears in sentence immediately; retry clears selection and typed answer is the single inline input', () => {
