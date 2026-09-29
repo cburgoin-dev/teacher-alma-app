@@ -29,6 +29,13 @@ export function RouteBus() {
     <Circle cx="15" cy="42" r="6" fill="#344B6C" /><Circle cx="46" cy="42" r="6" fill="#344B6C" />
   </Svg>;
 }
+// Same local SVG family for both phase previews; solid silhouette with cutouts.
+export function PhaseIcon({ conversation }: { conversation: boolean }) {
+  return <Svg pointerEvents="none" accessible={false} width={26} height={26} viewBox="0 0 24 24">
+    {conversation ? <><Path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l5-1.6A10 10 0 1 0 12 2Z" fill={colors.blue} /><Circle cx="7" cy="12" r="1.2" fill="#FFF" /><Circle cx="12" cy="12" r="1.2" fill="#FFF" /><Circle cx="17" cy="12" r="1.2" fill="#FFF" /></>
+      : <><Rect x="2" y="2" width="20" height="20" rx="4" fill={colors.blue} /><Path d="M6 6h5v5H6Zm7 0h5v5h-5ZM6 13h5v5H6Z" fill="#FFF" /><Rect x="13" y="13" width="5" height="5" rx=".5" fill="#9CD3FF" /></>}
+  </Svg>;
+}
 export function ChallengeBackdrop() {
   return <Svg pointerEvents="none" width="100%" height="100%" viewBox="0 0 400 800" preserveAspectRatio="xMidYMin slice" accessible={false}>
     <Circle cx="413" cy="115" r="100" fill="#E4F3ED" /><Circle cx="-45" cy="300" r="100" fill="#DFF1FD" /><Circle cx="420" cy="680" r="110" fill="#E6F3ED" />

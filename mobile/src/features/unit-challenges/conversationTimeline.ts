@@ -8,7 +8,7 @@ export function conversationTimeline(steps: Conversation['steps'], start: number
     const step = steps[index];
     if (step.kind === 'MESSAGE') {
       frames.push({ at: time, visible: index, typing: step.speakerId, latest: null, done: false });
-      time += 600;
+      time += 1000;
     }
     frames.push({ at: time, visible: index + 1, typing: null, latest: step.id, done: false });
     time += step.kind === 'CHOICE' ? 400 : 200;

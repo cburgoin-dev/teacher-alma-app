@@ -1,3 +1,5 @@
+import type { ChatTarget } from './conversationScroll';
+import type { LayoutChangeEvent } from 'react-native';
 import { ChatBubble, TypingBubble } from './ChatMotion';
 import { useConversationReveal } from './useConversationReveal';
 import { useRef, useState } from 'react';
@@ -7,7 +9,7 @@ import { AudioButton } from '../lessons/components/AudioButton';
 import { cellsFor, crosswordLayout, entryNumber, readEntry, editEntryDraft } from './crossword';
 import type { Answer, Conversation, Crossword } from './types';
 import { challengeStyles as s } from './styles';
-export function ConversationView({ content, disabled, busy = false, submit }: { content: Conversation; disabled: boolean; busy?: boolean; submit: (answer: Answer) => void }) {
+export function ConversationView({ content, disabled, busy = false, submit, onRootLayout, onTarget, onFollow }: { onRootLayout?: (event: LayoutChangeEvent) => void; onTarget?: (target: ChatTarget) => void; onFollow?: () => void; content: Conversation; disabled: boolean; busy?: boolean; submit: (answer: Answer) => void }) {
   const closing = useRef(false);
   const [cursor, setCursor] = useState(0);
   const [choices, setChoices] = useState<Record<string, string>>({});
@@ -23,19 +25,21 @@ export function ConversationView({ content, disabled, busy = false, submit }: { 
   };
   const advance = () => {
     if (blocked || closing.current) return;
+    onFollow?.();
     if (cursor === steps.length - 1) {
       setCursor(steps.length);
     } else setCursor(cursor + 1);
   };
-  return <View style={s.stack}>
+  const targetLayout = (order: number) => (event: LayoutChangeEvent) => onTarget?.({ ...event.nativeEvent.layout, order, reduced: reveal.reduced });
+  return <View style={s.stack} onLayout={onRootLayout}>
     {content.scenario ? <Text style={s.body}>{content.scenario}</Text> : null}
     <Text style={s.body}>Elige cómo responder en cada turno.</Text>
-    {content.steps.slice(0, reveal.visible).map(step => step.kind === 'MESSAGE' ? <View key={step.id} style={s.chatRow}>
+    {content.steps.slice(0, reveal.visible).map((step, index) => step.kind === 'MESSAGE' ? <View key={step.id} style={s.chatRow} onLayout={index === reveal.visible - 1 ? targetLayout(reveal.visible * 4) : undefined}>
       <View style={s.avatar}><Text style={s.avatarText}>{content.participants.find(p => p.id === step.speakerId)?.name.slice(0, 1)}</Text></View>
       <ChatBubble enter={!reveal.reduced && reveal.latest === step.id}><Text style={s.speaker}>{content.participants.find(p => p.id === step.speakerId)?.name}</Text><Text style={s.chatText}>{step.text}</Text><AudioButton audioUrl={step.audioUrl} /></ChatBubble>
-    </View> : <ChatBubble key={step.id} reply enter={!reveal.reduced && reveal.latest === step.id}><Text style={s.chatText}>{step.options.find(o => o.id === choices[step.id])?.text ?? 'Sin respuesta'}</Text></ChatBubble>)}
-    {reveal.typing ? <TypingBubble name={content.participants.find(p => p.id === reveal.typing)?.name} /> : null}
-    {!reveal.pending ? <View style={s.card}>
+    </View> : <View key={step.id} onLayout={index === reveal.visible - 1 ? targetLayout(reveal.visible * 4) : undefined}><ChatBubble reply enter={!reveal.reduced && reveal.latest === step.id}><Text style={s.chatText}>{step.options.find(o => o.id === choices[step.id])?.text ?? 'Sin respuesta'}</Text></ChatBubble></View>)}
+    {reveal.typing ? <View key={`typing-${reveal.visible}`} onLayout={targetLayout(reveal.visible * 4 + 2)}><TypingBubble name={content.participants.find(p => p.id === reveal.typing)?.name} /></View> : null}
+    {!reveal.pending ? <View key={`turn-${cursor}`} style={s.card} onLayout={targetLayout(reveal.visible * 4 + 3)}>
       {active ? <>
         <Text style={s.heading}>{active.prompt || 'Elige tu respuesta'}</Text>
         <Text style={s.caption}>Turno {cursor + 1} de {steps.length}</Text>

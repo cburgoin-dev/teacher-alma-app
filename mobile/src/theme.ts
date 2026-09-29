@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 
-// Exact opaque colors in the official logo; opt-in accents, not a global recolor.
-export const brandColors = { navy: '#06205C', red: '#CB0A3D' };
+// Official AI/PDF brand sheet RGB values; opt-in accents, not a global recolor.
+export const brandColors = { navy: '#00205C', red: '#CA003D', light: '#F2F2F2' };
 
 export const colors = {
   ink: '#101B4D', muted: '#61759D', blue: '#0062E9', pale: '#EFF6FF',

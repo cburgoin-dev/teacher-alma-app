@@ -136,3 +136,35 @@ test('DEV replay uses real adjacent nodes repeatedly without consuming a complet
   assert.equal(devReplayTransition(before), null);
   assert.equal(devReplayTransition({...after, currentNode:null}), null);
 });
+
+const { vehicleContact, vehiclePosition, vehicleAngle } = require('../src/features/courses/components/vehicleGeometry.ts');
+test('vehicle tire baseline follows the tangent, with the tire midpoint exactly on the road', () => {
+  assert.ok(Math.abs(vehicleContact.y - 37.8666666667) < .0001);
+  assert.ok(vehicleContact.y < 42, 'SVG letterbox bottom is not tire contact');
+  for (const facingLeft of [false,true]) for (const tangent of [30,60,90,120,150]) {
+    const angle = vehicleAngle(tangent-90, facingLeft), radians=angle*Math.PI/180;
+    const road={x:120,y:200}, origin=vehiclePosition(road);
+    assert.equal(origin.x+vehicleContact.x,road.x); assert.equal(origin.y+vehicleContact.y,road.y);
+    // Rotating about the tire midpoint keeps both contacts on the tangent line.
+    for(const offset of [-11.3666667,11.3666667]) {
+      const dx=offset*Math.cos(radians),dy=offset*Math.sin(radians);
+      assert.ok(Math.abs(dx*Math.sin(tangent*Math.PI/180)-dy*Math.cos(tangent*Math.PI/180))<.00001);
+    }
+  }
+  assert.equal(vehicleAngle(-60,false),30);
+  assert.equal(vehicleAngle(60,true),-30);
+});
+
+test('fractional vehicle pivot bypasses the installed RN string parser and stays within the SVG viewport', () => {
+  const { vehicleOrigin } = require('../src/features/courses/components/vehicleGeometry.ts');
+  const source = fs.readFileSync(require.resolve('react-native/Libraries/StyleSheet/processTransformOrigin.js'), 'utf8');
+  const declaration = source.match(/const TRANSFORM_ORIGIN_REGEX = ([^;]+);/)[1];
+  const parser = require('node:vm').runInNewContext(declaration);
+  const legacy = `${vehicleContact.x}px ${vehicleContact.y}px`;
+  const parsed = [...legacy.matchAll(parser)].map(match => parseFloat(match[0]));
+  assert.ok(parsed.some(value => value > 1000000), 'Reproduce the V6 offscreen pivot with this RN version');
+  assert.ok(Array.isArray(vehicleOrigin), 'Numeric array takes the parser bypass');
+  assert.deepEqual(vehicleOrigin, [vehicleContact.x, vehicleContact.y, 0]);
+  assert.ok(vehicleOrigin[0] > 0 && vehicleOrigin[0] < 44);
+  assert.ok(vehicleOrigin[1] > 0 && vehicleOrigin[1] < 42);
+});

@@ -154,7 +154,7 @@ test('chat timeline reveals learner then typing then authored messages, and rele
   const frames=conversationTimeline(steps,0,2,false);
   assert.equal(frames[0].visible,1); assert.equal(frames[0].at,0);
   assert.equal(frames[1].typing,'emma'); assert.equal(frames[1].at,400); assert.equal(frames[1].visible,1);
-  assert.equal(frames[2].latest,'m'); assert.equal(frames[2].at,1000);
+  assert.equal(frames[2].latest,'m'); assert.equal(frames[2].at,1400);
   assert.equal(frames.at(-1).done,true);
   const terminal=conversationTimeline(steps,0,1,false);
   assert.equal(terminal.at(-1).at,400); assert.equal(terminal.at(-1).done,true);
@@ -185,4 +185,43 @@ test('chat reveal cancels pending timers on unmount and Reduce Motion releases t
   accessibility(false);render(3);
   content.steps.push({kind:'CHOICE',id:'q2'});render(4);assert.ok(timers.size>0);
   effects.forEach(e=>e?.cleanup?.());assert.equal(timers.size,0);assert.equal(removed,1);
+});
+
+const { conversationScrollOffset } = require('../src/features/unit-challenges/conversationScroll.ts');
+test('contextual chat scroll minimally reveals cards, preserves visible messages and yields to manual review', () => {
+  const target = {y:600,height:240,order:1,reduced:false};
+  assert.equal(conversationScrollOffset(0,500,1000,target,true),356);
+  assert.equal(conversationScrollOffset(356,500,1000,target,true),null);
+  assert.equal(conversationScrollOffset(0,500,1000,target,false),null);
+  assert.equal(conversationScrollOffset(0,500,1400,{...target,height:700},true),584);
+  assert.equal(conversationScrollOffset(0,500,850,target,true),350);
+  assert.equal(conversationScrollOffset(0,0,1000,target,true),null);
+  assert.equal(conversationScrollOffset(0,500,1000,{...target,reduced:true},true),356);
+});
+
+test('chat controller retains viewport across Intro/phase switch, yields to dragging and cancels queued scroll', () => {
+  const vm = require('node:vm');
+  const filename = require.resolve('../src/features/unit-challenges/useConversationScroll.ts');
+  const code = ts.transpileModule(fs.readFileSync(filename,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText;
+  const refs=[],frames=new Map(),calls=[];let index=0,memo,deps,cleanup,id=0;
+  const module={exports:{}};
+  vm.runInNewContext(code,{module,exports:module.exports,requestAnimationFrame:fn=>{frames.set(++id,fn);return id;},cancelAnimationFrame:id=>frames.delete(id),require:name=>{
+    if(name==='react')return {useRef:value=>refs[index++]??(refs[index-1]={current:value}),useMemo:(fn,next)=>{if(!deps||next[0]!==deps[0]){cleanup?.();memo=fn();deps=next;}return memo;},useEffect:fn=>{cleanup=fn();}};
+    if(name==='./conversationScroll')return {conversationScrollOffset};
+    if(name==='react-native')return {};
+    throw Error(name);
+  }});
+  const render=phase=>{index=0;return module.exports.useConversationScroll(phase);};
+  const flush=()=>{const work=[...frames.values()];frames.clear();work.forEach(fn=>fn());};
+  let c=render(undefined);c.ref.current={scrollTo:args=>calls.push(args)};
+  c.onLayout({nativeEvent:{layout:{height:500}}});c.onContentSizeChange(300,1000);
+  c=render('conversation');c.onRootLayout({nativeEvent:{layout:{y:100}}});
+  c.onTarget({y:500,height:240,order:1,reduced:false});flush();assert.equal(calls[0].y,356);assert.equal(calls[0].animated,true);
+  c.onScrollBeginDrag();c.onTarget({y:600,height:240,order:2,reduced:false});flush();assert.equal(calls.length,1);
+  c.onFollow();c.onTarget({y:600,height:240,order:3,reduced:true});flush();assert.equal(calls.at(-1).animated,false);
+  c.onTarget({y:700,height:240,order:4,reduced:false});assert.equal(calls.length,3, 'Target follows immediately, before the next frame');
+  cleanup();flush();assert.equal(calls.length,3);
+  c.onScrollBeginDrag();c.onScrollEndDrag({nativeEvent:{contentOffset:{y:100}}});
+  c.onTarget({y:700,height:240,order:5,reduced:false});flush();assert.equal(calls.length,3);
+  c.onMomentumScrollEnd({nativeEvent:{contentOffset:{y:490}}});flush();assert.equal(calls.length,4, 'Returning near active content resumes following');
 });

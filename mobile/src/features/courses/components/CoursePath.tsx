@@ -1,3 +1,4 @@
+import { vehiclePosition, vehicleOrigin, vehicleAngle } from './vehicleGeometry';
 import { TravelBus } from './TravelBus';
 import { TRAVEL_END } from '../completionMotion';
 import type { ProgressTransition } from '../completionMotion';
@@ -33,10 +34,11 @@ export function CoursePath({ topics, onLessonPress, targetId, onTargetLayout, cu
     if (samples.length) onMotionPosition?.(travelPoint(samples, Math.min(1, value / TRAVEL_END)).y);
   }, [samples, onMotionPosition]);
   const { progress, animate } = useProgressMotion(transition, motionReady, onMotionEnd, follow);
+  const facingLeft = moving && stops[toIndex].x < stops[fromIndex].x;
   const inputRange = samples.map(p => p.fraction * TRAVEL_END).concat(1);
-  const busX = moving ? progress.interpolate({ inputRange, outputRange: samples.map(p => p.x - 22).concat(samples.at(-1)!.x - 22) }) : 0;
-  const busY = moving ? progress.interpolate({ inputRange, outputRange: samples.map(p => p.y - 42).concat(samples.at(-1)!.y - 42) }) : 0;
-  const rotation = moving ? progress.interpolate({ inputRange, outputRange: samples.map((p, i) => (i ? p.angle : 0) + 'deg').concat('0deg') }) : '0deg';
+  const busX = moving ? progress.interpolate({ inputRange, outputRange: samples.map(p => vehiclePosition(p).x).concat(vehiclePosition(samples.at(-1)!).x) }) : 0;
+  const busY = moving ? progress.interpolate({ inputRange, outputRange: samples.map(p => vehiclePosition(p).y).concat(vehiclePosition(samples.at(-1)!).y) }) : 0;
+  const rotation = moving ? progress.interpolate({ inputRange, outputRange: samples.map((p, i) => (i ? vehicleAngle(p.angle, facingLeft) : 0) + 'deg').concat('0deg') }) : '0deg';
   const arrivalScale = progress.interpolate({ inputRange: [0, TRAVEL_END, (TRAVEL_END + 1) / 2, 1], outputRange: [1, 1, 1.06, 1] });
   const arrivalOpacity = progress.interpolate({ inputRange: [0, TRAVEL_END, 1], outputRange: [0, 0, 1] });
   useEffect(() => {
@@ -92,10 +94,10 @@ export function CoursePath({ topics, onLessonPress, targetId, onTargetLayout, cu
             {locked && lesson.progressStatus === 'COMPLETED' ? <Text style={s.meta}>Completada</Text> : null}
             {expanded[index] ? <View style={{ width: '100%', marginTop: 5 }}><Button compact arrow={!paid} title={paid ? 'Ver acceso' : 'Continuar'} tone={paid ? 'gold' : 'red'} onPress={() => onLessonPress(lesson)} /></View> : null}
           </Animated.View>
-          {!moving && lesson.id === currentNodeId ? <View pointerEvents="none" accessible={false} style={{ position: 'absolute', left: stop.x - 22, top: stop.y - stop.top - radius - 44 }}><RouteBus /></View> : null}
+          {!moving && lesson.id === currentNodeId ? <View pointerEvents="none" accessible={false} style={{ position: 'absolute', left: vehiclePosition(stop).x, top: vehiclePosition({ x: stop.x, y: stop.y - stop.top - radius - 2 }).y }}><RouteBus /></View> : null}
         </View>;
       })}
-      {moving ? <Animated.View pointerEvents="none" accessible={false} style={{ position: 'absolute', left: 0, top: 0, transform: [{ translateX: busX }, { translateY: busY }] }}><Animated.View style={{ width: 44, height: 42, transformOrigin: '50% 100%', transform: [{ rotate: rotation }] }}><TravelBus progress={progress} animate={animate} /></Animated.View></Animated.View> : null}
+      {moving ? <Animated.View pointerEvents="none" accessible={false} style={{ position: 'absolute', left: 0, top: 0, width: 44, height: 42, overflow: 'visible', transform: [{ translateX: busX }, { translateY: busY }] }}><Animated.View style={{ width: 44, height: 42, transformOrigin: vehicleOrigin, transform: [{ rotate: rotation }] }}><TravelBus progress={progress} animate={animate} facingLeft={facingLeft} /></Animated.View></Animated.View> : null}
       {entries.length ? <View style={s.finish}><View accessible={false} style={s.destination}><View style={s.flagPole} /><View style={s.finishFlag}><View style={s.flagSquare} /><View style={[s.flagSquare, { alignSelf: 'flex-end' }]} /></View></View><Text style={s.finishText}>Fin de la ruta</Text></View> : null}
     </> : null}
   </View>;

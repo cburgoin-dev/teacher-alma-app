@@ -1,7 +1,7 @@
 import { demoId } from './courses-demo-data.js';
 import { validateChallenge } from '../src/modules/unit-challenges/unit-challenge.content.js';
 
-/** Small deterministic scene shared by demo import and integration fixtures. */
+/** Acceptance-only demo, not final Alma pedagogical content. Shared with integration fixtures. */
 export function unitChallengeDemo(topicId: string, topicNumber: number, accessType = 'FREE') {
   const challenge = { id: demoId(50000 + topicNumber), topicId, title: 'Tu primera conversación',
     description: 'Saluda, preséntate y recuerda palabras de tu conversación.', passingScore: 70,
@@ -18,6 +18,13 @@ export function unitChallengeDemo(topicId: string, topicNumber: number, accessTy
           { id: 'm2', kind: 'MESSAGE', speakerId: 'emma', text: "Before class, let's practise a greeting: nice to meet you!" },
           { id: 'q2', kind: 'CHOICE', prompt: 'Responde a Emma.',
             options: [{ id: 'a', text: 'Nice to meet you too!' }, { id: 'b', text: 'See you tomorrow!' }], correctOptionId: 'a' },
+          { id: 'm3', kind: 'MESSAGE', speakerId: 'emma', text: "Let's practise talking about home. Where are you from?" },
+          { id: 'q3', kind: 'CHOICE', prompt: 'Di de dónde eres.',
+            options: [{ id: 'a', text: "I'm from Mexico." }, { id: 'b', text: 'Good morning!' }], correctOptionId: 'a' },
+          { id: 'm4', kind: 'MESSAGE', speakerId: 'emma', text: "Our practice is ending. How do you say goodbye?" },
+          { id: 'q4', kind: 'CHOICE', prompt: 'Despídete.',
+            options: [{ id: 'a', text: 'See you tomorrow!' }, { id: 'b', text: "My name is Alex." }], correctOptionId: 'a' },
+          { id: 'm5', kind: 'MESSAGE', speakerId: 'emma', text: 'That is the end of our practice. Bye!' },
         ] } },
     { id: demoId(60001 + topicNumber * 2), unitChallengeId: challenge.id, type: 'CROSSWORD', position: 2,
       config: { width: 7, height: 7, entries: [

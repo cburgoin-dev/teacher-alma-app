@@ -509,3 +509,41 @@ test('Crossword selecting clues leaves input empty without mutating completed cr
   input().props.onChangeText('ANT'); select(); assert.equal(input().props.value,'');
   render().find(n=>n.type==='Button').props.onPress(); assert.deepEqual(submitted.entries.map(e=>e.text),['CAT','ANT']);
 });
+
+test('Intro Más tarde queues an unguarded Roadmap exit without starting/abandoning or completing a run', () => {
+  const effects=[], navigations=[], completion=[]; let requested=false, prevent=true;
+  const leaving={current:false};
+  const state={busy:false,pending:false,exited:false,metadata:{challenge:{title:'Challenge',topic:{position:1},phaseTypes:[],passingScore:null},access:{hasAccess:true},progression:{unlocked:true},progress:{passed:false,bestScore:null}}};
+  const flow={snapshot:()=>state,subscribe(){},load(){},dispose(){},start(){throw Error('Unexpected start');},abandon(){throw Error('Unexpected abandon');}};
+  const {UnitChallengeScreen}=component('../src/features/unit-challenges/UnitChallengeScreen.tsx',{
+    react:{useMemo:fn=>fn(),useSyncExternalStore:(_,snapshot)=>snapshot(),useRef:()=>leaving,useState:()=>[requested,v=>requested=v],useCallback:fn=>fn,useEffect:fn=>effects.push(fn)},
+    'react-native':{View:'View',Text:'Text',ScrollView:'ScrollView',KeyboardAvoidingView:'KeyboardAvoidingView',Platform:{OS:'android'},useWindowDimensions:()=>({fontScale:1}),Alert:{alert(){throw Error('Intro must not ask to abandon');}}},
+    '@react-navigation/native':{useFocusEffect(){},usePreventRemove:value=>{prevent=value;}},
+    './flow':{ChallengeFlow:class{constructor(){return flow;}}},
+    './useConversationScroll':{useConversationScroll:()=>({})},
+    './ChallengeArt':{ChallengeHero:'Hero',ChallengeBackdrop:'Backdrop',PhaseIcon:'PhaseIcon'},
+    './phaseViews':{ConversationView:'Conversation',CrosswordView:'Crossword'},
+    './styles':{challengeStyles:{}},
+    '../courses/completionMotion':{finishCompletion:(ticket,passed)=>{completion.push([ticket,passed]);return undefined;}},
+  });
+  const render=()=>nodes(UnitChallengeScreen({route:{params:{courseId:'c',unitChallengeId:'u',completionTicket:42}},navigation:{popTo:(...args)=>{assert.equal(prevent,false);navigations.push(args);}}}));
+  const button=render().find(n=>n.type==='Button'&&n.props.title==='Más tarde');effects.splice(0).forEach(fn=>fn());
+  // A guard still present in the native navigator must not see an eager pop.
+  prevent=true;button.props.onPress();button.props.onPress();assert.equal(navigations.length,0);
+  render();effects.splice(0).forEach(fn=>fn());
+  assert.deepEqual(navigations,[['Roadmap',{courseId:'c',completionTicket:undefined}]]);
+  assert.deepEqual(completion,[[42,false]]);
+});
+
+test('Conversation reports separate measured targets for learner, typing, authored message and final CTA', () => {
+  const measured=[];let reveal={visible:2,reduced:false,pending:true,typing:'emma'};
+  const {ConversationView}=component('../src/features/unit-challenges/phaseViews.tsx',{
+    './useConversationReveal':{useConversationReveal:()=>reveal},
+    './ChatMotion':{ChatBubble:'Bubble',TypingBubble:'Typing'},'./styles':{challengeStyles:{}},
+  });
+  const content={participants:[{id:'emma',name:'Emma'}],steps:[{id:'m1',kind:'MESSAGE',speakerId:'emma',text:'Hello'},{id:'q1',kind:'CHOICE',options:[]},{id:'m2',kind:'MESSAGE',speakerId:'emma',text:'Bye'}]};
+  const layouts=()=>{const tree=nodes(ConversationView({content,disabled:false,submit(){},onTarget:t=>measured.push(t)}));tree.filter(n=>n.type==='View'&&n.props.onLayout).forEach(n=>n.props.onLayout({nativeEvent:{layout:{y:500,height:80}}}));};
+  layouts();assert.deepEqual(measured.map(t=>t.order),[8,10]);
+  measured.length=0;reveal={visible:3,reduced:true,pending:false,typing:null};layouts();
+  assert.deepEqual(measured.map(t=>t.order),[12,15]);assert.ok(measured.every(t=>t.reduced));
+});
