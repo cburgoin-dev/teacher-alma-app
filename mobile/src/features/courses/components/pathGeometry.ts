@@ -10,6 +10,32 @@ export function busStops(from: MapStop, to: MapStop, sectionTransition: boolean)
   ];
 }
 
+export function travelSamples(points: MapPoint[]) {
+  let distance = 0, previousAngle = 0;
+  const samples = points.map((point, index) => {
+    if (index) distance += Math.hypot(point.x - points[index - 1].x, point.y - points[index - 1].y);
+    const before = points[Math.max(0, index - 1)], after = points[Math.min(points.length - 1, index + 1)];
+    // The upright marker's forward axis is downward. Unwrap before interpolation.
+    let angle = Math.atan2(after.y - before.y, after.x - before.x) * 180 / Math.PI - 90;
+    if (index) {
+      while (angle - previousAngle > 180) angle -= 360;
+      while (angle - previousAngle < -180) angle += 360;
+    }
+    previousAngle = angle;
+    return { ...point, distance, angle, fraction: 0 };
+  });
+  return samples.map(sample => ({ ...sample, fraction: distance ? sample.distance / distance : 0 }));
+}
+
+export function travelPoint(samples: ReturnType<typeof travelSamples>, fraction: number): MapPoint {
+  if (!samples.length) return { x: 0, y: 0 };
+  const next = samples.findIndex(sample => sample.fraction >= fraction);
+  if (next <= 0) return next === 0 ? samples[0] : samples[samples.length - 1];
+  const a = samples[next - 1], b = samples[next];
+  const t = (fraction - a.fraction) / Math.max(.000001, b.fraction - a.fraction);
+  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+}
+
 // Section markers add room inside a single global coordinate system.
 // Neither ordering nor learning/access states are decided here.
 export function courseStops(width: number, expanded: boolean[], sectionStarts: boolean[], fontScale = 1): MapStop[] {

@@ -133,3 +133,95 @@ test('API sends only phase answers to documented routes, with encoded identifier
     assert.deepEqual(JSON.parse(calls[3][1].body), { requestKey: 'phase-request-key', answer: { entries: [] } });
   } finally { global.fetch = previousFetch; if (previousUrl === undefined) delete process.env.EXPO_PUBLIC_API_URL; else process.env.EXPO_PUBLIC_API_URL = previousUrl; }
 });
+
+const { editEntryDraft } = require('../src/features/unit-challenges/crossword.ts');
+const { conversationTimeline } = require('../src/features/unit-challenges/conversationTimeline.ts');
+test('crossing offsets remain on grid and full input starts at index zero; deletion touches only this draft', () => {
+  const entry = {row:0,column:0,length:5,direction:'ACROSS'};
+  for (const index of [0,2,4]) {
+    const cells = {['0:'+index]:'L', '1:0':'X'}; const original=JSON.stringify(cells);
+    const first = editEntryDraft(cells, entry, 'H', '');
+    if (index) assert.equal(first['0:'+index], 'L');
+    assert.equal(first['0:0'], 'H'); assert.equal(JSON.stringify(cells),original);
+    const full = editEntryDraft(first,entry,'hello','H');
+    assert.equal([0,1,2,3,4].map(i=>full['0:'+i]).join(''),'HELLO');
+    assert.equal(full['1:0'],'X');
+    const deleted = editEntryDraft(full,entry,'HELL','HELLO'); assert.equal(deleted['0:4'],'');
+  }
+});
+test('chat timeline reveals learner then typing then authored messages, and releases terminal CTA after a pause', () => {
+  const steps=[{kind:'CHOICE',id:'q'}, {kind:'MESSAGE',id:'m',speakerId:'emma',text:'Authored'}];
+  const frames=conversationTimeline(steps,0,2,false);
+  assert.equal(frames[0].visible,1); assert.equal(frames[0].at,0);
+  assert.equal(frames[1].typing,'emma'); assert.equal(frames[1].at,400); assert.equal(frames[1].visible,1);
+  assert.equal(frames[2].latest,'m'); assert.equal(frames[2].at,1400);
+  assert.equal(frames.at(-1).done,true);
+  const terminal=conversationTimeline(steps,0,1,false);
+  assert.equal(terminal.at(-1).at,400); assert.equal(terminal.at(-1).done,true);
+  assert.deepEqual(conversationTimeline(steps,0,2,true),[{at:0,visible:2,typing:null,latest:null,done:true}]);
+});
+
+test('chat reveal cancels pending timers on unmount and Reduce Motion releases terminal controls', async () => {
+  const vm = require('node:vm');
+  const filename = require.resolve('../src/features/unit-challenges/useConversationReveal.ts');
+  const code = ts.transpileModule(fs.readFileSync(filename, 'utf8'), {compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText;
+  const slots=[], effects=[], pending=[], timers=new Map(); let cursor=0, serial=0, accessibility, removed=0;
+  const effect=(fn,deps)=>{const i=cursor++, old=effects[i]; if(!old || deps.some((v,j)=>v!==old.deps[j]))pending.push(()=>{old?.cleanup?.();effects[i]={deps,cleanup:fn()};});};
+  const hooks={useEffect:effect,useLayoutEffect:effect,
+    useRef:v=>{const i=cursor++;return slots[i]??(slots[i]={current:v});},
+    useState:v=>{const i=cursor++;if(!(i in slots))slots[i]=v;return [slots[i],v=>slots[i]=v];}};
+  const module={exports:{}};
+  vm.runInNewContext(code,{module,exports:module.exports,setTimeout:fn=>{timers.set(++serial,fn);return serial;},clearTimeout:id=>timers.delete(id),require:id=>{
+    if(id==='react')return hooks;
+    if(id==='react-native')return {AccessibilityInfo:{isReduceMotionEnabled:async()=>false,addEventListener:(_,fn)=>{accessibility=fn;return {remove(){removed++;}};}}};
+    if(id==='./conversationTimeline')return {conversationTimeline};
+    throw Error(id);
+  }});
+  const content={steps:[{kind:'MESSAGE',id:'m1',speakerId:'emma'},{kind:'CHOICE',id:'q'},{kind:'MESSAGE',id:'m2',speakerId:'emma'}]};
+  const render=boundary=>{cursor=0;const result=module.exports.useConversationReveal(content,boundary);pending.splice(0).forEach(fn=>fn());return result;};
+  render(1);await Promise.resolve();render(1);
+  render(3);assert.ok(timers.size>0);assert.equal(render(3).pending,true);
+  accessibility(true);render(3);assert.equal(timers.size,0);assert.equal(render(3).pending,false);assert.equal(render(3).visible,3);
+  accessibility(false);render(3);
+  content.steps.push({kind:'CHOICE',id:'q2'});render(4);assert.ok(timers.size>0);
+  effects.forEach(e=>e?.cleanup?.());assert.equal(timers.size,0);assert.equal(removed,1);
+});
+
+const { conversationScrollOffset } = require('../src/features/unit-challenges/conversationScroll.ts');
+test('contextual chat scroll minimally reveals cards, preserves visible messages and yields to manual review', () => {
+  const target = {y:600,height:240,order:1,reduced:false};
+  assert.equal(conversationScrollOffset(0,500,1000,target,true),356);
+  assert.equal(conversationScrollOffset(356,500,1000,target,true),null);
+  assert.equal(conversationScrollOffset(0,500,1000,target,false),null);
+  assert.equal(conversationScrollOffset(0,500,1400,{...target,height:700},true),584);
+  assert.equal(conversationScrollOffset(0,500,850,target,true),350);
+  assert.equal(conversationScrollOffset(0,0,1000,target,true),null);
+  assert.equal(conversationScrollOffset(0,500,1000,{...target,reduced:true},true),356);
+});
+
+test('chat controller retains viewport across Intro/phase switch, yields to dragging and cancels queued scroll', () => {
+  const vm = require('node:vm');
+  const filename = require.resolve('../src/features/unit-challenges/useConversationScroll.ts');
+  const code = ts.transpileModule(fs.readFileSync(filename,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText;
+  const refs=[],frames=new Map(),calls=[];let index=0,memo,deps,cleanup,id=0;
+  const module={exports:{}};
+  vm.runInNewContext(code,{module,exports:module.exports,requestAnimationFrame:fn=>{frames.set(++id,fn);return id;},cancelAnimationFrame:id=>frames.delete(id),require:name=>{
+    if(name==='react')return {useRef:value=>refs[index++]??(refs[index-1]={current:value}),useMemo:(fn,next)=>{if(!deps||next[0]!==deps[0]){cleanup?.();memo=fn();deps=next;}return memo;},useEffect:fn=>{cleanup=fn();}};
+    if(name==='./conversationScroll')return {conversationScrollOffset};
+    if(name==='react-native')return {};
+    throw Error(name);
+  }});
+  const render=phase=>{index=0;return module.exports.useConversationScroll(phase);};
+  const flush=()=>{const work=[...frames.values()];frames.clear();work.forEach(fn=>fn());};
+  let c=render(undefined);c.ref.current={scrollTo:args=>calls.push(args)};
+  c.onLayout({nativeEvent:{layout:{height:500}}});c.onContentSizeChange(300,1000);
+  c=render('conversation');c.onRootLayout({nativeEvent:{layout:{y:100}}});
+  c.onTarget({y:500,height:240,order:1,reduced:false});flush();assert.equal(calls[0].y,356);assert.equal(calls[0].animated,true);
+  c.onScrollBeginDrag();c.onTarget({y:600,height:240,order:2,reduced:false});flush();assert.equal(calls.length,1);
+  c.onFollow();c.onTarget({y:600,height:240,order:3,reduced:true});flush();assert.equal(calls.at(-1).animated,false);
+  c.onTarget({y:700,height:240,order:4,reduced:false});assert.equal(calls.length,3, 'Target follows immediately, before the next frame');
+  cleanup();flush();assert.equal(calls.length,3);
+  c.onScrollBeginDrag();c.onScrollEndDrag({nativeEvent:{contentOffset:{y:100}}});
+  c.onTarget({y:700,height:240,order:5,reduced:false});flush();assert.equal(calls.length,3);
+  c.onMomentumScrollEnd({nativeEvent:{contentOffset:{y:490}}});flush();assert.equal(calls.length,4, 'Returning near active content resumes following');
+});

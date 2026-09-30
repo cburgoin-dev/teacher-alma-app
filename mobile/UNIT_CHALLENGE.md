@@ -85,3 +85,161 @@ After measuring and centering the relevant segment, a layout frame settles befor
 Physical acceptance: complete a pending Lesson from Roadmap, return through Result and observe the segment/bus/arrival; repeat for a first passed Challenge. Check failed Challenge, completed-node replay, normal entry and app reload do not travel. Repeat with Android Remove animations/Reduce Motion enabled, large fonts, narrow screen, and leaving the screen mid-animation. Inspect logo edges and the full feedback for Lesson 3 MC with the fixed Continue visible. These are device checks still to be performed by the user, not claims of physical acceptance.
 
 Validation: TypeScript and all 89 Mobile tests passed, including Courses/Lessons/Unit Challenge and motion eligibility, geometry, reduced motion, native animation cleanup, viewport fit and feedback visibility. Android export and git diff --check passed. No seed/backend validation was needed because neither changed. Physical acceptance remains pending.
+
+## Iteration 5 acceptance
+
+This section supersedes iteration 4's 3-second timing, whole-segment viewport requirement and full-resolution logo decode. Backend contracts, lifecycle, progression, scoring, passing, replay, resume and abandonment are unchanged.
+
+Motion uses one native Animated progress value: 3500ms travel plus 450ms arrival (3950ms total). Arc-length samples of the existing connector drive the bus, dash painting thresholds and camera target. Rotation follows neighboring sample tangents, unwrapped to avoid full spins; the bus returns upright on arrival. A 1.2dp suspension movement and three faint exhaust dots run only during travel. The scroll camera follows those same samples via the native value listener, without per-frame React state or overlapping scroll animations. Reduced Motion resolves immediately. Frame smoothness and bridge latency still require physical acceptance; automated geometry checks cannot prove on-device synchronization.
+
+The DEV-only `DEV · Replay motion · 1×` button is above the course summary. Scroll back to the top after a preview to repeat it. It reuses CoursePath and the same timing/camera/arrival renderer using the completed predecessor of the real current node. It makes no API calls, changes no progress and creates/consumes no completion ticket. It is absent from production. Normal product navigation still needs the existing single-use, backend-confirmed completion ticket; failed challenges, replay and normal entry do not animate.
+
+Conversation shows the learner bubble, waits 400ms (including its entrance), types three dots for 600ms before each following authored message, then reveals it. No authored following message means no invented Emma response. The final learner reply remains readable before the single `Continuar al crucigrama` CTA appears; only that CTA submits. Timers/animations clean up on unmount and Reduced Motion skips the sequence. Tails are presentation only. No branching or immediate correctness.
+
+Crossword has a separate local input draft. Switching clues empties the TextInput without touching the shared grid. Existing crossing letters stay visible only in their cells. Typing starts at the word's first position and updates shared cells; deleting affects only positions typed in the current draft. Five connected demo words and backend coordinates are unchanged.
+
+### Logo asset preparation
+
+The original official PNG remains byte-for-byte unchanged (SHA-256 listed above). `assets/branding/la-teacher-alma-mobile.png` and @2x/@3x/@4x are transparent 60x44dp canvases with the original proportions, prepared using Lanczos3 downsampling. Metro selects the device-density variant. Even the 4x decode is only 165 KiB, versus ~28.5 MiB previously. No redraw, sharpening, recoloring or runtime dependency was added. Optional regeneration: `node scripts/prepare-logo.cjs <path-to-sharp>` from mobile, using an externally available development copy of Sharp. The source has sufficient pixels; perfect preservation of tiny strokes at this footprint is not guaranteed. An official SVG or brand-authored small-size export remains the appropriate future asset, not an automatically traced substitute. Physical sharpness remains unverified.
+
+### Reproducible physical route
+
+The explicit reset wrapper below calls the existing guarded local seed. It resets the configured demo learner's progress in `teacher_alma_dev`; it is never run by tests, app startup or export. Use it only when you want a fresh acceptance route. No production seed logic or Admin tool was added.
+
+1. In `backend`, run `npm run demo:lessons:reset`, then `npm run demo:check`. Use the existing local backend/Expo setup above. Lessons 1–2 are complete, Lesson 3 is pending; Challenge and Lesson 5 unlock through real completion/passing.
+2. Open Roadmap, finish Lesson 3, then tap its Result route CTA.
+3. Observe one completion transition and arrival pulse. It should take about 3.95 seconds, with no second animation on normal re-entry.
+4. In a DEV build, scroll to the course summary and tap `DEV · Replay motion · 1×`; repeat without resetting progress. Production has no button.
+5. Watch the bus turn along the curve and return upright at its destination; test both alternating directions and the topic boundary.
+6. Confirm gray dashes turn blue as the bus reaches them, rather than painting the entire segment beforehand.
+7. Confirm the camera follows on a narrow Android screen and with large fonts; the route no longer skips travel just because the entire segment cannot fit.
+8. Inspect the subtle suspension/exhaust during travel and their disappearance at arrival. Leave the screen during motion and confirm no continuing animation or blocked navigation.
+9. Enter Challenge Conversation. Test correct, incorrect and blank choices: learner bubble, short pause, typing, next authored message. At the end read the final reply and tap the one final CTA. Double tapping must not duplicate submission; test the existing network retry path too.
+10. In Crossword, fill NAME, select HELLO (its shared E is intermediate): input is empty, E stays in the grid, typing HELLO starts with H. Repeat initial/final crossings and clue switching; verify shared edits, deletion, keyboard, blanks and no horizontal scrolling.
+11. Inspect the compact official logo on the physical phone, especially small letter strokes, proportions and the absence of density upscaling on supported 1–4x displays.
+12. Pass Challenge and return through Result: observe the real transition to Lesson 5. A failed attempt, completed-node replay or normal Roadmap entry must not trigger product completion motion. DEV preview is the explicit testing exception.
+13. Enable Android Remove animations/Reduce Motion and repeat: consolidated Roadmap appears immediately, chat reveals without typing/entrance delay, and all CTAs remain usable.
+
+Automated validation and export do not substitute for these physical checks. No sounds were introduced. Existing Lesson feedback layout, Review and Lesson scoring remain untouched.
+
+Iteration 5 validation: Mobile TypeScript, all 94 Mobile tests at the full-suite checkpoint plus the added chat timer/Reduced Motion cleanup test (17/17 Unit Challenge tests on the final targeted rerun), Android production export and diff whitespace checks passed. Production Hermes was checked for absence of the DEV preview label/helper. The explicit demo reset and subsequent check passed; two prerequisite lessons are complete and there are no active Challenge runs.
+
+On this Windows installation the npm launcher points to a missing roaming npm-cli.js. The wrappers were validated through the installed CLI: `node "C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js" run demo:lessons:reset`, followed by the same command with `demo:check`, from backend. This is an environment workaround; no global npm settings were changed.
+
+## Iteration 6 acceptance
+
+V5 motion, camera, chat/input and raster sharpness were physically accepted by the user. V6 is presentation polish; its changes still need physical acceptance.
+
+### Vehicle contact and exhaust
+
+The side-on 2D RouteBus is retained. The V5 rotation used the downward marker axis, perpendicular to the SVG's horizontal wheel baseline. V6 converts that angle to the side-on baseline and chooses facing once from the connector direction (mirrored for leftward travel). Rotation pivots at the actual average tire contact, not the container bottom: SVG (30.5,48) maps to (22.367,37.867) dp inside the 44x42 viewport, including xMidYMid letterboxing. Both parked and traveling positions use this contact helper. The bus remains above the path's drawing layer; no segment-specific offset, perspective replacement or new route geometry was introduced. A four-angle static render checked the actual SVG and wheel alignment. On curved segments the contact is the local tangent approximation, not a wheel/road physics simulation.
+
+Whole-vehicle suspension bob was removed because it lifted the tires off the road. The three exhaust particles now originate at the rear of the local SVG, rotate/mirror with the bus, expand from 0.65 to 1.9, and peak at 0.48 alpha. Their envelope is strongest early, quieter during cruise, and zero before arrival. They remain decorative, non-interactive and omitted with Reduce Motion; unmount stops the loops. No particle engine or sound. Arc distance, native progress, dash thresholds, camera following, 3500+450ms timing, easing, arrival, DEV replay and completion eligibility remain unchanged.
+
+### Official artwork and colors
+
+Both supplied files are archived unchanged in `docs/branding/LaTeacherAlma-Logo.ai` and `.pdf`, outside the runtime asset bundle. Both contain one vector artwork sheet with multiple official lockups/colorways (zero embedded raster images); the AI includes a PDF-compatible representation. Their rendered sheets were inspected. The PDF additionally includes print marks/color bars, and the content uses print/spot color resources. These are genuine vector sources, not a PNG requiring tracing.
+
+The accepted V5 density-aware PNGs remain in production. A faithful isolated SVG has not been verified for path selection, print-to-screen color conversion and tiny-size Android rendering, so V6 makes no claim that an untested SVG is superior. No tracing, lettering reconstruction, raster recoloring or new runtime dependency was added. Existing asset/decode cost stays unchanged; the archived source sheets are not imported by Mobile. A future isolated export from the original artwork should be compared at 60x44dp before replacing the accepted PNGs.
+
+The sheet's explicit RGB/HEX labels confirm navy #00205C, red #CA003D and light #F2F2F2. Only opt-in brandColors were corrected to these values; functional blue/coral, white surfaces, success green and Premium gold were preserved. Future brand-surface/heading alignment can be evaluated separately, not by replacing global interactive colors.
+
+### Phase preview and Conversation
+
+Intro uses two solid local SVG phase icons: speech bubble with three white dots and a crossword tile with white cells. They reuse the existing SVG renderer, circle containers, functional blue and icon footprint without adding an icon library. Hero circles/tails, Crossword and Result are unchanged.
+
+Typing now lasts 1000ms (previously 600ms), retaining the 400ms learner entrance/pause and 200ms authored message entrance. Reduced Motion reveals immediately. Final readable reply/closing, the sole Continuar al crucigrama submit, request idempotency and timer cleanup remain unchanged.
+
+The acceptance-only seed now contains four decisions (name, greeting, origin, goodbye), with neutral authored practice transitions and an explicit closing. It is not final pedagogical content approved by Alma. There is no conditional branching or implicit validation in follow-ups. The existing scoring counts four choices plus five crossword entries for fresh runs (nine items); this is content length, not a scoring-rule change. Historical runs keep their frozen content.
+
+The updated demo was applied locally with `--apply` and checked, preserving existing learner progress (`resetUserProgress: false`). Start a fresh replay to see four turns. The explicit V5 reset wrapper remains available only when a fresh Lesson 3 -> Challenge -> Lesson 5 route is desired; V6 did not reset it automatically.
+
+### Physical checks still pending
+
+Use DEV Replay motion on both connector directions and the topic bend: inspect tire contact, body outside the line, start/arrival rotation, rear exhaust during acceleration/cruise/braking, and unchanged 3.95s path/camera pacing. Confirm the parked bus remains coherent. Repeat with Reduce Motion and leaving mid-travel. Inspect the filled phase icons on narrow/large-font Android. Start a new four-choice demo run; observe 1s typing, scrolling, blank/wrong choices, final authored goodbye, and the single final CTA. Check the unchanged density-aware logo and Result. Static rendering/tests/export do not establish this physical acceptance.
+
+V6 validation: Mobile TypeScript passed; 72 relevant Mobile tests passed (Courses, motion/contact geometry, Unit Challenge, Lessons and Lessons replay). Both demo content tests and local seed apply/check passed without resetting learner progress. Android production export passed with the same 25 assets and four PNG logo densities; no vector runtime payload was added. Source AI/PDF hashes match the supplied originals. Git diff whitespace check passed. No production backend/domain/API/schema change.
+
+### V6 physical acceptance correction: moving bus and contextual chat scroll
+
+The interrupted investigation made no edits. Existing V6 work was retained. The moving-only regression was reproduced in the installed React Native 0.86 transform-origin parser: its string regex accepts integer px tokens but not decimal px tokens. The former `22.366...px 37.866...px` pivot lost the decimal prefixes, producing enormous coordinates. Rotation/mirroring around that origin displaced the moving bus outside the visible scene; the parked SVG does not use those transforms. `vehicleOrigin` is now a numeric [x,y,0] tuple, bypassing string parsing for both rotation and mirroring. The translated outer wrapper also explicitly declares its 44x42 footprint and visible overflow. Tire contact, side-on body, angle conversion, exhaust and shared progress/timing/camera/path remain unchanged. The regression test executes the installed regex to reproduce the old pivot and checks bounded numeric coordinates. This proves the parsing defect, not physical visibility on Android.
+
+Conversation now reports measured layouts for the newest learner/authored bubble and each active card/final CTA to its parent ScrollView. The controller coalesces layout/content-size notifications into one animation-frame scroll request, moves only enough to reveal the measured target with a 16dp margin, and clamps to the scrollable content. Already visible content does not move. Oversized cards begin at their top and remain manually scrollable. Scroll events only record position; they never drive auto-scroll per frame. A manual drag suspends following, which resumes on explicit Continue or on returning within 48dp of the bottom. Reduced Motion uses an immediate scroll rather than an animated one. Pending frame requests are cancelled on phase change/unmount. The existing typing timers, 1000ms cadence, bubbles, single submit and final closure are preserved; no sticky CTA was added.
+
+Coverage clarification: V5's 94 was its full-suite checkpoint, followed by one added timer-cleanup test (95). V6's 72 was a relevant subset (Courses/motion/Unit Challenge/Lessons/replay), not the entire Mobile suite. This correction ran all `mobile/tests/*.test.cjs`: 99 passed, zero failed/skipped, including the V6 contact test and three correction tests. Mobile TypeScript passed. Physical checks remain necessary: bus visible throughout both DEV/real motion directions, tire contact, rear exhaust, arrival, Reduce Motion, and long Conversation following versus manual history review. Existing filled preview icons, Crossword, Result and branding were not changed by this correction.
+
+Final correction validation: Android production export and git diff --check passed. The required demo:lessons:reset and demo:check were executed successfully through the documented Windows npm-cli.js launcher after validation: resetUserProgress=true, two prerequisite lessons complete, zero active runs and zero Challenge runs. Lesson 3 is ready for physical acceptance. No Git commit/push/merge/reset was performed.
+
+### V6 final acceptance fixes: Intro exit and incremental follow
+
+The user physically accepted the vehicle/contact/path/camera, filled preview icons, 1000ms typing, Crossword and Result; none were changed in this fix.
+
+Intro's direct exit previously set its permanent leaving ref before dispatching popTo. If removal was intercepted (including a guard/native update timing window), that ref suppressed subsequent exits. Más tarde now uses the same exit request semantics as Back. A valid no-run exit queues a render that releases usePreventRemove, then dispatches the Roadmap return in an effect; only that dispatch sets the duplicate-navigation latch. It never calls start or abandon for an unstarted Intro and invalidates, rather than completes, any motion ticket. ACTIVE/uncertain runs keep their existing confirmation/retry semantics. The test simulates a guard still present before the queued render and checks a single Roadmap navigation with no run mutation. The exact timing on the physical device remains a device acceptance check.
+
+Each new learner bubble, typing bubble, authored message and active card/final CTA now has a distinct ordered measured target. Previously typing had no target, and all requests waited for the next frame. New measurements request the minimum scroll immediately; content-size/layout callbacks reconcile scroll bounds once available, with duplicate offsets suppressed. This keeps the typing stage visible rather than waiting for the final card. Scrolling upward pauses following, including a short upward gesture near the bottom. Returning near the active content can restore following during/end of momentum; explicit Continue also restores it. No blind scrollToEnd, frame-driven scrolling or fixed/sticky CTA. Reduced Motion still requests immediate scrolling and skips artificial reveal delays. Authored content, submit and timing are unchanged.
+
+Validation: Mobile TypeScript and all 101 Mobile tests passed, including Intro navigation, incremental chat targets, manual-review/momentum resumption and existing shared/Lessons/Challenge regressions. Physical acceptance remains pending for Más tarde and the incremental reveal/follow sequence on a long conversation, including upward history review and returning to the latest content.
+
+Final exit/follow validation: Android production export and diff whitespace checks passed. Executed demo:lessons:reset followed by demo:check through the documented npm-cli.js launcher: successful reset/check, two completed prerequisite lessons, Lesson 3 pending, zero active runs and zero Unit Challenge runs. No Git commit, push, merge or reset.
+
+
+## Iteration 7 acceptance
+
+### Exit semantics
+
+Header chevron and Android hardware Back both request exit, including Lesson Replay. Unit Challenge Intro also uses this confirmation for Más tarde: Continuar keeps the Intro; Salir returns explicitly to Roadmap. An unstarted exit calls neither start nor abandon, changes no progress and does not finish a completion ticket. ACTIVE Challenge retains the existing explicit-abandon request/retry path before returning; background interruption/disposal does not abandon. NORMAL_RUN Lesson retains its existing confirmation and abandon semantics. REPLAY confirms exit locally without a persistent endpoint or historical progress change; previous-step traversal remains the explicit internal revisit capability.
+
+The permanent leaving ref was removed. Challenge releases its removal guard for the confirmed navigation dispatch and then re-arms the request state if still mounted. A failed/no-op popTo can therefore be retried instead of leaving Más tarde permanently inert. Only an actual first passed completion can carry a finished completion ticket. Tests cover cancelling, confirming, shared header/hardware intent and a no-op navigation followed by another attempt; they do not establish native device acceptance.
+
+### Progression choreography
+
+One native animation sequence owns three transient values: origin completion, the unchanged V6 travel/arrival progress, and destination reveal. Nothing is persisted or substituted for backend progression/access state. Timing is completion 600ms -> settle 150ms -> travel 3500ms -> arrival 450ms -> reveal 550ms (5250ms total).
+
+The source starts with a coral current face over the consolidated completed face. Its halo/disc crossfade to green while the check fades/scales in; a restrained pulse settles before departure. Challenge sources retain a white trophy with green accent and a slightly stronger pulse. This uses opacity/scale, not a simulated score or reward and not an SVG stroke draw.
+
+V6 wheel contact, numeric transform origin, 2D bus, tangent/arc geometry, travel easing, dash painting and camera samples are unchanged. The camera holds at the source during completion/settle, follows the V6 samples during travel and holds at the destination through reveal. Exhaust is suppressed at zero travel progress so particles do not appear during the added completion stage; its accepted rear attachment, particle size/alpha and travel envelope remain intact.
+
+The destination initially shows a gray prerequisite face. After arrival it fades away while the consolidated icon, ring, current dot and card reveal; the card slides 10dp and the node pulses lightly. Lesson destinations reveal the current book; Challenge destinations reveal the trophy. An access-locked destination reveals the gold lock and ACCESO PREMIUM card, never an unlocked book/trophy. Existing backend-derived lessonState remains authoritative. Eligibility is unchanged: only a single-use ticket plus a confirmed adjacent backend frontier transition triggers product choreography. Normal entry, replay and failed challenges do not.
+
+Reduce Motion resolves all three values directly to the consolidated state without artificial timing. Animation frame, sequence and progress listener clean up on unmount/change; the existing exhaust loops also clean up. DEV Replay motion reuses the complete same sequence without APIs, mutations or ticket consumption and remains behind the existing production-excluded DEV branch.
+
+### Pending physical acceptance
+
+1. From Intro, cancel and confirm Más tarde and chevron; repeat with Android Back. Confirm returning to Roadmap creates no run/progress/motion. Reopen and repeat.
+2. In ACTIVE Challenge, cancel to retain the run; confirm to abandon and return. Background/reopen must remain resumable. Repeat Lesson normal exit and Replay exit midway through an activity; Replay must not go to the previous step or change history.
+3. Finish Lesson 3 and return through Result: observe coral-to-green/check completion, brief settle, V6 travel/arrival, then lock-to-trophy/card reveal. Pass Challenge and inspect the corresponding Lesson destination. Confirm the source remains visible before departure and the destination/card remains visible through reveal on narrow/large-font Android.
+4. Repeat both directions and topic boundaries with DEV Replay motion; inspect bus visibility, tire contact, exhaust, timing and camera continuity. Leave mid-sequence to check cleanup. Inspect a real access-locked destination: gold lock and Premium card, with no false unlock.
+5. Enable Reduce Motion and repeat: immediate consolidated state, usable CTAs, no long choreography. Normal entry/replay/failed attempts must not trigger product completion motion.
+
+Validation: Mobile TypeScript and the complete Mobile suite passed: 104 tests, zero failures/skips. This includes Courses/Roadmap, normal Lessons, Replay, Unit Challenge, shared regressions, exit retries, native sequence ordering/cleanup, Reduced Motion and Lesson/Challenge/Premium rendering layers. Automated checks do not claim physical acceptance.
+
+Final V7 validation: Android production export passed (25 assets); its Hermes bundle contains neither the DEV preview label nor helper. Diff whitespace check passed. Executed demo:lessons:reset and then demo:check using the documented npm-cli.js launcher: resetUserProgress=true, successful database/content check, two prerequisite lesson progress records, zero active runs and zero Unit Challenge runs. Lessons 1–2 are complete and Lesson 3 is pending for physical acceptance. No commit, push, merge or Git reset was performed.
+
+
+### Iteration 7 acceptance/polish — V7.1
+
+This section supersedes V7's Intro guard-release queue, border-check representation and 150ms settle. Existing V7 local changes were preserved.
+
+Exit investigation: source inspection found the same requestExit callback on header and Más tarde, an enabled real Pressable for valid Intro, pointerEvents=none on decorative children/background, and no Intro scroll-follow action. The supplied still image cannot establish whether Android delivered the physical tap; no device trace was available, so this is not claimed as a reproduced touch-interception root cause. The remaining unnecessary navigation dependency was routing a no-run Intro exit through a guard-release state/effect and popTo. Intro now confirms and navigates directly: canGoBack -> goBack, otherwise explicit Roadmap fallback. It has no removal guard/run to release and no latch. ACTIVE/pending runs retain usePreventRemove and explicit abandon semantics. The real Button/Pressable test checks enabled state, callback identity with header, confirmation, both destinations and retry after a no-op navigation. Physical verification of Más tarde is still required.
+
+Completion now draws an SVG success ring over about 420ms and a 300ms check stroke overlapping from 270ms. Circle/check dash offsets follow the existing completion clock through SVG refs; no extra timers, dependencies or per-frame React state. Listeners are removed on unmount. The final static check uses the same path to avoid a shape swap. Challenge completion retains the trophy with a delayed central star during the final 210ms and a restrained pulse.
+
+Destination reveal staggers gray lock shrink/fade, ring trace, consolidated icon, current dot pop and card slide/fade. Premium reveals a gold ring/lock and ACCESO PREMIUM, never a false unlock. Challenge reveals the shared trophy. Backend state is unchanged.
+
+A left-facing departure crossfades the stationary right-facing bus into the V6 left-facing bus during the 200ms settle. Right-facing departures add no visual turn. Arrival crossfades back into the existing right-facing parked representation during the existing arrival interval, avoiding the endpoint flip. Numeric tire-contact origins, translations, road/camera samples, travel easing and exhaust are retained. Total timing is 600 + 200 + 3500 + 450 + 550 = 5300ms, only 50ms more than V7. Reduced Motion resolves directly; DEV preview runs this same choreography for the actual predecessor/current pair. No synthetic scenario selector was added.
+
+Trophy previously had separate Preview and Roadmap paths. The Roadmap's open stem/base subpath could implicitly close diagonally. Both now use TrophyShape based on the accepted Preview artwork, with explicit rectangular stem and pedestal, configurable white/accent colors and size. Result inherits the same Hero artwork without layout changes.
+
+Validation: Mobile TypeScript and all 107 Mobile tests passed, including real Intro button wiring, goBack/fallback/retry, active protection, Lesson/Replay regressions, stage ordering, drawing windows/listener cleanup, facing decision, Premium/Challenge layers and shared trophy geometry. Physical checks: confirm Más tarde actually opens the same dialog and returns in Android, then inspect ring/check drawing smoothness, star delay, staggered cards, both bus directions/parking, narrow/large-font viewport, Premium and Reduce Motion. Tests do not prove physical delivery, visibility or smoothness.
+
+V7.1 final validation: Android production export passed with 25 assets; DEV label/helper absent from Hermes. Executed demo:lessons:reset followed by demo:check through npm-cli.js, both successful: resetUserProgress=true, two prerequisite lesson progress records, zero active Lesson runs and zero Unit Challenge runs. Lessons 1–2 complete, Lesson 3 pending. Git diff --check passed. No commit/push/merge/Git reset.
+
+Touch diagnostic follow-up: PathScenery currently unmounts whenever expanded[index] is true; it appears instantly when that node stops being current. Small visual debt recorded only; not changed in this touch probe. Temporary DEV probes in exitTouchProbe.ts: 1 moves the real button above the primary CTA, 2 puts a raw Pressable in the original lower slot, 3 restores the original button and returns null for the UnitChallenge BottomTabBar. Physical results pending; do not infer them from component tests.
+
+Touch diagnosis resolved with the scoped fallback: physical probe 1 (real Button above primary) still produced no onPressIn; probe 2 (raw Pressable in that same position) delivered onPressIn -> onPress -> requestExit -> confirmation -> navigation. This isolates the failing shared-Button composition, not navigation or screen region; probe 3 was unnecessary and removed. The exact internal Android responder cause is not established. Más tarde now retains the validated direct Pressable/Text composition with the original blue styling, font scaling and 48dp minimum height, below the primary CTA. Shared Button changes only remove temporary tracing. All touch probes/logs and the BottomTabBar diagnostic override were removed; navigation and motion are unchanged. Physical recheck of the restored lower placement remains pending. PathScenery instant appearance remains recorded visual debt.
+
+### Final visual polish closure
+
+Más tarde was physically accepted with its dedicated simple Pressable and remains untouched. No touch probes, tracing or temporary BottomTabBar override remain. PathScenery now stays mounted for each eligible stop, preserving its coordinates and decorative/non-interactive accessibility behavior. Expanded-card overlap controls opacity instead of mounting: a native 400ms fade reveals/hides scenery when the current node changes. In-flight fades stop on changes/unmount. The existing Reduce Motion preference is reused; reduced/unknown preference applies the final opacity immediately. No additional micro-polish was needed. Main timings remain frozen at completion 1300ms, settle 275ms, travel 3500ms, arrival 450ms and reveal 1100ms. Remaining physical check: scenery fade after Lesson/Challenge completion, both sides/topic boundary, and immediate scenery state with Reduce Motion. Previously accepted navigation, chat, bus, trophy and screen layouts are unchanged.
+
+Final polish validation: Mobile TypeScript and all 108 Mobile tests passed (including Courses/Roadmap, Unit Challenge, Lessons/shared and scenery fade/Reduce Motion coverage). Android production export passed with 25 assets. Executed demo:lessons:reset and then demo:check through npm-cli.js successfully: resetUserProgress=true, lessonProgress=2, activeRuns=0, unitChallengeRuns=0; Lessons 1–2 complete and Lesson 3 pending. Git diff --check passed. Physical scenery continuity remains to be accepted on Android; automated checks do not establish physical smoothness.

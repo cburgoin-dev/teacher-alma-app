@@ -5,6 +5,15 @@ export function writeEntry(cells: Record<string, string>, entry: Entry, text: st
   return { ...cells, ...Object.fromEntries(cellsFor(entry).map((cell, i) => [cell, letters[i] ?? ''])) };
 }
 export const readEntry = (cells: Record<string, string>, entry: Entry) => cellsFor(entry).map(cell => cells[cell] || ' ').join('').trimEnd();
+export function editEntryDraft(cells: Record<string, string>, entry: Entry, text: string, previousDraft: string) {
+  const next = { ...cells };
+  const letters = Array.from(text.normalize('NFC').toUpperCase()).slice(0, entry.length);
+  cellsFor(entry).forEach((cell, index) => {
+    if (index < letters.length) next[cell] = letters[index];
+    else if (index < Array.from(previousDraft).length) next[cell] = ''; // Deliberate deletion only.
+  });
+  return next;
+}
 export function entryNumber(entries: Entry[], entry: Entry) {
   const starts = [...new Set(entries.map(e => `${e.row}:${e.column}`))];
   return starts.indexOf(`${entry.row}:${entry.column}`) + 1;

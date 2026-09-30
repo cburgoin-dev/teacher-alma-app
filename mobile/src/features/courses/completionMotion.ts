@@ -27,4 +27,10 @@ export function consumeCompletion(ticket: number | undefined, roadmap: Roadmap):
   if (!from || from.progressStatus !== 'COMPLETED' || !to || roadmap.currentNode?.id !== to.id || !to.progression.unlocked || roadmap.progress.completedRequiredNodes <= candidate.count) return null;
   return { from: from.id, to: to.id, type: from.type };
 }
-export function motionDuration(reducedMotion: boolean) { return reducedMotion ? 0 : 3000; }
+export const TRAVEL_MS = 3500;
+export const ARRIVAL_MS = 450;
+export const COMPLETION_MS = 1300;
+export const SETTLE_MS = 275;
+export const REVEAL_MS = 1100;
+export const TRAVEL_END = TRAVEL_MS / (TRAVEL_MS + ARRIVAL_MS);
+export function motionDuration(reducedMotion: boolean) { return reducedMotion ? 0 : COMPLETION_MS + SETTLE_MS + TRAVEL_MS + ARRIVAL_MS + REVEAL_MS; }

@@ -1,3 +1,4 @@
+global.__DEV__ = false;
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -22,15 +23,15 @@ test('Replay is fresh, retains local answers and high-water, includes optional a
   const { flow, calls } = replay(); await flow.load();
   assert.equal(flow.snapshot().mode, 'REPLAY'); assert.equal(flow.snapshot().stepId, '0'); assert.equal(flow.snapshot().progress.percentage, 0);
   assert.equal(flow.snapshot().feedback, null); assert.equal(flow.snapshot().answer, null);
-  assert.deepEqual(flow.snapshot().data.activityProgress, { completed: 0, total: 2 }); assert.equal(flow.back(), false);
+  assert.deepEqual(flow.snapshot().data.activityProgress, { completed: 0, total: 2 }); assert.equal(flow.back(), true); flow.cancelExit();
   await flow.continueContent(); assert.equal(flow.snapshot().progress.percentage, 25);
   await flow.continueContent(); assert.equal(flow.snapshot().stepId, '1');
-  flow.rememberAnswer({ text: 'draft' }); flow.back(); await flow.continueContent();
+  flow.rememberAnswer({ text: 'draft' }); flow.revisit('0'); await flow.continueContent();
   assert.deepEqual(flow.snapshot().answer, { text: 'draft' }); assert.equal(flow.snapshot().feedback, null);
   await flow.submit({ text: 'wrong' }); assert.equal(flow.snapshot().progress.percentage, 50); assert.equal(reinforcementOnCompletion(flow.snapshot().feedback), false);
   flow.retryAnswer(); await flow.submit({ text: 'correct' }); assert.equal(feedbackTitle(flow.snapshot().feedback), '¡Ahora sí!');
   flow.continueFeedback(); assert.equal(flow.snapshot().stepId, '2'); assert.equal(flow.snapshot().answer, null); assert.equal(flow.snapshot().feedback, null);
-  flow.back(); assert.deepEqual(flow.snapshot().answer, { text: 'correct' }); assert.equal(flow.snapshot().feedback.isCorrect, true);
+  flow.revisit('1'); assert.deepEqual(flow.snapshot().answer, { text: 'correct' }); assert.equal(flow.snapshot().feedback.isCorrect, true);
   assert.equal(flow.snapshot().progress.percentage, 50); flow.continueFeedback();
   await flow.submit({ text: 'correct' }); flow.continueFeedback();
   assert.equal(flow.snapshot().stepId, '3'); assert.equal(flow.snapshot().progress.percentage, 75);
@@ -73,7 +74,7 @@ test('Replay gates concurrent taps and publishes ready feedback atomically; erro
 });
 test('Matching retry clears cached pairs and feedback even after back', async () => {
   const { flow } = replay(); await flow.load(); await flow.continueContent(); await flow.submit({ pairs: [{ wordId: 'book', imageId: 'cup' }] });
-  flow.retryAnswer(); flow.back(); await flow.continueContent();
+  flow.retryAnswer(); flow.revisit('0'); await flow.continueContent();
   assert.deepEqual(flow.snapshot().answer, { pairs: [] }); assert.equal(flow.snapshot().feedback, null);
 });
 test('Replay API uses a dedicated encoded route and unchanged Answer', async () => {
@@ -115,7 +116,7 @@ function component(relative, overrides = {}) {
       StyleSheet: { create: value => value }, useWindowDimensions: () => overrides.dimensions ?? ({ width: 400, fontScale: 1 }), Keyboard: { dismiss() {} } };
     if (name === 'react-native-safe-area-context') return { useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) };
     if (name === 'react-native-svg') return { default: 'Svg', Circle: 'Circle', Path: 'Path', Rect: 'Rect' };
-    if (name.endsWith('/ui')) return { Button: 'Button' };
+    if (name.endsWith('/ui')) return { Button: 'Button', styles: { button: { minHeight: 48 }, buttonText: {} } };
     if (name.endsWith('/theme')) return { colors: {} };
     if (name.endsWith('/lessonStyles')) return { lessonStyles: {} };
     if (name.endsWith('/LearningIcon')) return { LearningIcon: 'LearningIcon' };
@@ -274,7 +275,7 @@ test('Conversation closes for reading before the single final CTA submits, prese
   const values = []; let cursor = 0;
   const closing = { current: false };
   const hooks = { useRef: () => closing, useState: initial => { const i = cursor++; if (!(i in values)) values[i] = initial; return [values[i], value => { values[i] = typeof value === 'function' ? value(values[i]) : value; }]; } };
-  const { ConversationView } = component('../src/features/unit-challenges/phaseViews.tsx', { react: hooks, './styles': { challengeStyles: {} } });
+  const { ConversationView } = component('../src/features/unit-challenges/phaseViews.tsx', { react: hooks, './ChatMotion': { ChatBubble: 'ChatBubble', TypingBubble: 'TypingBubble' }, './styles': { challengeStyles: {} }, './useConversationReveal': { useConversationReveal: (_, boundary) => ({ visible: boundary, reduced: true, pending: false }) } });
   const content = { participants: [{ id: 'emma', name: 'Emma' }], steps: [
     { id: 'm1', kind: 'MESSAGE', speakerId: 'emma', text: 'Hello' },
     { id: 'q1', kind: 'CHOICE', options: [{ id: 'a', text: 'Hi!' }, { id: 'b', text: 'Bye!' }] },
@@ -493,4 +494,155 @@ test('V10 only video posters use cover; activity images keep contain and Play re
   const preview = tree.find(n => n.type === 'View' && Array.isArray(n.props.style) && n.props.style[0]?.overflow === 'hidden');
   assert.ok(preview); assert.ok(nodes(preview).some(n => n.props?.pointerEvents === 'none'));
   assert.equal(tree.filter(n => n.type === 'Button').length, 0);
+});
+
+test('Crossword selecting clues leaves input empty without mutating completed crossings', () => {
+  const values=[]; let cursor=0,submitted;
+  const hooks={useState: initial=>{const i=cursor++; if(!(i in values))values[i]=initial;return [values[i],v=>values[i]=typeof v==='function'?v(values[i]):v];}};
+  const {CrosswordView}=component('../src/features/unit-challenges/phaseViews.tsx',{react:hooks,'./ChatMotion':{},'./useConversationReveal':{},'./styles':{challengeStyles:{}}});
+  const content={entries:[{id:'a',row:0,column:0,length:3,direction:'ACROSS',clue:'Across'},{id:'b',row:0,column:1,length:3,direction:'DOWN',clue:'Down'}]};
+  const render=()=>{cursor=0;return nodes(CrosswordView({content,disabled:false,submit:a=>submitted=a}));};
+  const input=()=>render().find(n=>n.type==='TextInput');
+  input().props.onChangeText('CAT');
+  const select=()=>render().find(n=>n.type==='Pressable' && !n.props.accessibilityState.selected).props.onPress();
+  select(); assert.equal(input().props.value,'');
+  render().find(n=>n.type==='Button').props.onPress(); assert.equal(submitted.entries[0].text,'CAT');
+  input().props.onChangeText('ANT'); select(); assert.equal(input().props.value,'');
+  render().find(n=>n.type==='Button').props.onPress(); assert.deepEqual(submitted.entries.map(e=>e.text),['CAT','ANT']);
+});
+
+test('Challenge Intro/ACTIVE header, Más tarde and hardware exits confirm; no-op navigation can retry', () => {
+  for (const active of [false,true]) for (const canBack of [false,true]) {
+    const effects=[], navigations=[], completion=[], alerts=[], hookCache=[]; let hookIndex=0; const memo=(fn,deps)=>{const i=hookIndex++,old=hookCache[i];if(!old||deps.some((v,j)=>v!==old.deps[j]))hookCache[i]={deps,value:fn()};return hookCache[i].value;}; let requested=false, prevent=true, hardware, guard, abandoned=0;
+    const state={busy:false,pending:false,exited:false,response:active?{run:{status:'ACTIVE'}}:undefined,metadata:{challenge:{title:'Challenge',topic:{position:1},phaseTypes:[],passingScore:null},access:{hasAccess:true},progression:{unlocked:true},progress:{passed:false,bestScore:null}}};
+    const flow={snapshot:()=>state,subscribe(){},load(){},dispose(){},start(){throw Error('Unexpected start');},abandon(){abandoned++;state.response={run:{status:'ABANDONED'}};state.exited=true;}};
+    const {UnitChallengeScreen}=component('../src/features/unit-challenges/UnitChallengeScreen.tsx',{
+      react:{useMemo:fn=>fn(),useSyncExternalStore:(_,snapshot)=>snapshot(),useState:()=>[requested,v=>requested=v],useCallback:(fn,deps)=>memo(()=>fn,deps),useEffect:(fn,deps)=>memo(()=>effects.push(fn),deps)},
+      'react-native':{View:'View',Text:'Text',ScrollView:'ScrollView',KeyboardAvoidingView:'KeyboardAvoidingView',Pressable:'Pressable',Platform:{OS:'android'},useWindowDimensions:()=>({fontScale:1}),Alert:{alert:(...args)=>alerts.push(args)},BackHandler:{addEventListener:(_,fn)=>{hardware=fn;return {remove(){}};}}},
+      '@react-navigation/native':{useFocusEffect:fn=>fn(),usePreventRemove:(value,fn)=>{prevent=value;guard=fn;}},
+      './flow':{ChallengeFlow:class{constructor(){return flow;}}}, './useConversationScroll':{useConversationScroll:()=>({})},
+      './ChallengeArt':{ChallengeHero:'Hero',ChallengeBackdrop:'Backdrop',PhaseIcon:'PhaseIcon'}, './phaseViews':{ConversationView:'Conversation',CrosswordView:'Crossword'}, './styles':{challengeStyles:{}},
+      '../courses/completionMotion':{finishCompletion:(...args)=>completion.push(args)},
+    });
+    const navigation={canGoBack:()=>canBack,goBack:()=>{assert.equal(prevent,false);navigations.push(['back']);},popTo:(...args)=>{assert.equal(prevent,false);navigations.push(args);}};
+    const render=()=>{hookIndex=0;const tree=nodes(UnitChallengeScreen({route:{params:{courseId:'c',unitChallengeId:'u',completionTicket:42}},navigation}));effects.splice(0).forEach(fn=>fn());return tree;};
+    let tree=render();
+    assert.equal(prevent,active);
+    const header=tree.find(n=>n.props?.title==='Reto de unidad'&&n.props.onBack);
+    header.props.onBack();let buttons=alerts.at(-1)[2];assert.equal(buttons[0].style,'cancel');buttons[0].onPress?.();
+    assert.equal(abandoned,0);assert.equal(navigations.length,0);assert.equal(requested,false);
+    assert.equal(hardware(),true);assert.equal(alerts.length,2);
+    guard();assert.equal(alerts.length,3);
+    if(!active){const later=tree.find(n=>n.type==='Pressable'&&n.props.accessibilityLabel==='Más tarde');assert.equal(later.props.onPress,header.props.onBack);assert.equal(later.props.disabled,false);assert.equal(later.props.children.type,'Text');assert.equal(later.props.children.props.pointerEvents,'none');assert.ok(tree.findIndex(n=>n.type==='Button'&&n.props.title==='Comenzar reto')<tree.indexOf(later));later.props.onPress();}
+    alerts.at(-1)[2][1].onPress();render();if(active)render();
+    assert.equal(abandoned,active?1:0);assert.equal(navigations.length,1);
+    assert.deepEqual(navigations[0],canBack?['back']:['Roadmap',{courseId:'c',completionTicket:undefined}]);assert.deepEqual(completion,[]);
+    // Simulate popTo being a no-op: the mounted screen must accept another exit.
+    tree=render();hardware();if(!active)alerts.at(-1)[2][1].onPress();render();
+    assert.equal(navigations.length,2);assert.equal(abandoned,active?1:0);
+  }
+});
+
+test('Replay exit preserves current step and history; only explicit revisit goes backwards', async () => {
+  const {flow,calls}=replay({abandon:async()=>{throw Error('Replay abandon');}});await flow.load();await flow.continueContent();
+  assert.equal(flow.snapshot().stepId,'1');flow.back();assert.equal(flow.snapshot().stepId,'1');assert.equal(flow.snapshot().exitRequested,true);
+  flow.cancelExit();assert.equal(flow.snapshot().exited,false);flow.back();flow.confirmExit();flow.confirmExit();
+  assert.equal(flow.snapshot().exited,true);assert.equal(flow.back(),false);assert.deepEqual(calls,['read']);
+});
+
+test('Lesson normal and replay header/hardware both request exit and confirm before Roadmap', async () => {
+  for(const mode of ['NORMAL_RUN','REPLAY']) {
+    let abandons=0,hardware,guard;const alerts=[],effects=[],navigations=[];
+    const {flow}=replay({read:async()=>mode==='REPLAY'?historical:{...historical,state:{status:'NOT_STARTED'}},start:async()=>({runId:'r',status:'ACTIVE',currentStepId:'0',progress:{percentage:0}}),abandon:async()=>{abandons++;}});
+    await flow.load();await flow.continueContent(); // normal mock lacks completeStep: error retained, exit still valid
+    const {LessonScreen}=component('../src/features/lessons/screens/LessonScreen.tsx',{
+      react:{useMemo:()=>flow,useSyncExternalStore:(_,fn)=>fn(),useEffect:fn=>effects.push(fn),useCallback:fn=>fn,useRef:v=>({current:v})},
+      '../flow':{LessonFlow:class{}},
+      'react-native':{View:'View',Text:'Text',ScrollView:'ScrollView',KeyboardAvoidingView:'KeyboardAvoidingView',Pressable:'Pressable',Platform:{OS:'android'},StyleSheet:{create:v=>v},Alert:{alert:(...args)=>alerts.push(args)},BackHandler:{addEventListener:(_,fn)=>{hardware=fn;return{remove(){}};}}},
+      '@react-navigation/native':{useFocusEffect:fn=>fn(),usePreventRemove:(value,fn)=>{guard=value;}}
+    });
+    // Avoid rerunning the load effect in this minimal hook harness.
+    flow.load=()=>{};
+    flow.snapshot().data.lesson={...lesson,topic:{title:'Topic'},position:{lesson:3,totalLessons:8}};
+    const render=()=>{const tree=nodes(LessonScreen({route:{params:{courseId:'c',lessonId:'l3'}},navigation:{popTo:(...args)=>{assert.equal(guard,false);navigations.push(args);},replace(){}}}));effects.splice(0).forEach(fn=>fn());return tree;};
+    const before=flow.snapshot().stepId;render().find(n=>n.props?.onBack).props.onBack();render();
+    assert.equal(flow.snapshot().stepId,before);alerts.at(-1)[2][0].onPress();render();assert.equal(navigations.length,0);
+    hardware();render();alerts.at(-1)[2][1].onPress();render();
+    assert.equal(navigations.length,1);assert.equal(abandons,mode==='NORMAL_RUN'?1:0);
+    hardware();assert.equal(navigations.length,2,'no-op navigation can retry');
+  }
+});
+
+test('Conversation reports separate measured targets for learner, typing, authored message and final CTA', () => {
+  const measured=[];let reveal={visible:2,reduced:false,pending:true,typing:'emma'};
+  const {ConversationView}=component('../src/features/unit-challenges/phaseViews.tsx',{
+    './useConversationReveal':{useConversationReveal:()=>reveal},
+    './ChatMotion':{ChatBubble:'Bubble',TypingBubble:'Typing'},'./styles':{challengeStyles:{}},
+  });
+  const content={participants:[{id:'emma',name:'Emma'}],steps:[{id:'m1',kind:'MESSAGE',speakerId:'emma',text:'Hello'},{id:'q1',kind:'CHOICE',options:[]},{id:'m2',kind:'MESSAGE',speakerId:'emma',text:'Bye'}]};
+  const layouts=()=>{const tree=nodes(ConversationView({content,disabled:false,submit(){},onTarget:t=>measured.push(t)}));tree.filter(n=>n.type==='View'&&n.props.onLayout).forEach(n=>n.props.onLayout({nativeEvent:{layout:{y:500,height:80}}}));};
+  layouts();assert.deepEqual(measured.map(t=>t.order),[8,10]);
+  measured.length=0;reveal={visible:3,reduced:true,pending:false,typing:null};layouts();
+  assert.deepEqual(measured.map(t=>t.order),[12,15]);assert.ok(measured.every(t=>t.reduced));
+});
+
+
+test('Roadmap completion layers reveal backend Lesson, Challenge and Premium states without fake unlocks', () => {
+  class Value { constructor(value){this.value=value;} interpolate({inputRange,outputRange}){let i=1;while(i<inputRange.length-1&&this.value>inputRange[i])i++;const t=Math.max(0,Math.min(1,(this.value-inputRange[i-1])/(inputRange[i]-inputRange[i-1])));return typeof outputRange[i]==='number'?outputRange[i-1]+t*(outputRange[i]-outputRange[i-1]):outputRange[i];} }
+  for(const sourceType of ['LESSON','UNIT_CHALLENGE']) for(const destinationType of ['LESSON','UNIT_CHALLENGE','PREMIUM']) for(const phase of ['completion','travel','reveal','done']) {
+    const completed=phase==='completion'?0:1,revealed=phase==='done'?1:0;
+    const {CoursePath}=component('../src/features/courses/components/CoursePath.tsx',{
+      react:{useState:()=>[324,()=>{}],useMemo:fn=>fn(),useCallback:fn=>fn,useEffect(){}},
+      'react-native':{View:'View',Text:'Text',Pressable:'Pressable',Animated:{View:'AnimatedView',multiply:(a,b)=>a.value*b,subtract:(a,b)=>a-b},StyleSheet:{create:v=>v,absoluteFill:{}},useWindowDimensions:()=>({fontScale:1})},
+      './CompletionDrawing':{CompletionDrawing:'Drawing'},'./TravelBus':{TravelBus:'TravelBus'},'./PathScenery':{PathScenery:'Scenery'},
+      './useProgressMotion':{useProgressMotion:()=>({progress:new Value(phase==='completion'?0:phase==='travel'?.5:1),completion:new Value(completed),reveal:new Value(revealed),orientation:new Value(completed),animate:true})},
+      '../../unit-challenges/ChallengeArt':{Trophy:'Trophy',RouteBus:'RouteBus'},
+      '../../../components/NavigationIcon':{NavigationIcon:'NavigationIcon'},'../../../theme':{colors:{red:'#FF2348',blue:'#0062E9'},shadows:{}}
+    });
+    const make=(id,type,done,paid)=>({id,type,title:id,progressStatus:done?'COMPLETED':'NOT_STARTED',access:{hasAccess:!paid},progression:{unlocked:true,isCurrent:!done,lockReason:paid?'ACCESS':null}});
+    const topics=[{id:'t',title:'Topic',nodes:[make('from',sourceType,true,false),make('to',destinationType==='UNIT_CHALLENGE'?'UNIT_CHALLENGE':'LESSON',false,destinationType==='PREMIUM')]}];
+    const original=JSON.stringify(topics),tree=nodes(CoursePath({topics,transition:{from:'from',to:'to',type:sourceType},onMotionEnd(){},onLessonPress(){}}));
+    const faces=tree.filter(n=>typeof n.type==='function'&&n.type.name==='NodeFace');
+    assert.equal(faces.length,4);assert.equal(faces[0].props.state,'COMPLETED');assert.equal(faces[1].props.state,'CURRENT');
+    assert.equal(faces[2].props.state,destinationType==='PREMIUM'?'LOCKED_ACCESS':'CURRENT');assert.equal(faces[3].props.state,'LOCKED_PREREQUISITE');
+    assert.equal(faces[0].props.iconOpacity.value,completed);assert.equal(faces[2].props.iconOpacity,revealed);
+    const destination=nodes(faces[2].type(faces[2].props));
+    assert.equal(destination.some(n=>n.type==='Trophy'),destinationType==='UNIT_CHALLENGE');
+    if(destinationType==='PREMIUM'){assert.ok(tree.includes('ACCESO PREMIUM'));assert.equal(destination.some(n=>n.type==='NavigationIcon'),false);assert.equal(faces[2].props.fill,'#E9B64A');}
+    assert.equal(JSON.stringify(topics),original);
+  }
+});
+
+
+test('Completion SVG draws ring/check from the existing clock and removes its listener', () => {
+  let callback,cleanup,removed=0;const refs=[];
+  const {CompletionDrawing}=component('../src/features/courses/components/CompletionDrawing.tsx',{
+    react:{useRef:()=>{const ref={current:{updates:[],setNativeProps(v){this.updates.push(v);}}};refs.push(ref);return ref;},useEffect:fn=>cleanup=fn()}
+  });
+  CompletionDrawing({progress:{addListener:fn=>{callback=fn;return 'drawing';},removeListener:id=>{assert.equal(id,'drawing');removed++;}},size:76,challenge:false});
+  callback({value:.4});assert.ok(refs[0].current.updates.at(-1).strokeDashoffset<289);assert.equal(refs[1].current.updates.at(-1).strokeDashoffset,43);
+  callback({value:1});assert.equal(refs[1].current.updates.at(-1).strokeDashoffset,0);cleanup();assert.equal(removed,1);
+});
+
+test('Preview and Roadmap Trophy share one shape with rectangular stem and pedestal', () => {
+  const {Trophy,TrophyShape,ChallengeHero}=component('../src/features/unit-challenges/ChallengeArt.tsx',{'../../theme':{colors:{red:'#F00',white:'#FFF'},brandColors:{red:'#CA003D'}}});
+  assert.ok(nodes(Trophy({size:44})).some(n=>n.type===TrophyShape));assert.ok(nodes(ChallengeHero()).some(n=>n.type===TrophyShape));
+  const shapes=nodes(TrophyShape({color:'#FFF',accent:'#159653'}));
+  const rectangles=shapes.filter(n=>n.type==='Rect');assert.equal(rectangles.length,2);assert.equal(Number(rectangles[0].props.width),10);assert.equal(Number(rectangles[1].props.width),40);assert.equal(Number(rectangles[1].props.height),9);
+});
+
+
+test('Scenery stays mounted across current-card changes, fades 400ms and resolves reduced motion directly', () => {
+  let value,cleanup;const timings=[];let stops=0;
+  const {PathScenery}=component('../src/features/courses/components/PathScenery.tsx',{
+    react:{useRef:v=>({current:value??=v}),useEffect:fn=>{cleanup?.();cleanup=fn();}},
+    'react-native':{View:'View',StyleSheet:{create:v=>v},Animated:{View:'AnimatedView',Value:class{constructor(v){this.value=v;}setValue(v){this.value=v;}},timing:(target,options)=>{timings.push({target,...options});return{start(){},stop(){stops++;}};}}}
+  });
+  const render=(visible,reducedMotion)=>PathScenery({variant:4,right:true,visible,reducedMotion});
+  const hidden=render(false,false),shown=render(true,false);
+  assert.equal(hidden.type,shown.type);assert.equal(hidden.props.children.length,shown.props.children.length);
+  assert.equal(shown.props.pointerEvents,'none');assert.equal(shown.props.importantForAccessibility,'no-hide-descendants');
+  assert.equal(timings.at(-1).target,value);assert.equal(timings.at(-1).toValue,1);assert.equal(timings.at(-1).duration,400);assert.equal(timings.at(-1).useNativeDriver,true);
+  render(false,true);assert.equal(value.value,0);assert.equal(timings.length,2);assert.equal(stops,2);
+  render(true,true);assert.equal(value.value,1);assert.equal(timings.length,2);
 });

@@ -32,7 +32,7 @@ export function LessonScreen({ route, navigation }: NativeStackScreenProps<Cours
   useEffect(() => { if (state.exited) exit(); }, [state.exited, exit]);
   useEffect(() => {
     if (!state.exitRequested) return;
-    Alert.alert('¿Salir de la lección?', 'Si sales ahora, tendrás que comenzar la lección desde el principio.', [
+    Alert.alert(state.mode === 'REPLAY' ? '¿Salir del repaso?' : '¿Salir de la lección?', state.mode === 'REPLAY' ? 'Tu progreso anterior se conserva.' : 'Si sales ahora, tendrás que comenzar la lección desde el principio.', [
       { text: 'Seguir aprendiendo', style: 'cancel', onPress: flow.cancelExit },
       { text: 'Salir', onPress: () => { void flow.confirmExit(); } },
     ], { cancelable: true, onDismiss: flow.cancelExit });
@@ -42,7 +42,7 @@ export function LessonScreen({ route, navigation }: NativeStackScreenProps<Cours
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => { back(); return true; });
     return () => subscription.remove();
   }, [back]));
-  usePreventRemove(state.mode === 'NORMAL_RUN' && !!state.runId && !state.exited && !state.result && !state.completion, () => { flow.back(); });
+  usePreventRemove(!!state.data && !state.exited && !state.result && !state.completion, () => { flow.back(); });
   const locked = state.error instanceof ApiError && state.error.code === 'LESSON_ACCESS_REQUIRED';
   if (state.loading) return <View style={[s.center, { backgroundColor: '#FFF', alignItems: 'center', paddingTop: insets.top }]}>
     <ActivityIndicator color="#0062E9" /><Text style={s.caption}>Preparando tu lección…</Text>
@@ -59,7 +59,7 @@ export function LessonScreen({ route, navigation }: NativeStackScreenProps<Cours
   const step = data.steps.find(item => item.id === state.stepId);
   const activity = step?.blocks.find(block => block.type === 'ACTIVITY');
   return <KeyboardAvoidingView style={[s.page, { paddingTop: insets.top }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-    <ContextualHeader title={data.lesson.topic.title} position={`${data.lesson.position.lesson} de ${data.lesson.position.totalLessons}`} onBack={back} backLabel={state.mode === 'NORMAL_RUN' ? 'Salir de la lección' : 'Volver'} disabled={state.busy}>
+    <ContextualHeader title={data.lesson.topic.title} position={`${data.lesson.position.lesson} de ${data.lesson.position.totalLessons}`} onBack={back} backLabel={state.mode === 'NORMAL_RUN' ? 'Salir de la lección' : 'Salir del repaso'} disabled={state.busy}>
       {state.progress ? <ProgressBar percentage={state.progress.percentage} /> : null}
     </ContextualHeader>
     {step?.type === 'ACTIVITY_STEP' && activity?.type === 'ACTIVITY' ? <ActivityStep key={step.id} activity={activity.activity} feedback={state.feedback} busy={state.busy} initialAnswer={state.answer} bottomInset={insets.bottom} error={state.error ? lessonError(state.error) : undefined}
