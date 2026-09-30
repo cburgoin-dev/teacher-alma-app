@@ -116,7 +116,7 @@ function component(relative, overrides = {}) {
       StyleSheet: { create: value => value }, useWindowDimensions: () => overrides.dimensions ?? ({ width: 400, fontScale: 1 }), Keyboard: { dismiss() {} } };
     if (name === 'react-native-safe-area-context') return { useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) };
     if (name === 'react-native-svg') return { default: 'Svg', Circle: 'Circle', Path: 'Path', Rect: 'Rect' };
-    if (name.endsWith('/ui')) return { Button: 'Button' };
+    if (name.endsWith('/ui')) return { Button: 'Button', styles: { button: { minHeight: 48 }, buttonText: {} } };
     if (name.endsWith('/theme')) return { colors: {} };
     if (name.endsWith('/lessonStyles')) return { lessonStyles: {} };
     if (name.endsWith('/LearningIcon')) return { LearningIcon: 'LearningIcon' };
@@ -518,7 +518,7 @@ test('Challenge Intro/ACTIVE header, Más tarde and hardware exits confirm; no-o
     const flow={snapshot:()=>state,subscribe(){},load(){},dispose(){},start(){throw Error('Unexpected start');},abandon(){abandoned++;state.response={run:{status:'ABANDONED'}};state.exited=true;}};
     const {UnitChallengeScreen}=component('../src/features/unit-challenges/UnitChallengeScreen.tsx',{
       react:{useMemo:fn=>fn(),useSyncExternalStore:(_,snapshot)=>snapshot(),useState:()=>[requested,v=>requested=v],useCallback:(fn,deps)=>memo(()=>fn,deps),useEffect:(fn,deps)=>memo(()=>effects.push(fn),deps)},
-      'react-native':{View:'View',Text:'Text',ScrollView:'ScrollView',KeyboardAvoidingView:'KeyboardAvoidingView',Platform:{OS:'android'},useWindowDimensions:()=>({fontScale:1}),Alert:{alert:(...args)=>alerts.push(args)},BackHandler:{addEventListener:(_,fn)=>{hardware=fn;return {remove(){}};}}},
+      'react-native':{View:'View',Text:'Text',ScrollView:'ScrollView',KeyboardAvoidingView:'KeyboardAvoidingView',Pressable:'Pressable',Platform:{OS:'android'},useWindowDimensions:()=>({fontScale:1}),Alert:{alert:(...args)=>alerts.push(args)},BackHandler:{addEventListener:(_,fn)=>{hardware=fn;return {remove(){}};}}},
       '@react-navigation/native':{useFocusEffect:fn=>fn(),usePreventRemove:(value,fn)=>{prevent=value;guard=fn;}},
       './flow':{ChallengeFlow:class{constructor(){return flow;}}}, './useConversationScroll':{useConversationScroll:()=>({})},
       './ChallengeArt':{ChallengeHero:'Hero',ChallengeBackdrop:'Backdrop',PhaseIcon:'PhaseIcon'}, './phaseViews':{ConversationView:'Conversation',CrosswordView:'Crossword'}, './styles':{challengeStyles:{}},
@@ -533,7 +533,7 @@ test('Challenge Intro/ACTIVE header, Más tarde and hardware exits confirm; no-o
     assert.equal(abandoned,0);assert.equal(navigations.length,0);assert.equal(requested,false);
     assert.equal(hardware(),true);assert.equal(alerts.length,2);
     guard();assert.equal(alerts.length,3);
-    if(!active){const later=tree.find(n=>n.type==='Button'&&n.props.title==='Más tarde');assert.equal(later.props.onPress,header.props.onBack);assert.equal(later.props.disabled,false);const {Button}=component('../src/features/courses/components/ui.tsx',{'../../../theme':{colors:{},radius:{},type:{}},'./CourseVisualIcon':{CourseVisualIcon:'Icon'},'./CourseCover':{CourseCover:'Cover'}});const pressable=Button(later.props);assert.ok(!pressable.props.disabled);pressable.props.onPress();}
+    if(!active){const later=tree.find(n=>n.type==='Pressable'&&n.props.accessibilityLabel==='Más tarde');assert.equal(later.props.onPress,header.props.onBack);assert.equal(later.props.disabled,false);assert.equal(later.props.children.type,'Text');assert.equal(later.props.children.props.pointerEvents,'none');assert.ok(tree.findIndex(n=>n.type==='Button'&&n.props.title==='Comenzar reto')<tree.indexOf(later));later.props.onPress();}
     alerts.at(-1)[2][1].onPress();render();if(active)render();
     assert.equal(abandoned,active?1:0);assert.equal(navigations.length,1);
     assert.deepEqual(navigations[0],canBack?['back']:['Roadmap',{courseId:'c',completionTicket:undefined}]);assert.deepEqual(completion,[]);
@@ -558,7 +558,7 @@ test('Lesson normal and replay header/hardware both request exit and confirm bef
     const {LessonScreen}=component('../src/features/lessons/screens/LessonScreen.tsx',{
       react:{useMemo:()=>flow,useSyncExternalStore:(_,fn)=>fn(),useEffect:fn=>effects.push(fn),useCallback:fn=>fn,useRef:v=>({current:v})},
       '../flow':{LessonFlow:class{}},
-      'react-native':{View:'View',Text:'Text',ScrollView:'ScrollView',KeyboardAvoidingView:'KeyboardAvoidingView',Platform:{OS:'android'},StyleSheet:{create:v=>v},Alert:{alert:(...args)=>alerts.push(args)},BackHandler:{addEventListener:(_,fn)=>{hardware=fn;return{remove(){}};}}},
+      'react-native':{View:'View',Text:'Text',ScrollView:'ScrollView',KeyboardAvoidingView:'KeyboardAvoidingView',Pressable:'Pressable',Platform:{OS:'android'},StyleSheet:{create:v=>v},Alert:{alert:(...args)=>alerts.push(args)},BackHandler:{addEventListener:(_,fn)=>{hardware=fn;return{remove(){}};}}},
       '@react-navigation/native':{useFocusEffect:fn=>fn(),usePreventRemove:(value,fn)=>{guard=value;}}
     });
     // Avoid rerunning the load effect in this minimal hook harness.
@@ -629,4 +629,20 @@ test('Preview and Roadmap Trophy share one shape with rectangular stem and pedes
   assert.ok(nodes(Trophy({size:44})).some(n=>n.type===TrophyShape));assert.ok(nodes(ChallengeHero()).some(n=>n.type===TrophyShape));
   const shapes=nodes(TrophyShape({color:'#FFF',accent:'#159653'}));
   const rectangles=shapes.filter(n=>n.type==='Rect');assert.equal(rectangles.length,2);assert.equal(Number(rectangles[0].props.width),10);assert.equal(Number(rectangles[1].props.width),40);assert.equal(Number(rectangles[1].props.height),9);
+});
+
+
+test('Scenery stays mounted across current-card changes, fades 400ms and resolves reduced motion directly', () => {
+  let value,cleanup;const timings=[];let stops=0;
+  const {PathScenery}=component('../src/features/courses/components/PathScenery.tsx',{
+    react:{useRef:v=>({current:value??=v}),useEffect:fn=>{cleanup?.();cleanup=fn();}},
+    'react-native':{View:'View',StyleSheet:{create:v=>v},Animated:{View:'AnimatedView',Value:class{constructor(v){this.value=v;}setValue(v){this.value=v;}},timing:(target,options)=>{timings.push({target,...options});return{start(){},stop(){stops++;}};}}}
+  });
+  const render=(visible,reducedMotion)=>PathScenery({variant:4,right:true,visible,reducedMotion});
+  const hidden=render(false,false),shown=render(true,false);
+  assert.equal(hidden.type,shown.type);assert.equal(hidden.props.children.length,shown.props.children.length);
+  assert.equal(shown.props.pointerEvents,'none');assert.equal(shown.props.importantForAccessibility,'no-hide-descendants');
+  assert.equal(timings.at(-1).target,value);assert.equal(timings.at(-1).toValue,1);assert.equal(timings.at(-1).duration,400);assert.equal(timings.at(-1).useNativeDriver,true);
+  render(false,true);assert.equal(value.value,0);assert.equal(timings.length,2);assert.equal(stops,2);
+  render(true,true);assert.equal(value.value,1);assert.equal(timings.length,2);
 });

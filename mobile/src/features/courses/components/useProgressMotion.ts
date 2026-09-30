@@ -34,5 +34,5 @@ export function useProgressMotion(transition: ProgressTransition | null, ready: 
     const frame = requestAnimationFrame(() => animation.start(({ finished }) => { if (finished) finish(); }));
     return () => { cancelAnimationFrame(frame); animation.stop(); progress.removeListener(listener); };
   }, [transition, ready, reduced, finish, progress, completion, reveal, orientation, onProgress]);
-  return { progress, completion, reveal, orientation, animate: ready && !!transition && reduced === false };
+  return { progress, completion, reveal, orientation, reducedMotion: reduced !== false, animate: ready && !!transition && reduced === false };
 }

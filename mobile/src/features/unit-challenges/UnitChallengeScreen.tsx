@@ -1,14 +1,14 @@
 import { useConversationScroll } from './useConversationScroll';
 import { finishCompletion } from '../courses/completionMotion';
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
-import { ActivityIndicator, Alert, BackHandler, KeyboardAvoidingView, Platform, ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Alert, BackHandler, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { useFocusEffect, usePreventRemove } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import type { CoursesStackParamList } from '../../navigation/types';
 import { ContextualHeader } from '../../components/ContextualHeader';
-import { Button } from '../courses/components/ui';
+import { Button, styles as buttonStyles } from '../courses/components/ui';
 import { ChallengeFlow } from './flow';
 import { ChallengeBackdrop, ChallengeHero, PhaseIcon } from './ChallengeArt';
 import { ConversationView, CrosswordView } from './phaseViews';
@@ -22,7 +22,6 @@ export function UnitChallengeScreen({ route, navigation }: NativeStackScreenProp
   const insets = useSafeAreaInsets();
   const { fontScale } = useWindowDimensions();
   const exit = useCallback(() => {
-    if (__DEV__) require('./exitTouchTrace').exitTouchTrace('navigation', { canGoBack: navigation.canGoBack() });
     const snapshot = flow.snapshot();
     const progressed = snapshot.response?.run.status === 'COMPLETED' && snapshot.response.result?.passed === true && !snapshot.metadata?.progress.passed;
     if (!progressed && navigation.canGoBack()) navigation.goBack();
@@ -33,12 +32,10 @@ export function UnitChallengeScreen({ route, navigation }: NativeStackScreenProp
   const intro = !state.response;
   const guarded = !state.exited && (active || state.pending || state.busy);
   const requestExit = useCallback(() => {
-    if (__DEV__) require('./exitTouchTrace').exitTouchTrace('requestExit', { busy: state.busy, pending: state.pending, active, intro });
     if (state.busy || state.pending) { Alert.alert('Envío pendiente', 'Reintenta la operación para confirmar su estado antes de salir.'); return; }
     if (active) Alert.alert('¿Abandonar el reto?', 'Este intento terminará sin completarse. Para intentarlo de nuevo tendrás que comenzar desde la primera fase.', [{ text: 'Seguir', style: 'cancel' }, { text: 'Abandonar', style: 'destructive', onPress: () => { void flow.abandon(); } }]);
     else if (intro) {
-      if (__DEV__) require('./exitTouchTrace').exitTouchTrace('confirmation.open');
-      Alert.alert('¿Salir del reto?', 'Puedes volver después desde tu ruta.', [{ text: 'Continuar', style: 'cancel' }, { text: 'Salir', onPress: () => { if (__DEV__) require('./exitTouchTrace').exitTouchTrace('confirmation.Salir'); exit(); } }]);
+      Alert.alert('¿Salir del reto?', 'Puedes volver después desde tu ruta.', [{ text: 'Continuar', style: 'cancel' }, { text: 'Salir', onPress: exit }]);
     }
     else exit();
   }, [active, intro, state.busy, state.pending, flow, exit]);
@@ -87,7 +84,10 @@ export function UnitChallengeScreen({ route, navigation }: NativeStackScreenProp
           {metadata.progress.bestScore !== null ? <Text style={s.body}>Mejor resultado: {metadata.progress.bestScore}%</Text> : null}
           {!canStart ? <Text style={s.body}>{metadata.progression.lockReason === 'PREREQUISITE' ? 'Completa los pasos anteriores de la ruta para desbloquear este reto.' : 'Este reto requiere acceso al contenido.'}</Text> : null}
           <Button title={metadata.activeRun ? 'Reanudar reto' : metadata.progress.passed ? 'Repetir reto completo' : 'Comenzar reto'} disabled={disabled || !canStart} busy={state.busy} onPress={() => { void flow.start(); }} />
-          <Button title="Más tarde" tone="blue" disabled={disabled} onPress={requestExit} debugExitTouch={__DEV__} />
+          <Pressable accessibilityRole="button" accessibilityLabel="Más tarde" disabled={disabled} onPress={requestExit}
+            style={[buttonStyles.button, { backgroundColor: '#DFEEFF', borderBottomColor: '#CADFFB', opacity: disabled ? .55 : 1 }]}>
+            <Text pointerEvents="none" maxFontSizeMultiplier={1.5} style={[buttonStyles.buttonText, { color: colors.blue }]}>Más tarde</Text>
+          </Pressable>
         </>}
       </> : null}
     </ScrollView>

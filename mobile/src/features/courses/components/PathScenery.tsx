@@ -1,10 +1,18 @@
-import { StyleSheet, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Animated, StyleSheet, View } from 'react-native';
 
 // Decorative native scenes, excluded from touch/accessibility.
 // Placement uses the empty lower corner of a stop, never its label or connector.
-export function PathScenery({ variant, right }: { variant: number; right: boolean }) {
-  return <View pointerEvents="none" accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants"
-    style={[s.scene, right ? { right: -8 } : { left: -8 }]}>
+export function PathScenery({ variant, right, visible = true, reducedMotion = true }: { variant: number; right: boolean; visible?: boolean; reducedMotion?: boolean }) {
+  const opacity = useRef(new Animated.Value(visible ? 1 : 0)).current;
+  useEffect(() => {
+    if (reducedMotion) { opacity.setValue(visible ? 1 : 0); return; }
+    const fade = Animated.timing(opacity, { toValue: visible ? 1 : 0, duration: 400, useNativeDriver: true, isInteraction: false });
+    fade.start();
+    return () => fade.stop();
+  }, [visible, reducedMotion, opacity]);
+  return <Animated.View pointerEvents="none" accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants"
+    style={[s.scene, right ? { right: -8 } : { left: -8 }, { opacity }]}>
     {variant === 0 ? <View style={s.cloud}><View style={s.cloudTop} /><View style={s.cloudSmall} /></View> : null}
     {variant === 1 ? <View style={s.books}>
       <View style={[s.book, { backgroundColor: '#559FDA', transform: [{ rotate: '5deg' }] }]}><View style={s.pages} /></View>
@@ -24,7 +32,7 @@ export function PathScenery({ variant, right }: { variant: number; right: boolea
     {variant === 4 ? <View style={s.globeStand}><View style={s.globe}>
       <View style={s.meridian} /><View style={s.equator} /><View style={s.land} />
     </View><View style={s.stem} /><View style={s.base} /></View> : null}
-  </View>;
+  </Animated.View>;
 }
 const s = StyleSheet.create({
   scene: { position: 'absolute', bottom: 0, width: 80, height: 60 },

@@ -36,7 +36,7 @@ export function CoursePath({ topics, onLessonPress, targetId, onTargetLayout, cu
   const follow = useCallback((value: number) => {
     if (samples.length) onMotionPosition?.(travelPoint(samples, Math.min(1, value / TRAVEL_END)).y);
   }, [samples, onMotionPosition]);
-  const { progress, completion, reveal, orientation, animate } = useProgressMotion(transition, motionReady, onMotionEnd, follow);
+  const { progress, completion, reveal, orientation, reducedMotion, animate } = useProgressMotion(transition, motionReady, onMotionEnd, follow);
   const facingLeft = moving && stops[toIndex].x < stops[fromIndex].x;
   const turn = changesFacing(false, facingLeft);
   const facingMix = Animated.multiply(orientation, progress.interpolate({ inputRange: [0, TRAVEL_END, 1], outputRange: [1, 1, 0] }));
@@ -84,7 +84,7 @@ export function CoursePath({ topics, onLessonPress, targetId, onTargetLayout, cu
         const iconScale = nodeReveal?.interpolate({ inputRange: [0, 1], outputRange: [.75, 1] });
         return <View key={lesson.id} style={{ height: stop.height }}>
           <View pointerEvents="none" accessible={false} style={[s.landscape, { left: stop.right ? width - 65 : -70, top: stop.height - 100, backgroundColor: index % 3 === 0 ? '#DCEEFF' : '#E3F2EB' }]} />
-          {!expanded[index] && index < entries.length - 1 ? <PathScenery variant={[0, 3, 4, 1, 2, 5, 0][index % 7]} right={!stop.right} /> : null}
+          {index < entries.length - 1 ? <PathScenery visible={!expanded[index]} reducedMotion={reducedMotion} variant={[0, 3, 4, 1, 2, 5, 0][index % 7]} right={!stop.right} /> : null}
           {sectionStart ? <View style={[s.section, { left: labelLeft, width: labelWidth }]}>
             <View style={s.sectionTop}><View style={s.sectionMark}><Text style={s.sectionNumber}>{topicIndex + 1}</Text></View><Text maxFontSizeMultiplier={1.5} style={s.eyebrow}>TEMA {topicIndex + 1}</Text></View>
             <Text numberOfLines={2} maxFontSizeMultiplier={1.5} style={s.sectionTitle}>{topic.title}</Text>
