@@ -1,435 +1,535 @@
 # Gamification semantics v1
 
-**Status:** conceptual checkpoint / pre-implementation draft  
+**Status:** product semantics refined / ready for domain and API design  
 **Scope:** Gamification v1  
 **Branch:** `feature/gamification-v1`
 
-This document preserves the product decisions agreed before implementation begins. It is intentionally more precise than meeting notes, but it is **not yet the final implementation contract**. Rewards, prices, edge cases and API/data-model details still need a dedicated refinement pass before backend work starts.
+This document is the product-semantic source of truth for Gamification v1. It defines what the system means and how the core mechanics behave before database schema and API contracts are designed.
+
+Concrete persistence structures, endpoint shapes and implementation details are intentionally deferred to the technical contract pass.
 
 ## 1. Product intent
 
-Gamification should reinforce learning, consistency and a sense of progress without becoming the main purpose of the product.
+Gamification exists to reinforce learning consistency and make progress feel rewarding without becoming the main purpose of the product.
 
 Core principles:
 
-- Academic performance and gamification rewards are separate concepts.
-- Streak rewards consistency, not correctness.
-- Coins should reward durable progress and selected habit goals.
-- Coins must have real uses; they should not exist only as a decorative counter.
-- Coins must not become a second paywall for learning.
-- A learner's ability to receive explanations, feedback, translations, audio or other essential pedagogical support must not depend on their coin balance.
-- The economy should avoid infinite farming, circular "earn more coins to earn more coins" mechanics and punitive design.
-- Gamification should remain lightweight enough for the MVP and for a single-developer project.
+- **Streak is the primary gamification mechanic.**
+- Daily Goal supports a stronger daily learning habit than the minimum required to maintain streak.
+- Coins are a **lightweight consistency resource**, not a broad virtual economy.
+- Academic performance and gamification are related but distinct concepts.
+- Coins may reward durable progress, selected performance milestones and habit goals.
+- Coins must have a real purpose; do not add sinks only to justify the currency.
+- Gamification must not become a second paywall for learning.
+- Essential explanations, feedback, translations, audio, normal hints or other pedagogical support must not depend on coin balance.
+- Real-money coin purchases are outside v1.
+- The economy must avoid infinite farming and repeated callbacks generating rewards.
+- The system should remain small enough for an MVP and a single-developer project.
 
 ## 2. Streak
 
 ### 2.1 Meaning
 
-The streak represents consecutive **learning days**.
+A streak represents consecutive **learning days**.
 
-It does not represent:
-- score,
-- perfection,
-- number of exercises completed,
-- number of lessons completed in a day.
+It represents consistency, not:
 
-A learner should be able to keep a streak even when a Unit Challenge is completed unsuccessfully, because the learner still studied.
+- score;
+- perfection;
+- number of internal exercises completed;
+- number of sessions completed in one day.
 
-### 2.2 Valid learning events
+A learner can maintain a streak even if a completed Unit Challenge is failed, because the learner still completed a legitimate learning session.
 
-The following completed experiences are intended to count as a valid learning event for streak purposes:
+### 2.2 Qualifying learning events
 
-- first completion of a Lesson;
+A completed experience counts as a qualifying learning event for streak purposes when it is one of:
+
+- first Lesson completion;
 - completed Lesson Replay;
 - completed Unit Challenge, whether passed or failed;
 - completed Review session;
 - completed Practice session once Practice exists.
 
-The following do not count:
+The following do **not** count:
 
 - opening a Lesson;
-- opening Review or Practice without completing a session;
-- navigating Courses/Roadmap;
-- opening content without a completed learning session;
-- individual internal activity interactions on their own.
+- opening Review or Practice without completing the session;
+- navigating Home, Courses or Roadmap;
+- viewing content;
+- answering one individual Activity;
+- abandoning an incomplete session.
 
 ### 2.3 Daily behavior
 
-- A streak may advance or be maintained at most once per local learning day.
-- Multiple valid learning events during the same day do not add multiple streak days.
-- Streak is based on a user-relevant local date, not directly on UTC.
-- Backend timestamps may remain UTC, but the effective `learningDate` must be derived using the applicable user timezone.
+- Streak advances at most once per local learning day.
+- Additional qualifying sessions on the same local day do not add more streak days.
+- Backend event timestamps may remain UTC.
+- The effective `learningDate` is derived using the applicable user timezone.
+- A timezone change affects future learning-date derivation only; already-recorded learning dates are not retroactively rewritten.
+- Streak, Daily Goal and missed-day evaluation operate from durable recorded learning dates rather than client-side counters.
 
-Exact timezone-change/travel behavior remains to be defined before implementation.
+Example:
 
-## 3. Daily Goal
+```text
+Sep 30: complete Lesson     -> streak becomes 12
+Sep 30: complete Review     -> streak remains 12
+Oct 01: complete UC         -> streak becomes 13
+```
+
+## 3. Streak Protector
+
+The Streak Protector is the normal preventive streak utility.
+
+### 3.1 Rules
+
+- Consumable inventory item.
+- Purchased with coins.
+- Price: **50 coins**.
+- Maximum stock: **2**.
+- Each Protector covers exactly **one missed local learning day**.
+- It is consumed automatically when a missed day would otherwise break the streak.
+- The learner does not need to activate it on the missed day.
+- Multiple consecutive missed days may consume multiple Protectors if sufficient stock exists.
+- A protected day preserves streak continuity but does **not** become a real learning day.
+- A protected day does not progress Daily Goal and does not grant rewards.
+
+Example:
+
+```text
+Monday    studied
+Tuesday   missed -> Protector consumed
+Wednesday studied -> streak continues
+```
+
+If two consecutive days are missed and two Protectors are owned, both may be consumed. If only one is owned, the first missed day is protected and the next uncovered missed day breaks the streak.
+
+## 4. Streak Repair
+
+Streak Repair is an exceptional recovery action after the streak has already broken.
+
+It is intentionally different from Protector:
+
+- Protector is preventive and stored.
+- Repair is contextual, corrective and more expensive.
+
+### 4.1 Rules
+
+- Repair is **not** an inventory item.
+- Cost: **120 coins**.
+- It appears only when the learner is eligible to restore a recently broken streak.
+- Availability window: **24 hours** from the detected eligible break.
+- Successful Repair cooldown: **14 days**.
+- Repair is available only for a break caused by **one uncovered missed local learning day**.
+- A longer uncovered absence is not repairable in v1.
+- Repair restores streak continuity; it does not fabricate a learning session.
+- Repair does not progress Daily Goal.
+- Repair does not grant coins or other rewards.
+- Repair does not alter historical learning dates.
+
+A Repair should therefore feel like an occasional safety net, not a routine way to maintain streak.
+
+## 5. Daily Goal
 
 Daily Goal is distinct from streak:
 
-- **Streak:** low-friction minimum for maintaining the learning habit.
-- **Daily Goal:** a more demanding daily target that grants a tangible reward.
+- **Streak:** minimum consistency condition: at least one qualifying learning session in a local learning day.
+- **Daily Goal:** a configurable, more demanding target that grants coins once per day.
 
-### 3.1 Configurable difficulty
+### 5.1 Presets
 
-The user should be able to choose a simple preset, initially conceptualized as:
+Initial v1 presets:
 
-- Casual
-- Normal
-- Intense
+| Preset | Required qualifying sessions | Reward |
+| --- | ---: | ---: |
+| Casual | 1 | 5 coins |
+| Normal | 2 | 10 coins |
+| Intense | 3 | 15 coins |
 
-Exact targets are not finalized yet.
+**Normal** is the default preset for a new learner unless onboarding later introduces an explicit choice.
 
-Each preset may provide a different coin reward, proportional to the required effort. Exact values such as `5 / 10 / 15` are illustrative only until the overall economy is calibrated.
+### 5.2 What progresses Daily Goal
 
-### 3.2 Progress unit
-
-Daily Goal progresses through completed **learning sessions/events**, not through every internal Activity.
-
-Candidate events:
+Each completed qualifying session contributes one unit:
 
 - Lesson completion;
 - Lesson Replay completion;
 - Unit Challenge completion;
 - Review session completion;
-- Practice session completion.
+- Practice session completion once Practice exists.
 
-Each eligible completed session normally contributes one unit toward the goal.
+Individual Activities do not count separately.
 
-### 3.3 Reconfiguration during the day
+Example:
 
-- The user may change Daily Goal difficulty during the same day while that day's goal has **not yet been completed/rewarded**.
-- Existing progress is evaluated against the newly selected target.
-- Once the Daily Goal has been completed and its reward granted, no second Daily Goal reward may be earned that day.
-- Changes made after completion apply starting with the next learning day.
+```text
+Normal goal = 2 sessions
 
-The system must prevent reward duplication from changing difficulty after completion.
+Lesson completion       -> 1 / 2
+Review session complete -> 2 / 2 -> reward granted
+```
 
-### 3.4 Reward
+### 5.3 Reconfiguration during the day
 
-- Maximum one Daily Goal coin reward per learning day.
-- Daily Goal is expected to be the main renewable source of coins in the initial economy.
-- Reward values must be configurable/balanceable rather than deeply hardcoded.
+- The learner may change preset during the same day while that day's Daily Goal reward has not yet been granted.
+- Existing qualifying-session progress is evaluated against the newly selected target.
+- If the new target is already satisfied, that target's reward is granted once.
+- After the Daily Goal has been completed and rewarded, later preset changes take effect on the **next local learning day**.
+- Maximum: **one Daily Goal reward per local learning day**.
 
-## 4. Coins
+This prevents reward cycling such as Casual -> Normal -> Intense to collect multiple rewards.
 
-### 4.1 Meaning
+### 5.4 Reward delivery
 
-Coins are an internal gamification currency.
+- Reward is granted automatically by the backend when the target is first satisfied.
+- No required "Claim reward" state exists in v1.
+- Reward mutation must be idempotent.
+- The UI may celebrate the reward, but visual feedback is not the source of truth.
 
-They should primarily represent:
+## 6. Coins
 
-- durable learning progress;
-- consistency;
-- selected challenges/milestones.
+### 6.1 Role
 
-They should not determine the quality of learning support.
+Coins are a small secondary mechanic supporting the primary streak system.
 
-### 4.2 Unique reward sources
+Their v1 purpose is mainly:
 
-Candidate one-time or progression-bound sources:
+- purchasing Streak Protectors;
+- paying for an eligible Streak Repair;
+- representing selected durable progress and consistency rewards.
 
-- first Lesson completion;
-- modest bonus for a perfect first score, if retained after balancing;
-- first Unit Challenge completion;
-- first qualifying Unit Challenge pass;
-- Course completion milestone;
-- selected streak/progression milestones.
+Coins do **not** need a large Shop catalog to justify their existence.
 
-A reward tied to a unique progression event must be grantable only once for the relevant user/content/event.
+If later product evidence shows that learners accumulate coins without meaningful use, the economy may be simplified rather than padded with artificial purchases.
 
-### 4.3 Renewable reward sources
+### 6.2 Unique/progression rewards
 
-Initial intended renewable sources:
+Initial v1 values:
 
-- Daily Goal reward;
-- Streak Challenge reward;
-- future controlled Practice-related rewards if needed.
+| Event | Reward | Repeatable? |
+| --- | ---: | --- |
+| First Lesson completion | +3 | No, per Lesson |
+| Perfect first Lesson result | +2 bonus | No, per Lesson |
+| First Unit Challenge pass | +8 | No, per Unit Challenge |
+| Perfect first Unit Challenge completed run | +3 bonus | No, per Unit Challenge |
+| Course completion | +20 | No, per Course |
 
-Practice does not have to generate direct coins if it already contributes to Daily Goal. Avoid unnecessary duplicate reward streams.
+Perfect-result bonuses apply only to the first relevant score-bearing completed attempt. Replays cannot farm perfect bonuses.
 
-### 4.4 Actions that do not directly award coins
+A Unit Challenge may be completed unsuccessfully and still count toward streak/Daily Goal. The **first-pass coin reward** is granted only when that Unit Challenge is first passed.
+
+### 6.3 Streak milestones
+
+Initial configured milestones:
+
+| Streak | Reward |
+| --- | ---: |
+| 7 days | +10 |
+| 14 days | +15 |
+| 30 days | +30 |
+| 60 days | +50 |
+| 100 days | +75 |
+
+Milestone rewards are unique and should be data/config driven so later milestones can be added without redesigning the core domain.
+
+### 6.4 Renewable reward sources
+
+The main renewable source in v1 is:
+
+- Daily Goal reward.
+
+Future controlled sources may include:
+
+- Streak Challenges;
+- selected Practice-related mechanics if the economy later needs them.
+
+Practice and Review already contribute to Daily Goal, so they do not need direct coin rewards by default.
+
+### 6.5 Actions with no direct coin reward
 
 - Lesson Replay;
 - repeated Unit Challenge runs;
-- individual activity attempts;
-- opening/navigating content;
-- ordinary Review sessions, unless a future rule explicitly changes this.
+- ordinary Review sessions;
+- ordinary Practice sessions;
+- individual Activity attempts;
+- opening or navigating content;
+- Protector use;
+- Repair use.
 
-Replay may still contribute to streak and Daily Goal while giving no direct coin reward.
+Replay may contribute to streak and Daily Goal while granting no direct coins.
 
-### 4.5 Anti-farming
+### 6.6 Anti-farming and idempotency
 
-The economy must avoid infinite repeatable rewards.
-
-Required direction:
+Required behavior:
 
 - first-completion rewards are unique;
-- replays do not directly print coins;
-- Daily Goal rewards at most once per learning day;
-- reward mutations should be idempotent;
-- reward creation should be tied to durable server-side events, not client navigation;
-- no reward should depend on repeated taps or repeated completion callbacks.
+- first-pass rewards are unique;
+- perfect bonuses are unique;
+- Course and milestone rewards are unique;
+- Daily Goal rewards at most once per local learning day;
+- reward creation is tied to durable server-side events;
+- repeated requests, callbacks or taps must not duplicate rewards;
+- client navigation never directly grants currency.
 
-## 5. Coin ledger
+## 7. Coin ledger
 
-The source of truth should be auditable.
+Coin history must be auditable.
 
-Prefer a transaction/ledger model conceptually similar to:
+The ledger, not a mutable UI counter alone, should explain balance changes.
+
+Conceptual transaction reasons include:
 
 ```text
 + LESSON_FIRST_COMPLETION
-+ PERFECT_FIRST_RESULT
-+ UNIT_CHALLENGE_FIRST_COMPLETION
++ LESSON_FIRST_PERFECT
 + UNIT_CHALLENGE_FIRST_PASS
++ UNIT_CHALLENGE_FIRST_PERFECT
++ COURSE_COMPLETION
 + DAILY_GOAL
-+ STREAK_CHALLENGE
++ STREAK_MILESTONE
+
 - STREAK_PROTECTOR_PURCHASE
-- VEHICLE_PURCHASE
+- STREAK_REPAIR
 ```
 
-The exact schema is not yet defined.
+The final schema may use different enum names, but equivalent durable attribution is required.
 
-A simple mutable `user.coins` balance should not be the only durable source of truth. A cached balance may later exist for efficiency, but transactions should explain why the balance changed.
+A cached balance may exist for efficiency if technical design justifies it, but reward/spend history remains auditable.
 
-## 6. Coin uses
+## 8. Pedagogical boundary
 
-Coin uses should prioritize **protection, personalization and lightweight challenges**, not essential learning support.
+Gamification must not interfere negatively with learning.
 
-### 6.1 Streak Protector
+### 8.1 Coin-gated learning support
 
-Approved direction:
+Do **not** require coins for:
 
-- purchasable with coins;
-- consumable inventory item;
-- used automatically when a missed eligible day would otherwise break a streak;
-- limited stock is desirable;
-- exact price and maximum stock remain open.
+- explanations of why an answer is correct or incorrect;
+- essential feedback;
+- translations;
+- normal pedagogical hints;
+- Review;
+- access to already-entitled learning content;
+- Unit Challenge result explanations.
 
-The learner should not need to enter the app on the missed day to manually activate it.
+A future optional power-up may be considered only if it provides convenience without withholding the learning support needed to understand the material.
 
-Exact behavior for multiple missed days remains to be defined.
+Example of a possible future power-up:
 
-### 6.2 Roadmap vehicles
+- eliminate one incorrect multiple-choice option.
 
-Vehicles are the primary cosmetic direction currently favored for v1/vNext.
+Even such power-ups are **not part of Gamification v1**.
 
-The Roadmap already uses a vehicle/bus as the learner's visual position indicator, making this cosmetic visible during normal use.
+### 8.2 Unit Challenge feedback
 
-Vehicle cosmetics should feel materially different rather than being trivial recolors.
+Unit Challenge v1 remains without immediate correct/incorrect feedback during the challenge.
 
-Examples of direction, not committed catalog:
+A future Result-level action such as **Review answers** may show concise explanations after the run. That is a pedagogical Unit Challenge enhancement, not a coin mechanic and not part of this vertical.
 
-- classic London double-decker;
-- black cab;
-- classic Mini;
-- vintage bus;
-- retro van;
-- seasonal/special vehicle.
+## 9. Monetization boundary
 
-Some cosmetics may be bought with coins and others may be milestone unlocks.
+Gamification v1 is not a monetization layer.
 
-### 6.3 Milestone unlocks
+Explicitly outside v1:
 
-Not every cosmetic should require coins.
+- buying coins with real money;
+- paid pedagogical help;
+- loot boxes;
+- randomized paid rewards;
+- hearts/lives that block learning;
+- reward multipliers whose primary purpose is to generate more currency.
 
-Examples:
+Current monetization direction remains separate:
 
-- complete a course -> commemorative cosmetic;
-- reach a meaningful streak milestone -> exclusive vehicle/badge;
-- complete a specified progression milestone -> unlock.
+- subscription/Premium access;
+- potentially controlled Ads for eligible free users in a dedicated monetization vertical.
 
-This gives cosmetics meaning beyond being shop inventory.
+Individual course sales are not assumed by Gamification v1.
 
-### 6.4 Future profile cosmetics
+## 10. Streak Challenges
 
-Possible later additions:
+A 7-day streak challenge has existing visual exploration, but it is **deferred from the initial Gamification v1 implementation**.
 
-- avatar frames;
-- badges;
-- profile accents;
-- lightweight completion effects.
-
-These are not required for Gamification v1 until Profile provides enough visible surfaces for them to have value.
-
-### 6.5 Themes
-
-Full Roadmap/app themes are **not currently favored for v1**.
-
-Reason:
-
-- a strong Roadmap-only night/day theme may visually clash when entering the existing light Courses/Lesson/Review flows;
-- making themes coherent across the whole app substantially increases design and accessibility cost.
-
-Keep this as future exploration rather than an initial Shop requirement.
-
-### 6.6 Paid hints / pedagogical help
-
-Do **not** make essential hints or learning support depend on coins.
-
-Unit Challenge v1 remains without hints.
-Review v1 remains without hints.
-
-Lesson help should not become frustrating because the learner lacks coins.
-
-Extraordinary assistance could be reconsidered later only if it clearly does not degrade learning for users with low balances.
-
-## 7. Inventory
-
-The domain should be capable of distinguishing at least:
-
-### Consumables
-
-Example:
-- Streak Protector
-
-Characteristics:
-- quantity;
-- consumed through a defined rule;
-- may have a maximum stock.
-
-### Permanent/equippable cosmetics
-
-Example:
-- Roadmap vehicle
-
-Characteristics:
-- owned once;
-- may be equipped/unequipped;
-- should not be repurchased after ownership.
-
-Acquisition may conceptually be:
-
-- `BUY` with coins;
-- `UNLOCK` through a milestone.
-
-Exact schema and enums remain to be designed.
-
-## 8. Streak Challenges
-
-Initial direction:
+Future direction:
 
 - optional habit challenge;
-- only one active challenge at a time for MVP;
-- objective is to maintain qualifying learning days for a configured period;
-- successful completion grants coins;
-- no required coin wager in v1.
+- maintain qualifying learning days for the configured duration;
+- successful completion may grant coins or another lightweight reward;
+- no coin wager is required for initial implementation.
 
-Potential durations later include 7, 14 or 30 days, but the initial implementation should remain simple.
+Do not implement a circular "spend coins mainly to earn more coins" loop merely to create another sink.
 
-A wager model such as "spend X coins and receive X + bonus after success" is deferred until the basic economy is proven useful.
+## 11. Cosmetics and broader Shop
 
-## 9. End-of-content behavior
+Roadmap vehicle cosmetics, profile cosmetics and global themes are not required for Gamification v1.
 
-The economy must continue to function when a learner temporarily has no new course content.
+Reasons:
 
-A learner should still be able to:
+- current product feedback does not indicate strong value in vehicle cosmetics;
+- Profile does not yet need a cosmetic system;
+- themes add disproportionate visual/accessibility scope;
+- artificial cosmetics should not be invented solely to justify the currency.
 
-- maintain streak through legitimate Replay/Review/Practice;
-- progress toward Daily Goal through legitimate completed learning sessions;
-- earn the renewable Daily Goal reward;
-- participate in suitable habit challenges.
+The domain does not need a large permanent Shop catalog in v1.
 
-This prevents the wallet and streak from becoming unusable merely because available courses have been completed.
+## 12. UI ownership
 
-Replay still does not directly award coins.
+Gamification is a cross-cutting layer, not a standalone primary navigation section.
 
-## 10. Profile relationship
+### 12.1 Home
 
-Profile is a likely home for lightweight learner preferences and gamification settings, including:
+Home is the daily-status surface.
 
-- Daily Goal selection;
-- basic learner/account information;
-- learning preferences such as translation behavior when that preference is formally defined;
-- future avatar/frame/badge configuration;
-- potentially equipped cosmetic/vehicle access.
+It should eventually be able to present:
 
-Gamification v1 should not require a complex social profile.
+- current coin balance;
+- current streak;
+- Daily Goal progress and preset;
+- Continue Learning;
+- Review availability when relevant;
+- Practice when available.
 
-## 11. Explicitly outside Gamification v1
+The Daily Goal card should use qualifying-session semantics such as:
+
+```text
+Meta diaria - Normal
+1 de 2 sesiones
+```
+
+rather than counting internal exercises.
+
+### 12.2 Lesson / Unit Challenge Result
+
+Result screens may present server-backed reward feedback such as:
+
+- coins earned in the completed event;
+- perfect bonus when applicable;
+- current streak;
+- whether streak advanced on this learning day;
+- Daily Goal completion/reward if triggered.
+
+A second session on the same day must not imply that streak increased again.
+
+### 12.3 Progress
+
+Progress is the natural deeper gamification/progress surface.
+
+Candidate data includes:
+
+- current streak;
+- longest streak;
+- weekly learning-day view;
+- current Protector stock;
+- next streak milestone;
+- earned milestones/achievements;
+- course progress;
+- Review/strength information as supported by their own domains.
+
+### 12.4 Profile
+
+Profile is the likely configuration surface for:
+
+- Daily Goal preset;
+- basic account information;
+- later learning preferences such as translation behavior;
+- future preferences as formally defined.
+
+A dedicated Settings screen is not required solely for Gamification v1.
+
+### 12.5 Shop / protection screen
+
+Shop does **not** receive a primary bottom-navigation tab in v1.
+
+The existing visual Shop exploration can be reused as a nested screen opened, for example, by tapping the coin balance or a protection action.
+
+Initial useful content can be intentionally small:
+
+- coin balance;
+- Streak Protector purchase and current stock;
+- streak/protection explanation.
+
+Streak Repair is contextual and appears only after an eligible break rather than as a permanently purchasable Shop item.
+
+A large store is not required.
+
+## 13. End-of-content behavior
+
+Gamification must remain usable when the learner temporarily has no new course content.
+
+Legitimate Replay, Review and future Practice can still:
+
+- maintain streak;
+- progress Daily Goal;
+- enable the renewable Daily Goal reward.
+
+They do not directly print additional progression coins.
+
+This is particularly important while the product initially contains a small course catalog.
+
+## 14. Explicitly outside Gamification v1
 
 Do not implement as side effects of this vertical:
 
 - Ads / sponsors;
 - real-money coin purchases;
-- loot boxes or randomized paid rewards;
-- hearts/lives penalties;
-- another XP currency;
-- competitive leagues/leaderboards;
+- individual course monetization logic;
+- competitive leagues or leaderboards;
 - social/friends systems;
-- global app themes;
+- global themes;
+- vehicle/cosmetic Shop catalog;
 - complex avatar builders;
 - mascot customization;
-- paid access to essential pedagogical help;
-- a large Shop catalog;
-- reward multipliers whose main purpose is to generate still more coins.
+- paid essential hints or explanations;
+- a separate XP currency;
+- hearts/lives penalties;
+- the 7-day challenge unless explicitly promoted into scope later;
+- a dedicated Shop bottom-tab item.
 
-### Ads
+## 15. Technical requirements to preserve in contract design
 
-Ads remain a separate monetization decision. Alma has discussed the possibility of free users producing revenue through ads/sponsors, but placement, eligibility, consent/privacy, provider and Free/Premium behavior must be designed as a separate monetization vertical.
+The upcoming domain/database/API design must preserve these semantic properties:
 
-### Real-money coin purchases
+- backend authority for streak, Daily Goal, rewards, inventory and spending;
+- UTC event timestamps plus durable local-learning-date semantics;
+- idempotent event/reward processing;
+- auditable coin ledger;
+- unique reward constraints;
+- Protector stock cap;
+- automatic Protector consumption;
+- contextual Repair eligibility, 24-hour window and 14-day cooldown;
+- one Daily Goal reward per local learning day;
+- safe preset changes;
+- no client-calculated authoritative balance or streak;
+- no reward revocation merely because a later replay has a worse score.
 
-Deferred.
+## 16. Remaining work before implementation
 
-The economy should first prove that coins have sufficient useful sinks and healthy balance. Real-money coin purchases are not necessary for Gamification v1 and should not be introduced merely because the wallet exists.
+Product semantics are sufficiently refined to begin technical design.
 
-## 12. Current v1 candidate Shop
+The next pass should define:
 
-A deliberately small first catalog could contain:
+1. domain entities and invariants;
+2. Prisma/database schema;
+3. timezone representation and learning-date derivation mechanics;
+4. ledger and idempotency keys;
+5. event integration with Lesson, Review and Unit Challenge completion;
+6. Protector auto-consumption timing;
+7. Repair eligibility evaluation;
+8. Daily Goal state/read model;
+9. API contracts;
+10. minimum mobile data contracts for Home, Result, Progress, Profile and nested Shop/protection surfaces.
 
-- default Roadmap vehicle: free;
-- several materially distinct purchasable vehicles;
-- Streak Protector;
-- milestone-only cosmetic(s);
-- Streak Challenge as a reward mechanic rather than a Shop purchase.
+Profile does not yet have a finalized mockup. That does not block backend/domain work because only its configuration responsibilities are defined here.
 
-The goal is not to fill a store with arbitrary items. A few meaningful items are preferable to a large low-value catalog.
+## 17. Implementation sequence
 
-## 13. Calibration strategy
-
-Do not choose coin amounts because a number merely "looks right".
-
-Calibrate the economy by expected learner effort:
-
-- Daily Goal reward = small recurring reward;
-- Streak Protector = several normal days of saving, not trivial and not punishing;
-- simple vehicle = meaningful short-term saving goal;
-- more special vehicle = longer-term saving goal;
-- milestone-exclusive item = no coin price.
-
-Once desired effort bands are agreed, derive concrete rewards and prices from them.
-
-## 14. Open decisions before implementation
-
-Still require explicit resolution:
-
-- exact Daily Goal targets for Casual / Normal / Intense;
-- exact Daily Goal reward amounts;
-- Lesson/Unit Challenge reward amounts;
-- whether perfect-result bonus remains;
-- exact Course/milestone rewards;
-- Streak Protector price and stock limit;
-- exact behavior for multiple missed days;
-- timezone changes and travel;
-- initial Streak Challenge duration/reward;
-- concrete initial vehicle catalog;
-- vehicle prices;
-- whether Review/Practice ever receive any direct coin reward;
-- exact rules for Course-completion and streak milestone cosmetics;
-- Profile surface required by Gamification v1;
-- final data model, database schema and API contracts.
-
-## 15. Implementation sequencing
-
-When Unit Challenge v1 is finished and this vertical officially starts:
-
-1. Reconcile this branch with the finalized Unit Challenge/base branch.
-2. Refine this document into an implementation-ready semantic contract.
-3. Update affected business rules/screens docs.
-4. Define data model/database schema.
-5. Define API contracts and idempotency requirements.
-6. Implement backend Gamification v1.
-7. Integrate mobile presentation into Home/Results/Profile/Roadmap as supported by real data.
-8. Implement the smallest useful Shop/inventory surface.
-9. Physically validate reward feedback and economy UX.
-10. Only then evaluate additional cosmetics, monetization or Ads.
+1. Define domain model and invariants from this document.
+2. Define database schema and migration strategy.
+3. Define API/read contracts and idempotency behavior.
+4. Implement and test Gamification backend.
+5. Integrate reward/streak events with existing Lesson, Review and Unit Challenge flows.
+6. Implement mobile gamification primitives and nested protection/Shop screen.
+7. Integrate real gamification data into Result surfaces.
+8. Integrate Home / Progress / Profile as those verticals are implemented or refined.
+9. Physically validate streak, Daily Goal, Protector, Repair and reward UX.
+10. Evaluate deferred additions only after the core system is proven.
