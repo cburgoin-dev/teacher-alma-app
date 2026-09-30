@@ -22,6 +22,7 @@ export function UnitChallengeScreen({ route, navigation }: NativeStackScreenProp
   const insets = useSafeAreaInsets();
   const { fontScale } = useWindowDimensions();
   const exit = useCallback(() => {
+    if (__DEV__) require('./exitTouchTrace').exitTouchTrace('navigation', { canGoBack: navigation.canGoBack() });
     const snapshot = flow.snapshot();
     const progressed = snapshot.response?.run.status === 'COMPLETED' && snapshot.response.result?.passed === true && !snapshot.metadata?.progress.passed;
     if (!progressed && navigation.canGoBack()) navigation.goBack();
@@ -32,9 +33,13 @@ export function UnitChallengeScreen({ route, navigation }: NativeStackScreenProp
   const intro = !state.response;
   const guarded = !state.exited && (active || state.pending || state.busy);
   const requestExit = useCallback(() => {
+    if (__DEV__) require('./exitTouchTrace').exitTouchTrace('requestExit', { busy: state.busy, pending: state.pending, active, intro });
     if (state.busy || state.pending) { Alert.alert('Envío pendiente', 'Reintenta la operación para confirmar su estado antes de salir.'); return; }
     if (active) Alert.alert('¿Abandonar el reto?', 'Este intento terminará sin completarse. Para intentarlo de nuevo tendrás que comenzar desde la primera fase.', [{ text: 'Seguir', style: 'cancel' }, { text: 'Abandonar', style: 'destructive', onPress: () => { void flow.abandon(); } }]);
-    else if (intro) Alert.alert('¿Salir del reto?', 'Puedes volver después desde tu ruta.', [{ text: 'Continuar', style: 'cancel' }, { text: 'Salir', onPress: exit }]);
+    else if (intro) {
+      if (__DEV__) require('./exitTouchTrace').exitTouchTrace('confirmation.open');
+      Alert.alert('¿Salir del reto?', 'Puedes volver después desde tu ruta.', [{ text: 'Continuar', style: 'cancel' }, { text: 'Salir', onPress: () => { if (__DEV__) require('./exitTouchTrace').exitTouchTrace('confirmation.Salir'); exit(); } }]);
+    }
     else exit();
   }, [active, intro, state.busy, state.pending, flow, exit]);
   // Intro has no run to protect: its explicit controls confirm then navigate
@@ -82,7 +87,7 @@ export function UnitChallengeScreen({ route, navigation }: NativeStackScreenProp
           {metadata.progress.bestScore !== null ? <Text style={s.body}>Mejor resultado: {metadata.progress.bestScore}%</Text> : null}
           {!canStart ? <Text style={s.body}>{metadata.progression.lockReason === 'PREREQUISITE' ? 'Completa los pasos anteriores de la ruta para desbloquear este reto.' : 'Este reto requiere acceso al contenido.'}</Text> : null}
           <Button title={metadata.activeRun ? 'Reanudar reto' : metadata.progress.passed ? 'Repetir reto completo' : 'Comenzar reto'} disabled={disabled || !canStart} busy={state.busy} onPress={() => { void flow.start(); }} />
-          <Button title="Más tarde" tone="blue" disabled={disabled} onPress={requestExit} />
+          <Button title="Más tarde" tone="blue" disabled={disabled} onPress={requestExit} debugExitTouch={__DEV__} />
         </>}
       </> : null}
     </ScrollView>

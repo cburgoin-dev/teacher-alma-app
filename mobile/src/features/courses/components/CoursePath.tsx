@@ -80,7 +80,7 @@ export function CoursePath({ topics, onLessonPress, targetId, onTargetLayout, cu
         const source = moving && index === fromIndex;
         const destination = moving && index === toIndex;
         const nodeReveal = source ? completion : destination ? reveal : null;
-        const pulse = nodeReveal?.interpolate({ inputRange: [0, .55, 1], outputRange: [1, lesson.type === 'UNIT_CHALLENGE' ? 1.09 : 1.055, 1] });
+        const pulse = nodeReveal?.interpolate({ inputRange: source ? [0, .78, .91, 1] : [0, .62, .82, 1], outputRange: [1, 1, lesson.type === 'UNIT_CHALLENGE' ? 1.09 : 1.055, 1] });
         const iconScale = nodeReveal?.interpolate({ inputRange: [0, 1], outputRange: [.75, 1] });
         return <View key={lesson.id} style={{ height: stop.height }}>
           <View pointerEvents="none" accessible={false} style={[s.landscape, { left: stop.right ? width - 65 : -70, top: stop.height - 100, backgroundColor: index % 3 === 0 ? '#DCEEFF' : '#E3F2EB' }]} />
@@ -98,7 +98,7 @@ export function CoursePath({ topics, onLessonPress, targetId, onTargetLayout, cu
             </Animated.View> : null}
             {source ? <View pointerEvents="none" style={StyleSheet.absoluteFill}><CompletionDrawing progress={completion} size={stop.size} challenge={lesson.type === 'UNIT_CHALLENGE'} /></View> : null}
             {destination ? <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: reveal.interpolate({ inputRange: [0, .15, .85, 1], outputRange: [0, 1, 1, 0] }) }]}><CompletionDrawing progress={reveal} size={stop.size} challenge destination color={paid ? '#E9B64A' : colors.red} /></Animated.View> : null}
-            {expanded[index] ? <Animated.View style={[s.currentDot, { backgroundColor: paid ? '#D79920' : colors.red, opacity: destination ? channel(revealStages.dot) : 1, transform: [{ scale: destination ? reveal.interpolate({ inputRange: [.6, .8, 1], outputRange: [.6, 1.12, 1], extrapolate: 'clamp' }) : 1 }] }]} /> : null}
+            {expanded[index] ? <Animated.View style={[s.currentDot, { backgroundColor: paid ? '#D79920' : colors.red, opacity: destination ? channel(revealStages.dot) : 1, transform: [{ scale: destination ? reveal.interpolate({ inputRange: [.68, .85, 1], outputRange: [.6, 1.12, 1], extrapolate: 'clamp' }) : 1 }] }]} /> : null}
           </Pressable></Animated.View>
           <Animated.View style={[s.label, destination && { opacity: channel(revealStages.card), transform: [{ translateY: cardSlide }] }, source && { opacity: completion }, { left: labelLeft, width: labelWidth, top: stop.y - stop.top - (expanded[index] ? 82 : 32) * Math.min(fontScale, 1.5), alignItems: stop.right ? 'flex-end' : 'flex-start' }, expanded[index] && s.currentCard, expanded[index] && paid && { borderColor: '#D9AA43', backgroundColor: '#FFF1D3' }]}>
             {expanded[index] ? <><View pointerEvents="none" style={[s.cardJoin, stop.right ? { right: -9 } : { left: -9 }, paid && { backgroundColor: '#FFF1D3' }]} /><Text maxFontSizeMultiplier={1.5} style={[s.cardEyebrow, paid && { color: colors.gold }]}>{paid ? 'ACCESO PREMIUM' : 'SIGUIENTE PASO'}</Text></> : null}

@@ -47,7 +47,7 @@ test('stale result cannot invent unlocks or animate a different course/frontier'
 });
 test('reduced motion resolves without travel; V7 surrounds unchanged V6 travel with completion and reveal', () => {
   assert.equal(motionDuration(true), 0);
-  assert.equal(motionDuration(false), 5300);
+  assert.equal(motionDuration(false), 6625);
 });
 test('feedback visibility uses its entire measured height, including the previously hidden tail', () => {
   assert.equal(feedbackScrollTarget(0, 400, 280, 180), 72);
@@ -88,9 +88,9 @@ test('motion hook honors reduce motion, native timing, cancellation and listener
     module.exports.useProgressMotion({ from: 'a', to: 'b', type: 'LESSON' }, true, () => finished++);
     if (reduced) { assert.equal(finished, 1); assert.equal(timings.length, 0); assert.equal(values.at(-1), 1); }
     else {
-      assert.equal(timings.reduce((sum, t) => sum + t.duration, 0), 5300);
+      assert.equal(timings.reduce((sum, t) => sum + t.duration, 0), 6625);
       assert.ok(timings.every(t => t.useNativeDriver));
-      assert.deepEqual(Array.from(timings, t=>t.duration), [600,200,3500,450,550]);
+      assert.deepEqual(Array.from(timings, t=>t.duration), [1300,275,3500,450,1100]);
       assert.deepEqual(Array.from(timings,t=>t.toValue), [1,1,3500/3950,1,1]);
       assert.notEqual(timings[0].target,timings[1].target);
       assert.equal(timings[2].target,timings[3].target);

@@ -6,11 +6,16 @@ export { colors } from '../../../theme';
 export { CourseCover as Cover } from './CourseCover';
 
 export type ButtonTone = 'red' | 'blue' | 'gold' | 'gray';
-export function Button({ title, onPress, disabled, busy, tone = 'red', compact = false, arrow = false }: {
-  title: string; onPress?: () => void; disabled?: boolean; busy?: boolean; tone?: ButtonTone; compact?: boolean; arrow?: boolean;
+export function Button({ title, onPress, disabled, busy, tone = 'red', compact = false, arrow = false, debugExitTouch = false }: {
+  title: string; onPress?: () => void; disabled?: boolean; busy?: boolean; tone?: ButtonTone; compact?: boolean; arrow?: boolean; debugExitTouch?: boolean;
 }) {
+  const trace = __DEV__ && debugExitTouch ? (stage: string, detail?: unknown) => require('../../unit-challenges/exitTouchTrace').exitTouchTrace(stage, detail) : undefined;
+  trace?.('Button.render', { disabled: !!disabled, busy: !!busy });
   return <Pressable accessibilityRole="button" accessibilityState={{ disabled: disabled || busy, busy }}
-    disabled={disabled || busy} onPress={onPress} accessibilityLabel={title}
+    disabled={disabled || busy} onPress={trace ? () => { trace('Button.onPress'); onPress?.(); } : onPress} accessibilityLabel={title}
+    onPressIn={trace ? event => trace('Button.onPressIn', { x: event.nativeEvent.pageX, y: event.nativeEvent.pageY }) : undefined}
+    onPressOut={trace ? () => trace('Button.onPressOut') : undefined}
+    onLayout={trace ? event => { trace('Button.layout', event.nativeEvent.layout); event.currentTarget.measureInWindow((x, y, width, height) => trace('Button.windowBounds', { x, y, width, height })); } : undefined}
     style={({ pressed }) => [styles.button, compact && styles.compactButton, buttonColors[tone], { opacity: disabled || busy ? .55 : pressed ? .78 : 1 }]}>
       <View pointerEvents="none" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', maxWidth: '100%', minHeight: compact ? 19 : 23 }}>
         <View style={{ flexDirection: 'row', flexShrink: 1, alignItems: 'center', gap: 10, opacity: busy ? 0 : 1 }}>
