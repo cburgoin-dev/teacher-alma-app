@@ -79,20 +79,17 @@ export class LessonFlow {
   }
   back = () => {
     if (this.state.busy) return true;
+    if (this.state.exited) return false;
     if (this.state.mode === 'NORMAL_RUN' && this.state.completion) return false;
-    if (this.state.mode === 'NORMAL_RUN') { this.set({ exitRequested: true }); return true; }
-    const steps = this.state.data?.steps ?? [];
-    const index = this.state.stepId === null ? steps.length : steps.findIndex(s => s.id === this.state.stepId);
-    if (index <= 0) return false;
-    this.showStep(steps[index - 1].id);
+    this.set({ exitRequested: true });
     return true;
   };
   cancelExit = () => { if (!this.state.busy) this.set({ exitRequested: false }); };
   confirmExit = () => {
-    if (!this.state.exitRequested || this.state.busy || this.state.exited || this.state.mode !== 'NORMAL_RUN') return;
+    if (!this.state.exitRequested || this.state.busy || this.state.exited) return;
     // Dispatch once and leave immediately, even on a hung/offline network.
     // A subsequent start replaces stale ACTIVE runs; this request targets only this run id.
-    if (this.state.runId) void this.api.abandon(this.id, this.state.runId).catch(() => {});
+    if (this.state.mode === 'NORMAL_RUN' && this.state.runId) void this.api.abandon(this.id, this.state.runId).catch(() => {});
     this.set({ exitRequested: false, exited: true });
   };
   continueContent = () => this.run(async () => {

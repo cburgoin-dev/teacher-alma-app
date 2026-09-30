@@ -1,21 +1,32 @@
+import { useEffect, useRef, type Ref } from 'react';
+import type { Animated } from 'react-native';
+import { completionDrawing } from '../courses/components/nodeMotion';
 import { brandColors, colors } from '../../theme';
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
-export function Trophy({ size = 76, color = '#FFF', accent = colors.red }: { size?: number; color?: string; accent?: string }) {
-  return <Svg pointerEvents="none" width={size} height={size} viewBox="0 0 80 80" accessible={false}>
-    <Path d="M22 18H10v12c0 12 12 16 19 16M58 18h12v12c0 12-12 16-19 16" fill="none" stroke={color} strokeWidth="6" />
-    <Path d="M22 10h36v25c0 12-8 20-18 20s-18-8-18-20ZM36 52h8v14H32v5h16v-5h-4" fill={color} />
-    <Rect x="24" y="68" width="32" height="6" rx="2" fill={color} />
-    <Path d="m40 19 4 8 9 1-7 6 2 9-8-5-8 5 2-9-7-6 9-1Z" fill={accent} />
-  </Svg>;
+import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
+export function TrophyShape({ color = '#FFF', accent = colors.red, starOpacity = 1, starRef }: { color?: string; accent?: string; starOpacity?: number; starRef?: Ref<Path> }) {
+  return <G>
+    <Path d="M18 13H2v17q0 23 24 23m36-40h16v17q0 23-24 23" stroke={color} strokeWidth="6" fill="none" />
+    <Path d="M17 0h46v38q0 28-23 28T17 38Z" fill={color} />
+    <Rect x="35" y="61" width="10" height="23" fill={color} />
+    <Rect x="20" y="84" width="40" height="9" fill={color} />
+    <Path ref={starRef} d="m40 13 6 12 13 2-10 9 2 13-11-6-11 6 2-13-10-9 13-2Z" fill={accent} opacity={starOpacity} />
+  </G>;
+}
+export function Trophy({ size = 76, color = '#FFF', accent = colors.red, starOpacity = 1, starProgress }: { size?: number; color?: string; accent?: string; starOpacity?: number; starProgress?: Animated.Value }) {
+  const star = useRef<Path>(null);
+  useEffect(() => {
+    if (!starProgress) return;
+    const id = starProgress.addListener(({ value }) => star.current?.setNativeProps({ opacity: completionDrawing(value).star }));
+    return () => starProgress.removeListener(id);
+  }, [starProgress]);
+  return <Svg pointerEvents="none" width={size} height={size} viewBox="-3 -3 86 99" accessible={false}><TrophyShape color={color} accent={accent} starOpacity={starProgress ? 0 : starOpacity} starRef={star} /></Svg>;
 }
 export function ChallengeHero() {
   return <Svg pointerEvents="none" width="100%" height={148} viewBox="0 0 350 180" accessible={false}>
     <Path d="M0 167Q90 68 170 133T350 105" fill="none" stroke="#64B6F6" strokeWidth="4" strokeDasharray="5 9" strokeLinecap="round" />
     <Circle cx="175" cy="88" r="75" fill="#FFE4E9" stroke="#FFF" strokeWidth="3" />
     <Circle cx="175" cy="88" r="65" fill={colors.red} />
-    <Path d="M153 56h-16v17q0 23 24 23m36-40h16v17q0 23-24 23" stroke={colors.white} strokeWidth="6" fill="none" />
-    <Path d="M152 43h46v38q0 28-23 28t-23-28Zm18 61h10v23h15v9h-40v-9h15" fill={colors.white} />
-    <Path d="m175 56 6 12 13 2-10 9 2 13-11-6-11 6 2-13-10-9 13-2Z" fill={colors.red} />
+    <G transform="translate(135 43)"><TrophyShape color={colors.white} accent={colors.red} /></G>
     <Path d="m93 30-12-11m21 1-3-14m148 122 13 5m-19 1 8 15" stroke="#8CCAFF" strokeWidth="7" strokeLinecap="round" />
     <Path d="M24 51h35q15 0 15 15v19q0 15-13 15l-2 10-9-10H24Q9 100 9 85V66q0-15 15-15Z" fill="#FFF" stroke="#CCE7FF" strokeLinejoin="round" />
     <Circle cx="27" cy="74" r="4" fill="#0980F5" /><Circle cx="42" cy="74" r="4" fill="#0980F5" /><Circle cx="57" cy="74" r="4" fill="#0980F5" />

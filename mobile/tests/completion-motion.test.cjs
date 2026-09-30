@@ -45,9 +45,9 @@ test('stale result cannot invent unlocks or animate a different course/frontier'
     assert.equal(consumeCompletion(ticket, final), null);
   }
 });
-test('reduced motion resolves without travel; ordinary timeline lasts 3.95 seconds', () => {
+test('reduced motion resolves without travel; V7 surrounds unchanged V6 travel with completion and reveal', () => {
   assert.equal(motionDuration(true), 0);
-  assert.equal(motionDuration(false), 3950);
+  assert.equal(motionDuration(false), 5300);
 });
 test('feedback visibility uses its entire measured height, including the previously hidden tail', () => {
   assert.equal(feedbackScrollTarget(0, 400, 280, 180), 72);
@@ -81,15 +81,21 @@ test('motion hook honors reduce motion, native timing, cancellation and listener
       if (id === 'react-native') return {
         AccessibilityInfo: { isReduceMotionEnabled: async () => reduced, addEventListener: () => ({ remove() { removed++; } }) },
         Easing: { inOut: x => x, cubic: 'cubic', linear: 'linear' },
-        Animated: { Value: class { setValue(value) { values.push(value); } addListener() { return "frame"; } removeListener() { removed++; } }, timing: (_, options) => { timings.push(options); return options; }, sequence: () => ({ start(callback) { completion = callback; }, stop() { stopped++; } }) },
+        Animated: { Value: class { setValue(value) { values.push(value); } addListener() { return "frame"; } removeListener() { removed++; } }, timing: (target, options) => { timings.push({...options,target}); return options; }, sequence: () => ({ start(callback) { completion = callback; }, stop() { stopped++; } }) },
       };
       throw Error(id);
     } });
     module.exports.useProgressMotion({ from: 'a', to: 'b', type: 'LESSON' }, true, () => finished++);
     if (reduced) { assert.equal(finished, 1); assert.equal(timings.length, 0); assert.equal(values.at(-1), 1); }
     else {
-      assert.equal(timings.reduce((sum, t) => sum + t.duration, 0), 3950);
+      assert.equal(timings.reduce((sum, t) => sum + t.duration, 0), 5300);
       assert.ok(timings.every(t => t.useNativeDriver));
+      assert.deepEqual(Array.from(timings, t=>t.duration), [600,200,3500,450,550]);
+      assert.deepEqual(Array.from(timings,t=>t.toValue), [1,1,3500/3950,1,1]);
+      assert.notEqual(timings[0].target,timings[1].target);
+      assert.equal(timings[2].target,timings[3].target);
+      assert.notEqual(timings[0].target,timings[2].target);
+      assert.notEqual(timings[2].target,timings[4].target);
       completion({ finished: false }); assert.equal(finished, 0);
       completion({ finished: true }); assert.equal(finished, 1);
     }
@@ -167,4 +173,13 @@ test('fractional vehicle pivot bypasses the installed RN string parser and stays
   assert.deepEqual(vehicleOrigin, [vehicleContact.x, vehicleContact.y, 0]);
   assert.ok(vehicleOrigin[0] > 0 && vehicleOrigin[0] < 44);
   assert.ok(vehicleOrigin[1] > 0 && vehicleOrigin[1] < 42);
+});
+
+
+test('Drawing windows and staggered reveal order remain bounded; facing changes alone request a turn', () => {
+  const {completionDrawing,stage,revealStages,changesFacing}=require('../src/features/courses/components/nodeMotion.ts');
+  assert.deepEqual(completionDrawing(0),{ring:0,check:0,star:0});assert.equal(completionDrawing(.4).check,0);assert.equal(completionDrawing(.7).ring,1);assert.equal(completionDrawing(.95).check,1);
+  assert.ok(revealStages.lock[0]<revealStages.icon[0]);assert.ok(revealStages.icon[0]<revealStages.dot[0]);assert.ok(revealStages.dot[0]<revealStages.card[0]);
+  for(const window of Object.values(revealStages)){assert.equal(stage(-1,...window),0);assert.equal(stage(2,...window),1);}
+  for(const from of [true,false])for(const to of [true,false])assert.equal(changesFacing(from,to),from!==to);
 });

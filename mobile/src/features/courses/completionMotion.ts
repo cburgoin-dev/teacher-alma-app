@@ -29,5 +29,8 @@ export function consumeCompletion(ticket: number | undefined, roadmap: Roadmap):
 }
 export const TRAVEL_MS = 3500;
 export const ARRIVAL_MS = 450;
+export const COMPLETION_MS = 600;
+export const SETTLE_MS = 200;
+export const REVEAL_MS = 550;
 export const TRAVEL_END = TRAVEL_MS / (TRAVEL_MS + ARRIVAL_MS);
-export function motionDuration(reducedMotion: boolean) { return reducedMotion ? 0 : TRAVEL_MS + ARRIVAL_MS; }
+export function motionDuration(reducedMotion: boolean) { return reducedMotion ? 0 : COMPLETION_MS + SETTLE_MS + TRAVEL_MS + ARRIVAL_MS + REVEAL_MS; }

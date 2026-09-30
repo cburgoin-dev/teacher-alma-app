@@ -21,7 +21,7 @@ function Exhaust({ delay }: { delay: number }) {
 
 export function TravelBus({ progress, animate, facingLeft = false }: { progress: Animated.Value; animate: boolean; facingLeft?: boolean }) {
   // Tire contact stays fixed: no whole-vehicle bob lifting the wheels off road.
-  const exhaust = progress.interpolate({ inputRange: [0, TRAVEL_END * .2, TRAVEL_END * .7, TRAVEL_END * .94, 1], outputRange: [1, .85, .65, 0, 0] });
+  const exhaust = progress.interpolate({ inputRange: [0, .001, TRAVEL_END * .2, TRAVEL_END * .7, TRAVEL_END * .94, 1], outputRange: [0, 1, .85, .65, 0, 0] });
   return <View pointerEvents="none" accessible={false} style={{ width: 44, height: 42, transformOrigin: vehicleOrigin, transform: [{ scaleX: facingLeft ? -1 : 1 }] }}>
     {animate ? <Animated.View style={{ position: 'absolute', opacity: exhaust }}><Exhaust delay={0} /><Exhaust delay={330} /><Exhaust delay={660} /></Animated.View> : null}
     <RouteBus />

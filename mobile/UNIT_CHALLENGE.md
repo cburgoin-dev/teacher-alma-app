@@ -181,3 +181,55 @@ Each new learner bubble, typing bubble, authored message and active card/final C
 Validation: Mobile TypeScript and all 101 Mobile tests passed, including Intro navigation, incremental chat targets, manual-review/momentum resumption and existing shared/Lessons/Challenge regressions. Physical acceptance remains pending for Más tarde and the incremental reveal/follow sequence on a long conversation, including upward history review and returning to the latest content.
 
 Final exit/follow validation: Android production export and diff whitespace checks passed. Executed demo:lessons:reset followed by demo:check through the documented npm-cli.js launcher: successful reset/check, two completed prerequisite lessons, Lesson 3 pending, zero active runs and zero Unit Challenge runs. No Git commit, push, merge or reset.
+
+
+## Iteration 7 acceptance
+
+### Exit semantics
+
+Header chevron and Android hardware Back both request exit, including Lesson Replay. Unit Challenge Intro also uses this confirmation for Más tarde: Continuar keeps the Intro; Salir returns explicitly to Roadmap. An unstarted exit calls neither start nor abandon, changes no progress and does not finish a completion ticket. ACTIVE Challenge retains the existing explicit-abandon request/retry path before returning; background interruption/disposal does not abandon. NORMAL_RUN Lesson retains its existing confirmation and abandon semantics. REPLAY confirms exit locally without a persistent endpoint or historical progress change; previous-step traversal remains the explicit internal revisit capability.
+
+The permanent leaving ref was removed. Challenge releases its removal guard for the confirmed navigation dispatch and then re-arms the request state if still mounted. A failed/no-op popTo can therefore be retried instead of leaving Más tarde permanently inert. Only an actual first passed completion can carry a finished completion ticket. Tests cover cancelling, confirming, shared header/hardware intent and a no-op navigation followed by another attempt; they do not establish native device acceptance.
+
+### Progression choreography
+
+One native animation sequence owns three transient values: origin completion, the unchanged V6 travel/arrival progress, and destination reveal. Nothing is persisted or substituted for backend progression/access state. Timing is completion 600ms -> settle 150ms -> travel 3500ms -> arrival 450ms -> reveal 550ms (5250ms total).
+
+The source starts with a coral current face over the consolidated completed face. Its halo/disc crossfade to green while the check fades/scales in; a restrained pulse settles before departure. Challenge sources retain a white trophy with green accent and a slightly stronger pulse. This uses opacity/scale, not a simulated score or reward and not an SVG stroke draw.
+
+V6 wheel contact, numeric transform origin, 2D bus, tangent/arc geometry, travel easing, dash painting and camera samples are unchanged. The camera holds at the source during completion/settle, follows the V6 samples during travel and holds at the destination through reveal. Exhaust is suppressed at zero travel progress so particles do not appear during the added completion stage; its accepted rear attachment, particle size/alpha and travel envelope remain intact.
+
+The destination initially shows a gray prerequisite face. After arrival it fades away while the consolidated icon, ring, current dot and card reveal; the card slides 10dp and the node pulses lightly. Lesson destinations reveal the current book; Challenge destinations reveal the trophy. An access-locked destination reveals the gold lock and ACCESO PREMIUM card, never an unlocked book/trophy. Existing backend-derived lessonState remains authoritative. Eligibility is unchanged: only a single-use ticket plus a confirmed adjacent backend frontier transition triggers product choreography. Normal entry, replay and failed challenges do not.
+
+Reduce Motion resolves all three values directly to the consolidated state without artificial timing. Animation frame, sequence and progress listener clean up on unmount/change; the existing exhaust loops also clean up. DEV Replay motion reuses the complete same sequence without APIs, mutations or ticket consumption and remains behind the existing production-excluded DEV branch.
+
+### Pending physical acceptance
+
+1. From Intro, cancel and confirm Más tarde and chevron; repeat with Android Back. Confirm returning to Roadmap creates no run/progress/motion. Reopen and repeat.
+2. In ACTIVE Challenge, cancel to retain the run; confirm to abandon and return. Background/reopen must remain resumable. Repeat Lesson normal exit and Replay exit midway through an activity; Replay must not go to the previous step or change history.
+3. Finish Lesson 3 and return through Result: observe coral-to-green/check completion, brief settle, V6 travel/arrival, then lock-to-trophy/card reveal. Pass Challenge and inspect the corresponding Lesson destination. Confirm the source remains visible before departure and the destination/card remains visible through reveal on narrow/large-font Android.
+4. Repeat both directions and topic boundaries with DEV Replay motion; inspect bus visibility, tire contact, exhaust, timing and camera continuity. Leave mid-sequence to check cleanup. Inspect a real access-locked destination: gold lock and Premium card, with no false unlock.
+5. Enable Reduce Motion and repeat: immediate consolidated state, usable CTAs, no long choreography. Normal entry/replay/failed attempts must not trigger product completion motion.
+
+Validation: Mobile TypeScript and the complete Mobile suite passed: 104 tests, zero failures/skips. This includes Courses/Roadmap, normal Lessons, Replay, Unit Challenge, shared regressions, exit retries, native sequence ordering/cleanup, Reduced Motion and Lesson/Challenge/Premium rendering layers. Automated checks do not claim physical acceptance.
+
+Final V7 validation: Android production export passed (25 assets); its Hermes bundle contains neither the DEV preview label nor helper. Diff whitespace check passed. Executed demo:lessons:reset and then demo:check using the documented npm-cli.js launcher: resetUserProgress=true, successful database/content check, two prerequisite lesson progress records, zero active runs and zero Unit Challenge runs. Lessons 1–2 are complete and Lesson 3 is pending for physical acceptance. No commit, push, merge or Git reset was performed.
+
+
+### Iteration 7 acceptance/polish — V7.1
+
+This section supersedes V7's Intro guard-release queue, border-check representation and 150ms settle. Existing V7 local changes were preserved.
+
+Exit investigation: source inspection found the same requestExit callback on header and Más tarde, an enabled real Pressable for valid Intro, pointerEvents=none on decorative children/background, and no Intro scroll-follow action. The supplied still image cannot establish whether Android delivered the physical tap; no device trace was available, so this is not claimed as a reproduced touch-interception root cause. The remaining unnecessary navigation dependency was routing a no-run Intro exit through a guard-release state/effect and popTo. Intro now confirms and navigates directly: canGoBack -> goBack, otherwise explicit Roadmap fallback. It has no removal guard/run to release and no latch. ACTIVE/pending runs retain usePreventRemove and explicit abandon semantics. The real Button/Pressable test checks enabled state, callback identity with header, confirmation, both destinations and retry after a no-op navigation. Physical verification of Más tarde is still required.
+
+Completion now draws an SVG success ring over about 420ms and a 300ms check stroke overlapping from 270ms. Circle/check dash offsets follow the existing completion clock through SVG refs; no extra timers, dependencies or per-frame React state. Listeners are removed on unmount. The final static check uses the same path to avoid a shape swap. Challenge completion retains the trophy with a delayed central star during the final 210ms and a restrained pulse.
+
+Destination reveal staggers gray lock shrink/fade, ring trace, consolidated icon, current dot pop and card slide/fade. Premium reveals a gold ring/lock and ACCESO PREMIUM, never a false unlock. Challenge reveals the shared trophy. Backend state is unchanged.
+
+A left-facing departure crossfades the stationary right-facing bus into the V6 left-facing bus during the 200ms settle. Right-facing departures add no visual turn. Arrival crossfades back into the existing right-facing parked representation during the existing arrival interval, avoiding the endpoint flip. Numeric tire-contact origins, translations, road/camera samples, travel easing and exhaust are retained. Total timing is 600 + 200 + 3500 + 450 + 550 = 5300ms, only 50ms more than V7. Reduced Motion resolves directly; DEV preview runs this same choreography for the actual predecessor/current pair. No synthetic scenario selector was added.
+
+Trophy previously had separate Preview and Roadmap paths. The Roadmap's open stem/base subpath could implicitly close diagonally. Both now use TrophyShape based on the accepted Preview artwork, with explicit rectangular stem and pedestal, configurable white/accent colors and size. Result inherits the same Hero artwork without layout changes.
+
+Validation: Mobile TypeScript and all 107 Mobile tests passed, including real Intro button wiring, goBack/fallback/retry, active protection, Lesson/Replay regressions, stage ordering, drawing windows/listener cleanup, facing decision, Premium/Challenge layers and shared trophy geometry. Physical checks: confirm Más tarde actually opens the same dialog and returns in Android, then inspect ring/check drawing smoothness, star delay, staggered cards, both bus directions/parking, narrow/large-font viewport, Premium and Reduce Motion. Tests do not prove physical delivery, visibility or smoothness.
+
+V7.1 final validation: Android production export passed with 25 assets; DEV label/helper absent from Hermes. Executed demo:lessons:reset followed by demo:check through npm-cli.js, both successful: resetUserProgress=true, two prerequisite lesson progress records, zero active Lesson runs and zero Unit Challenge runs. Lessons 1–2 complete, Lesson 3 pending. Git diff --check passed. No commit/push/merge/Git reset.

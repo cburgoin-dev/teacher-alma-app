@@ -1,6 +1,6 @@
 import { useConversationScroll } from './useConversationScroll';
 import { finishCompletion } from '../courses/completionMotion';
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
 import { ActivityIndicator, Alert, BackHandler, KeyboardAvoidingView, Platform, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { useFocusEffect, usePreventRemove } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -21,27 +21,25 @@ export function UnitChallengeScreen({ route, navigation }: NativeStackScreenProp
   const state = useSyncExternalStore(flow.subscribe, flow.snapshot);
   const insets = useSafeAreaInsets();
   const { fontScale } = useWindowDimensions();
-  const leaving = useRef(false);
-  const [exitRequested, setExitRequested] = useState(false);
-  const exit = useCallback(() => setExitRequested(true), []);
-  // Dispatch only after usePreventRemove has committed the unguarded render.
-  const performExit = useCallback(() => {
-    if (leaving.current) return;
-    leaving.current = true;
+  const exit = useCallback(() => {
     const snapshot = flow.snapshot();
     const progressed = snapshot.response?.run.status === 'COMPLETED' && snapshot.response.result?.passed === true && !snapshot.metadata?.progress.passed;
-    navigation.popTo('Roadmap', { courseId, completionTicket: finishCompletion(route.params.completionTicket, progressed) });
+    if (!progressed && navigation.canGoBack()) navigation.goBack();
+    else navigation.popTo('Roadmap', { courseId, completionTicket: progressed ? finishCompletion(route.params.completionTicket, true) : undefined });
   }, [navigation, courseId, flow, route.params.completionTicket]);
   useEffect(() => { void flow.load(); return flow.dispose; }, [flow]);
   const active = state.response?.run.status === 'ACTIVE' || (!state.response && !!state.metadata?.activeRun);
+  const intro = !state.response;
   const guarded = !state.exited && (active || state.pending || state.busy);
   const requestExit = useCallback(() => {
     if (state.busy || state.pending) { Alert.alert('Envío pendiente', 'Reintenta la operación para confirmar su estado antes de salir.'); return; }
     if (active) Alert.alert('¿Abandonar el reto?', 'Este intento terminará sin completarse. Para intentarlo de nuevo tendrás que comenzar desde la primera fase.', [{ text: 'Seguir', style: 'cancel' }, { text: 'Abandonar', style: 'destructive', onPress: () => { void flow.abandon(); } }]);
+    else if (intro) Alert.alert('¿Salir del reto?', 'Puedes volver después desde tu ruta.', [{ text: 'Continuar', style: 'cancel' }, { text: 'Salir', onPress: exit }]);
     else exit();
-  }, [active, state.busy, state.pending, flow, exit]);
-  usePreventRemove(guarded && !exitRequested, requestExit);
-  useEffect(() => { if (exitRequested) performExit(); }, [exitRequested, performExit]);
+  }, [active, intro, state.busy, state.pending, flow, exit]);
+  // Intro has no run to protect: its explicit controls confirm then navigate
+  // directly, without a guard-release render/effect round trip.
+  usePreventRemove(guarded, requestExit);
   useFocusEffect(useCallback(() => { const sub = BackHandler.addEventListener('hardwareBackPress', () => { requestExit(); return true; }); return () => sub.remove(); }, [requestExit]));
   useEffect(() => { if (state.exited) exit(); }, [state.exited, exit]);
   const metadata = state.metadata;
