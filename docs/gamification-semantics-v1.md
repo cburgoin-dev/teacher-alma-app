@@ -230,7 +230,28 @@ Initial configured milestones:
 | 60 days | +50 |
 | 100 days | +75 |
 
-Milestone rewards are unique and should be data/config driven so later milestones can be added without redesigning the core domain.
+Milestone coin rewards are **lifetime-unique per account and milestone threshold**. Reaching the same threshold again in a later streak may still trigger a visual celebration, but it must not grant coins again.
+
+Example:
+
+```text
+First streak:
+7  -> +10
+14 -> +15
+30 -> +30
+60 -> +50
+
+Later streak after a break:
+7  -> celebrate, +0
+14 -> celebrate, +0
+30 -> celebrate, +0
+60 -> celebrate, +0
+100 -> +75 if never earned before
+```
+
+The learner's longest historical streak remains durable even if the current streak later resets.
+
+Milestone rewards should be data/config driven so later milestones can be added without redesigning the core domain.
 
 ### 6.4 Renewable reward sources
 
