@@ -5,6 +5,9 @@ import { fail } from './gamification.rules.js';
 export class GamificationSession {
   constructor(private readonly db: Prisma.TransactionClient) {}
   user(userId: string) { return this.db.user.findUnique({ where: { id: userId }, select: { timezone: true } }); }
+  timezone(userId: string, timezone: string) {
+    return this.db.user.update({ where: { id: userId }, data: { timezone }, select: { timezone: true } });
+  }
   async initialize(userId: string) {
     const streak = await this.db.userStreak.upsert({ where: { userId }, create: { userId }, update: {} });
     const settings = await this.db.gamificationSettings.upsert({ where: { userId }, create: { userId }, update: {} });

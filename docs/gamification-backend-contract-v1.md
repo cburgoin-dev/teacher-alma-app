@@ -669,6 +669,18 @@ This endpoint should reconcile stale streak/protection state before returning.
 
 ## 14. Mutation API
 
+### PATCH /me/gamification/timezone
+
+Authenticated request: `{ "timezone": "America/Mazatlan" }`.
+
+Success: HTTP 200 with only `{ "timezone": "America/Mazatlan" }`.
+
+- Requires a non-empty string validated through the same `Intl.DateTimeFormat` IANA strategy used for learning dates. Valid identifiers, including UTC and IANA aliases, are stored as supplied.
+- Invalid input, including fixed offsets `UTC-7`, `+07:00`, `-0700`, returns HTTP 400 with `INVALID_USER_TIMEZONE`. Missing authentication returns 401.
+- Uses the existing user-row lock to serialize with completion ingestion. Sending the existing timezone is a no-op; changing it updates User.timezone and its normal updatedAt timestamp.
+- No Gamification initialization or reconciliation runs in this endpoint. Historical LearningDays, event learningDates, streak state/history, rewards, ledger, inventory, protections and repairs remain untouched. Only future event-date derivation uses the new timezone.
+- Mobile must synchronize the device's IANA timezone after login and on the appropriate app-entry/bootstrap path, before fetching Gamification or submitting new completions. The same request can be repeated safely; resynchronize when the device timezone changes. Mobile implementation remains outside this backend pass.
+
 ### 14.1 PATCH /me/gamification/daily-goal
 
 Request:
@@ -907,7 +919,7 @@ The next technical step is to translate this contract into the **exact Prisma sc
 
 ## 22. Implemented transaction and compatibility details
 
-- All four routes are registered under `/me/gamification`. GET lazily reconciles inside the same per-user PostgreSQL row-lock transaction as mutations.
+- All five routes are registered under `/me/gamification`. GET lazily reconciles inside the same per-user PostgreSQL row-lock transaction as mutations.
 - Completed LessonRun, final Unit Challenge submission, and completed Review batch call Gamification within their existing transaction. A failure rolls back the source completion, progression, Review and Gamification together.
 - Review uses the authenticated token's existing `batchId` and full item membership. Completion means every authorized item has a durable attempt for that user/batch, irrespective of correctness. Partial/abandoned batches count zero; individual attempts never count as separate sessions. No new Review session table is needed. The final attempt stores its response including the delta for retry.
 - The real `CourseProgress` transition exists in Lesson and Unit Challenge completion. Its affected-row count gates the +20 reward, with a second lifetime ledger uniqueness guarantee.

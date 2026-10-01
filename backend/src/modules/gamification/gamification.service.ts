@@ -1,6 +1,6 @@
 import { isUuid } from '../../shared/auth.js';
 import type { GamificationSession, PrismaGamificationRepository } from './gamification.repository.js';
-import { DAY_MS, GOALS, MILESTONES, PROTECTOR, REPAIR_COST, dateKey, dateValue, fail, learningDate, nextDate, preset, reconcileTimeline, requestKey } from './gamification.rules.js';
+import { DAY_MS, GOALS, MILESTONES, PROTECTOR, REPAIR_COST, dateKey, dateValue, fail, learningDate, nextDate, preset, reconcileTimeline, requestKey, userTimezone } from './gamification.rules.js';
 import type { GamificationDelta, LearningCompletion, Reward } from './gamification.types.js';
 
 async function reconcile(session: GamificationSession, userId: string, now: Date) {
@@ -118,6 +118,15 @@ export async function currentGamificationDelta(session: GamificationSession, use
 
 export class GamificationService {
   constructor(private readonly repository: PrismaGamificationRepository, private readonly clock: () => Date = () => new Date()) {}
+  changeTimezone(userId: string, value: unknown) {
+    const timezone = userTimezone(value);
+    return this.repository.write(userId, async session => {
+      const user = await session.user(userId);
+      if (!user) return fail('USER_NOT_FOUND', 404);
+      // Serialize with completions, but do not initialize or reconcile Gamification here.
+      return user.timezone === timezone ? user : session.timezone(userId, timezone);
+    });
+  }
   read(userId: string) {
     return this.repository.write(userId, async session => { const now = this.clock(); return aggregate(session, userId, await reconcile(session, userId, now), now); });
   }

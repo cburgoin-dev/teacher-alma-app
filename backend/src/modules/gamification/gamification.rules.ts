@@ -27,6 +27,14 @@ export function learningDate(now: Date, timezone: string): string {
   } catch { return fail('INVALID_USER_TIMEZONE', 409); }
 }
 
+export function userTimezone(value: unknown): string {
+  if (typeof value !== 'string' || !value.trim()) return fail('INVALID_USER_TIMEZONE', 400);
+  // Reuse the date derivation's Intl/IANA validation, mapping invalid request input to 400.
+  try { learningDate(new Date(0), value); }
+  catch { return fail('INVALID_USER_TIMEZONE', 400); }
+  return value;
+}
+
 /** Calendar arithmetic uses DATE keys, never timezone-dependent 24-hour offsets. */
 export function reconcileTimeline(input: {
   days: string[]; protectedDays: string[]; repairedDays: string[];

@@ -23,6 +23,7 @@ Repair candidates start a 24-hour window at detection; a second uncovered date i
 ## HTTP
 
 - `GET /me/gamification`: reconciled aggregate, optional Repair candidate UUID.
+- `PATCH /me/gamification/timezone`: `{ "timezone": "America/Mazatlan" }`; returns only `{ "timezone": "America/Mazatlan" }`.
 - `PATCH /me/gamification/daily-goal`: `{ preset }`; returns `applies`, `effectiveDate`, aggregate and newly earned coins.
 - `POST /me/gamification/protectors/purchase`: `{ requestKey }`.
 - `POST /me/gamification/streak/repair`: `{ requestKey, repairId }`.
@@ -30,6 +31,10 @@ Repair candidates start a 24-hour window at detection; a second uncovered date i
 Request keys follow `[a-zA-Z0-9_-]{16,100}` and share a `request:` ledger namespace for spending. The same key cannot purchase and repair, or repair two different candidates. Successful retries do not repeat side effects and return current state. Domain conflicts use HTTP 409, malformed values 400, authentication 401. No client award or arbitrary balance mutation route exists.
 
 Run the existing Protector seed after migrations: `node --import tsx scripts/seed-gamification.ts`. The service requires the active v1 catalog configuration (CONSUMABLE, 50, max 2); it never seeds at request time.
+
+Timezone synchronization requires authentication and uses the same `Intl.DateTimeFormat` IANA validation as learning-date derivation. Empty/non-string/invalid values and offsets such as `UTC-7`, `+07:00`, `-0700` return HTTP 400 / `INVALID_USER_TIMEZONE`. Valid IANA identifiers (including `UTC` and IANA aliases) are retained as supplied. The service takes the existing user-row lock to serialize with completions, skips the update when the value matches, and otherwise updates only User.timezone (plus Prisma's User.updatedAt). It neither initializes nor reconciles Gamification, and never rewrites historical dates, streak state/history, rewards, ledger, inventory, protections or repairs.
+
+Mobile must synchronize the device's current IANA timezone after authentication and at the appropriate app-entry/bootstrap boundary, before fetching Gamification or submitting new learning completions. Repeating the same value is safe; a changed device timezone affects only future event-date derivation. No Mobile implementation is included here.
 
 ## Validation
 
