@@ -15,7 +15,7 @@ export class ReviewBatchToken {
     const data = Buffer.concat([cipher.update(JSON.stringify({ batchId: randomUUID(), userId, items, expiresAt: now.getTime() + 15 * 60_000 })), cipher.final()]);
     return Buffer.concat([iv, cipher.getAuthTag(), data]).toString('base64url');
   }
-  verify(token: unknown, userId: string, itemId: string, now: Date): AuthorizedItem & { batchId: string } {
+  verify(token: unknown, userId: string, itemId: string, now: Date): AuthorizedItem & { batchId: string; batchItemIds: string[] } {
     try {
       if (typeof token !== 'string' || token.length > 4096 || !/^[\w-]+$/.test(token)) throw new Error();
       const bytes = Buffer.from(token, 'base64url');
@@ -26,7 +26,7 @@ export class ReviewBatchToken {
       if (!isUuid(claims.batchId) || claims.userId !== userId || !Number.isFinite(claims.expiresAt) || claims.expiresAt <= now.getTime()) throw new Error();
       const item = claims.items.find(i => i.id === itemId);
       if (!item) throw new Error();
-      return { ...item, batchId: claims.batchId };
+      return { ...item, batchId: claims.batchId, batchItemIds: claims.items.map(i => i.id) };
     } catch { throw new HttpError(403, 'REVIEW_BATCH_INVALID', 'Invalid Review batch'); }
   }
 }

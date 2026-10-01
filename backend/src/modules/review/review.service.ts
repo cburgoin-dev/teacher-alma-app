@@ -1,3 +1,4 @@
+import { recordLearningCompletion } from '../gamification/gamification.service.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { HttpError } from '../../shared/http-error.js';
 import { isUuid } from '../../shared/auth.js';
@@ -89,6 +90,14 @@ export class ReviewService {
       await session.createAttempt({ id, userId, activityId: item.activityId, lessonId: item.sourceLessonId, runId: null,
         reviewItemId: item.id, context: 'REVIEW', answerData: checked.answerData, isCorrect: checked.isCorrect, attemptNumber,
         reviewBatchId: authorized.batchId, reviewRequestKey: key, reviewRequestHash: hash, reviewResult: result });
+      const submitted = new Set((await session.completedBatchItems(userId, authorized.batchId)).map(a => a.reviewItemId));
+      if (authorized.batchItemIds.every(id => submitted.has(id))) {
+        const gamification = await recordLearningCompletion(session.gamification(), { userId, eventType: 'REVIEW_COMPLETION',
+          sourceType: 'REVIEW_BATCH', sourceId: authorized.batchId, occurredAt: now }, now);
+        const completed = { ...result, gamification };
+        await session.saveResult(id, completed);
+        return completed;
+      }
       return result;
     });
   }

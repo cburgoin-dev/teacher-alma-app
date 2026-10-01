@@ -1,8 +1,14 @@
+import { GamificationSession } from '../gamification/gamification.repository.js';
 import type { Prisma, PrismaClient } from '../../generated/prisma/client.js';
 
 const include = { activity: true, sourceLesson: { include: { topic: { include: { course: true } } } } } as const;
 export class ReviewSession {
   constructor(private readonly db: Prisma.TransactionClient) {}
+  gamification() { return new GamificationSession(this.db); }
+  completedBatchItems(userId: string, reviewBatchId: string) {
+    return this.db.activityAttempt.findMany({ where: { userId, reviewBatchId, context: 'REVIEW' }, select: { reviewItemId: true } });
+  }
+  saveResult(id: string, reviewResult: Prisma.InputJsonValue) { return this.db.activityAttempt.update({ where: { id }, data: { reviewResult } }); }
   findActive(userId: string) { return this.db.reviewItem.findMany({ where: { userId, status: 'ACTIVE' }, include }); }
   findItem(id: string, userId: string) { return this.db.reviewItem.findFirst({ where: { id, userId }, include }); }
   findEntitlements(userId: string) { return this.db.entitlement.findMany({ where: { userId } }); }

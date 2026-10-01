@@ -663,7 +663,7 @@ One durable row per qualifying completed session; the source identity is deliber
 - Unique `(user_id, source_type, source_id)`.
 - Indexes `(user_id, learning_date)`, `(user_id, occurred_at desc)`.
 
-Daily Goal progress is derived from the count of these events per local date; no mutable progress counter is stored.
+Daily Goal progress is derived from the count of these events per local date; no mutable progress counter is stored. Runtime v1 emits only durable Lesson, Unit Challenge and completed Review batch events. Lesson Replay stays ephemeral/read-only; its event type and Practice remain reserved for future durable integrations.
 
 ---
 
@@ -680,7 +680,7 @@ Compact authoritative current/longest state, backed by real learning days and pr
 - `updated_at timestamptz not null default now()` (Prisma updates on mutation).
 - CHECK: `current_days >= 0`, `longest_days >= 0`, `longest_days >= current_days`.
 
-Protected/repaired dates preserve continuity without adding real learning days to the count. This migration does not backfill streak state; lazy initialization belongs to the next service pass.
+Protected/repaired dates preserve continuity without adding real learning days to the count. This migration does not backfill streak state; the Gamification service initializes lazily from durable history.
 
 ---
 
@@ -694,7 +694,7 @@ Protected/repaired dates preserve continuity without adding real learning days t
 - CHECK: current and non-null pending presets in `CASUAL | NORMAL | INTENSE`.
 - CHECK: pending preset and effective date are both null or both non-null.
 
-Rows are not eagerly backfilled; service initialization is deferred.
+Rows are initialized lazily by the Gamification service; no eager historical backfill is performed.
 
 ---
 
@@ -756,7 +756,7 @@ For inventory-backed items such as Streak Protectors.
 - Index `(shop_item_id)`.
 - CHECK `quantity >= 0` (already enforced by the initial migration).
 
-The cross-table stock cap and atomic balance/inventory changes belong to the subsequent service pass.
+The Gamification service enforces the cross-table stock cap and atomic balance/inventory changes under the user-row lock.
 
 ---
 

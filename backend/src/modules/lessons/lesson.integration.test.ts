@@ -249,7 +249,9 @@ test('Lessons HTTP + Prisma/PostgreSQL integration', { skip: process.env.RUN_LES
       const result = await request(secondPath + '/complete', 'POST'); assert.equal(result.body.courseProgress.status, 'COMPLETED');
       await prisma.entitlement.delete({ where: { id: grant.id } });
       assert.equal((await request(root + '/replay/steps/' + paidSummaryId + '/check', 'POST', { text: 'a' })).status, 403);
-      assert.equal(await prisma.coinTransaction.count({ where: { userId } }), 0); assert.equal(await prisma.learningDay.count({ where: { userId } }), 0);
+      assert.equal(await prisma.coinTransaction.count({ where: { userId, reason: 'COURSE_COMPLETION' } }), 1);
+      assert.equal(await prisma.gamificationLearningEvent.count({ where: { userId, sourceType: 'LESSON_RUN' } }),
+        await prisma.lessonRun.count({ where: { userId, status: 'COMPLETED' } }));
     });
     await t.test('nonempty Summary-only lesson consolidates on entry without requiring presentation interaction', async () => {
       await prisma.lessonBlock.create({ data: { lessonId: emptyId, type: 'SUMMARY', position: 1, content: { points: ['Presentation'] } } });

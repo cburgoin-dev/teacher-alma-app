@@ -46,12 +46,15 @@ A learner can maintain a streak even if a completed Unit Challenge is failed, be
 A completed experience counts as a qualifying learning event for streak purposes when it is one of:
 
 - first Lesson completion;
-- completed Lesson Replay;
 - completed Unit Challenge, whether passed or failed;
 - completed Review session;
 - completed Practice session once Practice exists.
 
+Compatibility decision for Gamification v1: Lessons Replay v1 remains ephemeral and read-only. It does not create a LessonRun or other persistence, and does not count for Streak or Daily Goal. Support is deferred until Replay has an explicitly approved durable completion contract.
+
 The following do **not** count:
+
+- Lesson Replay;
 
 - opening a Lesson;
 - opening Review or Practice without completing the session;
@@ -153,7 +156,6 @@ Initial v1 presets:
 Each completed qualifying session contributes one unit:
 
 - Lesson completion;
-- Lesson Replay completion;
 - Unit Challenge completion;
 - Review session completion;
 - Practice session completion once Practice exists.
@@ -277,7 +279,7 @@ Practice and Review already contribute to Daily Goal, so they do not need direct
 - Protector use;
 - Repair use.
 
-Replay may contribute to streak and Daily Goal while granting no direct coins.
+Lesson Replay does not contribute to streak or Daily Goal in v1 and grants no rewards. Its existing score, Review and progression semantics remain unchanged.
 
 ### 6.6 Anti-farming and idempotency
 
@@ -477,13 +479,13 @@ A large store is not required.
 
 Gamification must remain usable when the learner temporarily has no new course content.
 
-Legitimate Replay, Review and future Practice can still:
+Completed Review batches and repeated Unit Challenge runs (plus future Practice with durable session completion) can still:
 
 - maintain streak;
 - progress Daily Goal;
 - enable the renewable Daily Goal reward.
 
-They do not directly print additional progression coins.
+Repeated sessions do not grant additional progression coins. Lesson Replay is excluded in v1 because its completion remains ephemeral.
 
 This is particularly important while the product initially contains a small course catalog.
 

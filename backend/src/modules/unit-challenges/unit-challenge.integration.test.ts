@@ -64,7 +64,6 @@ test('Unit Challenge HTTP + PostgreSQL lifecycle and progression', { skip: proce
     };
     const sideEffects = () => Promise.all([
       prisma.activityAttempt.count({ where: { userId } }), prisma.reviewItem.count({ where: { userId } }),
-      prisma.coinTransaction.count({ where: { userId } }), prisma.learningDay.count({ where: { userId } }),
     ]);
     await t.test('auth, ids, visibility, read-only metadata, course and prerequisite gates', async () => {
       assert.equal((await request(root, 'GET', undefined, 'none')).status, 401);
@@ -155,7 +154,9 @@ test('Unit Challenge HTTP + PostgreSQL lifecycle and progression', { skip: proce
       assert.equal((await start(startKey)).body.run.id, runId);
       assert.equal((await start()).body.error.code, 'UNIT_CHALLENGE_ACCESS_REQUIRED');
       assert.equal((await request(root + '/runs/' + runId + '/abandon', 'POST')).body.error.code, 'UNIT_CHALLENGE_RUN_NOT_ACTIVE');
-      assert.deepEqual(await sideEffects(), [0, 0, 0, 0]);
+      assert.deepEqual(await sideEffects(), [0, 0]);
+      assert.equal(await prisma.gamificationLearningEvent.count({ where: { userId, sourceType: 'UNIT_CHALLENGE_RUN' } }),
+        await prisma.unitChallengeRun.count({ where: { userId, status: 'COMPLETED' } }));
     });
     await t.test('later successful replay establishes progress; worse replay never revokes or moves frontier back', async () => {
       await prisma.entitlement.updateMany({ where: { userId }, data: { expiresAt: null } });
@@ -217,7 +218,9 @@ test('Unit Challenge HTTP + PostgreSQL lifecycle and progression', { skip: proce
       assert.equal(end.body.courseProgress.status, 'COMPLETED'); assert.equal(end.body.nextNode, null);
       assert.equal((await courses.roadmap(courseId, userId)).currentNode, null);
       assert.equal((await prisma.courseProgress.findUniqueOrThrow({ where: { userId_courseId: { userId, courseId } } })).status, 'COMPLETED');
-      assert.deepEqual(await sideEffects(), [0, 0, 0, 0]);
+      assert.deepEqual(await sideEffects(), [0, 0]);
+      assert.equal(await prisma.gamificationLearningEvent.count({ where: { userId, sourceType: 'UNIT_CHALLENGE_RUN' } }),
+        await prisma.unitChallengeRun.count({ where: { userId, status: 'COMPLETED' } }));
     });
     await t.test('2/3 displays 66 in Result, historical GET and bestScore; exact thresholds 67 fail and 66 pass', async () => {
       const authored = await prisma.unitChallengePhase.findFirstOrThrow({ where: { unitChallengeId: lastChallengeId, position: 1 } });

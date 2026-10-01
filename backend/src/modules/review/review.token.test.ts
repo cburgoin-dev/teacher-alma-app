@@ -8,8 +8,11 @@ test('batch authorization is opaque, integrity protected, scoped and expires at 
   const user = randomUUID(), item = { id: randomUUID(), activityId: randomUUID(), sourceLessonId: randomUUID() };
   const token = tokens.issue(user, [item], now);
   assert.ok(!Buffer.from(token, 'base64url').toString().includes(item.id));
-  const { batchId, ...authorized } = tokens.verify(token, user, item.id, now);
+  const { batchId, batchItemIds, ...authorized } = tokens.verify(token, user, item.id, now);
   assert.deepEqual(authorized, item);
+  assert.deepEqual(batchItemIds, [item.id]);
+  const other = { id: randomUUID(), activityId: randomUUID(), sourceLessonId: item.sourceLessonId };
+  assert.deepEqual(tokens.verify(tokens.issue(user, [item, other], now), user, other.id, now).batchItemIds, [item.id, other.id]);
   assert.equal(tokens.verify(token, user, item.id, now).batchId, batchId);
   assert.notEqual(tokens.verify(tokens.issue(user, [item], now), user, item.id, now).batchId, batchId);
   for (const [value, owner, id, time] of [

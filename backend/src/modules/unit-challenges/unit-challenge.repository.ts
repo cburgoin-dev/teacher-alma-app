@@ -1,3 +1,4 @@
+import { GamificationSession } from '../gamification/gamification.repository.js';
 import type { Prisma, PrismaClient } from '../../generated/prisma/client.js';
 import { PrismaCourseRepository } from '../courses/course.repository.js';
 
@@ -5,6 +6,10 @@ const runInclude = { phases: { orderBy: { position: 'asc' as const } },
   challenge: { include: { topic: true } } } satisfies Prisma.UnitChallengeRunInclude;
 export class UnitChallengeSession {
   constructor(private readonly db: Prisma.TransactionClient) {}
+  gamification() { return new GamificationSession(this.db); }
+  completedRuns(userId: string, unitChallengeId: string) {
+    return this.db.unitChallengeRun.count({ where: { userId, unitChallengeId, status: 'COMPLETED' } });
+  }
   findChallenge(id: string, userId: string) {
     return this.db.unitChallenge.findUnique({ where: { id }, include: {
       phases: { orderBy: { position: 'asc' } }, progress: { where: { userId } },

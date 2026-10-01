@@ -83,7 +83,7 @@ REVIEW_BATCH
 PRACTICE_SESSION
 ```
 
-The unique source identity provides retry-safe Daily Goal units.
+The unique source identity provides retry-safe Daily Goal units. Compatibility decision for runtime v1: `LESSON_REPLAY_COMPLETION` is reserved and is not emitted while Lessons Replay remains ephemeral/read-only; `PRACTICE_COMPLETION` is also reserved until durable Practice exists. Keep the accepted schema/migration unchanged.
 
 ## 3. Existing model: LearningDay
 

@@ -1,3 +1,5 @@
+import { recordLearningCompletion, currentGamificationDelta } from '../gamification/gamification.service.js';
+import type { GamificationDelta } from '../gamification/gamification.types.js';
 import { publicContent } from './lesson.content.js';
 import { HttpError } from '../../shared/http-error.js';
 import { entitlementSource } from '../courses/course.rules.js';
@@ -170,6 +172,7 @@ export class LessonService {
   }
   private async consolidate(session: LessonSession, lesson: LessonRecord, run: RunRecord, userId: string) {
     const source = entitlementSource(lesson.topic.course.id, await session.findEntitlements(userId), this.clock());
+    let gamification: GamificationDelta;
     if (run.status !== 'COMPLETED') {
       this.requireActive(run);
       const attempts = await session.findAttempts(run.id);
@@ -192,14 +195,19 @@ export class LessonService {
         await session.linkReview(run.id, activityId, review.id);
       }
       lesson = (await session.findLesson(lesson.id, userId))!;
-      if (courseProgress(lesson.topic.course).status === 'COMPLETED') await session.completeCourse(userId, lesson.topic.course.id, now);
+      const courseCompleted = courseProgress(lesson.topic.course).status === 'COMPLETED'
+        ? (await session.completeCourse(userId, lesson.topic.course.id, now)).count > 0 : false;
+      gamification = await recordLearningCompletion(session.gamification(), { userId, eventType: 'LESSON_COMPLETION', sourceType: 'LESSON_RUN',
+        sourceId: run.id, occurredAt: now, scoreContext: { lessonId: lesson.id, firstCompletion: true, perfect: ids.size > 0 && correctAnswers === ids.size },
+        ...(courseCompleted ? { courseCompletedId: lesson.topic.course.id } : {}) }, now);
     }
+    else gamification = await currentGamificationDelta(session.gamification(), userId, this.clock());
     const progress = courseProgress(lesson.topic.course);
     const next = nextNode(lesson.topic.course, source);
     return { runId: run.id, lesson: { id: lesson.id, title: lesson.title }, course: { id: lesson.topic.course.id, title: lesson.topic.course.title, level: lesson.topic.course.level },
       result: { correctAnswers: run.correctAnswers!, totalActivities: run.totalActivities!, isPerfect: run.totalActivities! > 0 && run.correctAnswers === run.totalActivities,
         pendingReviewCount: await session.countReviews(userId, lesson.id) }, courseProgress: progress,
-      nextNode: next };
+      nextNode: next, gamification };
 
   }
   complete(lessonId: string, runId: string, userId: string) {

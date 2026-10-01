@@ -1,11 +1,13 @@
 # Gamification backend contract v1
 
-**Status:** technical design draft / pre-implementation contract  
+**Status:** backend v1 implemented; Mobile integration deferred
 **Scope:** Gamification v1  
 **Branch:** `feature/gamification-v1`  
 **Product source of truth:** `docs/gamification-semantics-v1.md`
 
 This document translates the approved Gamification v1 product semantics into backend/domain requirements. It is implementation-facing: entities, invariants, idempotency, integration points and HTTP contracts.
+
+Compatibility decision: Lesson Replay remains ephemeral/read-only and is excluded from qualifying events in v1. No Replay persistence or LessonRun reuse is introduced. Practice remains deferred until a durable session exists.
 
 It does **not** authorize scope expansion. When this document and product semantics disagree, product semantics win.
 
@@ -97,14 +99,12 @@ occurredAt
 createdAt
 ```
 
-Recommended event types:
+Runtime v1 event types:
 
 ```text
 LESSON_COMPLETION
-LESSON_REPLAY_COMPLETION
 UNIT_CHALLENGE_COMPLETION
 REVIEW_COMPLETION
-PRACTICE_COMPLETION
 ```
 
 Required uniqueness:
@@ -113,7 +113,7 @@ Required uniqueness:
 UNIQUE(user_id, source_type, source_id)
 ```
 
-A retry for the same completed run/session must resolve to the existing event, not create another Daily Goal unit.
+A retry for the same completed run/session resolves to the existing event, without another Daily Goal unit or reward. The database still accepts reserved `LESSON_REPLAY_COMPLETION` and `PRACTICE_COMPLETION` values for a future approved extension; runtime v1 does not emit them.
 
 ### 3.2 UserStreak
 
@@ -688,7 +688,7 @@ If the immediate change newly satisfies today's target, reward may be granted in
 
 ### 14.2 POST /me/gamification/protectors/purchase
 
-Require a request/idempotency key using the project's existing mutation convention.
+Request body: `{ "requestKey": "<16–100 ASCII letters/digits/underscore/hyphen>" }`, following the existing mutation convention. Successful mutation keys use the shared ledger namespace `request:<requestKey>`; reusing a purchase key for Repair or vice versa returns `IDEMPOTENCY_CONFLICT`.
 
 Response:
 
@@ -711,7 +711,7 @@ Errors:
 
 ### 14.3 POST /me/gamification/streak/repair
 
-Require mutation idempotency.
+Request body: `{ "requestKey": "<stable key>", "repairId": "<candidate UUID from GET>" }`. Binding the key to the candidate prevents a retry from repairing a later break. The aggregate includes the candidate `id`. The same successful request returns current balance/streak without another debit; a different key for an already-used candidate returns `ALREADY_REPAIRED`.
 
 Response:
 
@@ -748,7 +748,7 @@ After a Lesson run becomes durably completed:
 
 - send `LESSON_COMPLETION` for first or normal completion;
 - use the run/source ID as durable event identity;
-- identify replay semantics without making replay directly award progression coins;
+- exclude ephemeral Lesson Replay entirely: no event, LearningDay, streak, Daily Goal or reward;
 - evaluate first-completion/perfect reward from durable Lesson state.
 
 ### 15.2 Unit Challenge
@@ -802,7 +802,7 @@ INVALID_DAILY_GOAL_PRESET
 IDEMPOTENCY_CONFLICT
 ```
 
-Exact HTTP status mapping should match the repository's established API error conventions.
+HTTP: authentication 401; invalid preset/request key/repair UUID 400; missing user 404; domain conflicts 409. Errors retain the existing `{ error: { code, message } }` envelope. Unavailable or misconfigured Protector catalog returns `ITEM_UNAVAILABLE`.
 
 ## 18. Mobile contract boundaries
 
@@ -904,3 +904,16 @@ Approved at contract level:
 - no client-driven rewards.
 
 The next technical step is to translate this contract into the **exact Prisma schema + migration plan**, review the delta against the current database, and only then begin backend implementation.
+
+## 22. Implemented transaction and compatibility details
+
+- All four routes are registered under `/me/gamification`. GET lazily reconciles inside the same per-user PostgreSQL row-lock transaction as mutations.
+- Completed LessonRun, final Unit Challenge submission, and completed Review batch call Gamification within their existing transaction. A failure rolls back the source completion, progression, Review and Gamification together.
+- Review uses the authenticated token's existing `batchId` and full item membership. Completion means every authorized item has a durable attempt for that user/batch, irrespective of correctness. Partial/abandoned batches count zero; individual attempts never count as separate sessions. No new Review session table is needed. The final attempt stores its response including the delta for retry.
+- The real `CourseProgress` transition exists in Lesson and Unit Challenge completion. Its affected-row count gates the +20 reward, with a second lifetime ledger uniqueness guarantee.
+- Lesson completion retries return current Gamification state and zero newly earned coins. Unit Challenge final-submit and Review final-attempt retries preserve their existing stored response semantics. Old already-completed Lessons are not retroactively granted rewards by fetching a Result.
+- Daily Goal PATCH returns `applies: TODAY | NEXT_LOCAL_DAY`, `effectiveDate`, the aggregate and `coinsEarned`. A rewarded day's preset stays fixed; a pending choice applies on the next local date. No claim endpoint exists.
+- Protector uses catalog code `STREAK_PROTECTOR`; unavailable/inactive or mismatched v1 configuration fails closed. Consumption uses already-owned stock in chronological missed-date order. Stock bought after a break cannot retroactively protect evaluated dates.
+- Repair windows begin at detection and last exactly 24 elapsed hours; cooldown lasts 14 elapsed days after the latest successful repair. A second uncovered date invalidates the candidate. Expiration is time-derived. Repair reconnects previous continuity and retains any real learning completed since the single missed date, without adding a LearningDay or granting rewards.
+- Invalid IANA timezone configuration returns `INVALID_USER_TIMEZONE`; historical event dates are never re-derived. Ingestion is internal and synchronous with source completion, not a client or historical backfill API.
+- No schema change or new migration was required. Existing legacy LearningDays remain historical input; no historical session events or rewards are manufactured.

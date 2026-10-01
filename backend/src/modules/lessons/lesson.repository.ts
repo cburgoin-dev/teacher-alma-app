@@ -1,8 +1,10 @@
+import { GamificationSession } from '../gamification/gamification.repository.js';
 import type { Prisma, PrismaClient } from '../../generated/prisma/client.js';
 
 /** Persistence only. The service determines eligibility, numbering and transitions. */
 export class LessonSession {
   constructor(private readonly db: Prisma.TransactionClient) {}
+  gamification() { return new GamificationSession(this.db); }
 
   findLesson(lessonId: string, userId: string) {
     return this.db.lesson.findUnique({ where: { id: lessonId }, include: {

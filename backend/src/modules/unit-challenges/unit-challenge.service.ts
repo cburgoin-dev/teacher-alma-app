@@ -1,3 +1,4 @@
+import { recordLearningCompletion } from '../gamification/gamification.service.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { HttpError } from '../../shared/http-error.js';
 import { entitlementSource, hasLessonAccess } from '../courses/course.rules.js';
@@ -119,22 +120,28 @@ export class UnitChallengeService {
       await session.updatePhase(phaseId, { answerData: checked.answerData, correctItems: checked.correctItems,
         submissionRequestKey: validatedKey, submissionRequestHash: checked.hash, submittedAt: now });
       const final = run.phases.filter(p => !p.submittedAt).length === 1;
+      let firstCompletedRun = false, firstPass = false;
       if (final) {
+        firstCompletedRun = await session.completedRuns(userId, id) === 0;
         const correctItems = run.phases.reduce((n, p) => n + (p.id === phaseId ? checked.correctItems : p.correctItems!), 0);
         const passed = run.passingScoreSnapshot === null || correctItems * 100 >= run.passingScoreSnapshot * run.totalItems;
         run = await session.updateRun(run.id, { status: 'COMPLETED', completedAt: now, correctItems, passed });
-        if (passed) await session.pass(userId, id, run.id, now);
+        if (passed) firstPass = (await session.pass(userId, id, run.id, now)).count > 0;
       } else run = await this.owned(session, id, runId, userId);
       let response: Prisma.InputJsonValue;
       if (final) {
         const course = (await session.findCourse(run.challenge.topic.courseId, userId))!;
         const progress = courseProgress(course);
-        if (progress.status === 'COMPLETED') await session.completeCourse(userId, course.id, now);
+        const courseCompleted = progress.status === 'COMPLETED' ? (await session.completeCourse(userId, course.id, now)).count > 0 : false;
+        const gamification = await recordLearningCompletion(session.gamification(), { userId, sourceType: 'UNIT_CHALLENGE_RUN',
+          eventType: 'UNIT_CHALLENGE_COMPLETION', sourceId: run.id, occurredAt: now,
+          scoreContext: { challengeId: id, firstPass, firstCompletedRun, perfect: run.correctItems === run.totalItems },
+          ...(courseCompleted ? { courseCompletedId: course.id } : {}) }, now);
         const source = entitlementSource(course.id, await session.findEntitlements(userId), now);
         const consolidated = await session.findProgress(userId, id);
         response = { run: { id: run.id, status: run.status }, challenge: { id, title: run.challenge.title },
           topic: { id: run.challenge.topic.id, title: run.challenge.topic.title, completed: consolidated !== null },
-          result: view(run).result!, courseProgress: progress, nextNode: nextNode(course, source) };
+          result: view(run).result!, courseProgress: progress, nextNode: nextNode(course, source), gamification };
       } else response = { ...view(run), submittedPhase: { id: phase.id, type: phase.type } };
       await session.updatePhase(phaseId, { submissionResponse: response });
       return response;
