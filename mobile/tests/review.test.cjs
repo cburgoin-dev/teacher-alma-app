@@ -114,6 +114,9 @@ test('Review API uses exact routes, preserves payload and optional preference wi
     await reviewApi.read(); await reviewApi.batch('lesson'); await reviewApi.batch();
     const body = { batchToken: 'opaque', requestKey: 'review_stable_key', answer: { text: 'word' } };
     await reviewApi.attempt('id/with space', body);
+    const timezone = calls.splice(3, 1)[0];
+    assert.equal(timezone.url, 'http://localhost:1234/me/gamification/timezone');
+    assert.equal(timezone.init.method, 'PATCH');
     assert.deepEqual(calls.map(c => c.url), ['http://localhost:1234/review', 'http://localhost:1234/review/batches', 'http://localhost:1234/review/batches', 'http://localhost:1234/review/items/id%2Fwith%20space/attempt']);
     assert.deepEqual(JSON.parse(calls[1].init.body), { preferredLessonId: 'lesson' });
     assert.deepEqual(JSON.parse(calls[2].init.body), { preferredLessonId: null });

@@ -13,4 +13,4 @@ export type Crossword = { width: number; height: number; entries: Entry[] };
 export type Phase = { id: string; position: number } & ({ type: 'CONVERSATION'; content: Conversation } | { type: 'CROSSWORD'; content: Crossword });
 export type Answer = { choices: { stepId: string; optionId: string }[] } | { entries: { entryId: string; text: string }[] };
 export type Result = { correctItems: number; totalItems: number; percentage: number; passed: boolean; passingScore: number | null };
-export type RunResponse = { run: { id: string; status: 'ACTIVE' | 'COMPLETED' | 'ABANDONED'; completedPhases?: number; totalPhases?: number }; phase?: Phase | null; result?: Result | null; topic?: { completed: boolean } };
+export type RunResponse = { gamification?: import('../gamification/types').GamificationDelta; run: { id: string; status: 'ACTIVE' | 'COMPLETED' | 'ABANDONED'; completedPhases?: number; totalPhases?: number }; phase?: Phase | null; result?: Result | null; topic?: { completed: boolean } };

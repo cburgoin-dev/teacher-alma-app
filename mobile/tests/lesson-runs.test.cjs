@@ -105,6 +105,10 @@ test('all normal API routes carry explicit run identity and start key', async ()
   try {
     await lessonsApi.start('l', 'request-key'); await lessonsApi.completeStep('l', 'r', 's'); await lessonsApi.attempt('l', 'r', 's', { text: 'am' });
     await lessonsApi.abandon('l', 'r'); await lessonsApi.complete('l', 'r');
+    const timezone = requests.shift();
+    assert.equal(timezone[0], 'http://local.test/me/gamification/timezone');
+    assert.equal(timezone[1].method, 'PATCH');
+    assert.deepEqual(JSON.parse(timezone[1].body), { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone });
     assert.deepEqual(requests.map(([url]) => url.replace('http://local.test', '')), ['/lessons/l/runs', '/lessons/l/runs/r/steps/s/complete', '/lessons/l/runs/r/steps/s/attempt', '/lessons/l/runs/r/abandon', '/lessons/l/runs/r/complete']);
     assert.deepEqual(JSON.parse(requests[0][1].body), { requestKey: 'request-key' }); assert.deepEqual(JSON.parse(requests[2][1].body), { text: 'am' });
     assert.ok(requests.every(([, options]) => options.method === 'POST'));

@@ -129,6 +129,9 @@ test('API sends only phase answers to documented routes, with encoded identifier
   try {
     await challengeApi.metadata('c'); await challengeApi.start('c', 'stable-request-key'); await challengeApi.run('c', 'r');
     await challengeApi.submit('c', 'r', 'p', 'phase-request-key', { entries: [] }); await challengeApi.abandon('c', 'r');
+    const timezone = calls.splice(3, 1)[0];
+    assert.equal(timezone[0], 'http://localhost:3000/me/gamification/timezone');
+    assert.equal(timezone[1].method, 'PATCH');
     assert.deepEqual(calls.map(([url]) => url.replace('http://localhost:3000', '')), ['/unit-challenges/c', '/unit-challenges/c/runs', '/unit-challenges/c/runs/r', '/unit-challenges/c/runs/r/phases/p/submit', '/unit-challenges/c/runs/r/abandon']);
     assert.deepEqual(JSON.parse(calls[3][1].body), { requestKey: 'phase-request-key', answer: { entries: [] } });
   } finally { global.fetch = previousFetch; if (previousUrl === undefined) delete process.env.EXPO_PUBLIC_API_URL; else process.env.EXPO_PUBLIC_API_URL = previousUrl; }

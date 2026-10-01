@@ -1,3 +1,4 @@
+import { GamificationDeltaCard } from '../../gamification/components/GamificationDeltaCard';
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
 import { ActivityIndicator, Alert, BackHandler, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, usePreventRemove } from '@react-navigation/native';
@@ -89,6 +90,7 @@ export function ReviewScreen({ route, navigation }: NativeStackScreenProps<Cours
             <Text style={local.statTitle}>{result.pending === 1 ? 'sigue pendiente' : 'siguen pendientes'}</Text><Text style={local.statCaption}>Puedes reforzarlos en otro repaso.</Text></View> : null}
         </View>
         {result.skipped > 0 ? <Text style={s.caption}>{result.skipped} {result.skipped === 1 ? 'ejercicio no disponible' : 'ejercicios no disponibles'}. No se cuentan como resueltos.</Text> : null}
+        <GamificationDeltaCard delta={state.outcomes[state.outcomes.length - 1]?.response?.gamification} />
         {result.topics.length > 0 ? <View style={local.topicsCard}><Text style={local.topicsTitle}>Temas repasados</Text>
           {result.topics.map(topic => <View key={topic.id} style={local.topicResult}><LearningIcon kind="chat" plain size={22} />
             <Text style={local.resultTopicTitle}>{topic.title}</Text><Text accessibilityLabel={topic.resolved + ' de ' + topic.answered + ' corregidos'} style={local.topicRatio}>{topic.resolved}/{topic.answered}</Text></View>)}

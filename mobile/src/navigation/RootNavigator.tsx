@@ -4,20 +4,34 @@ import { HomeScreen } from '../features/home/screens/HomeScreen';
 import { CoursesNavigator } from '../features/courses/navigation/CoursesNavigator';
 import { ProgressScreen } from '../features/progress/screens/ProgressScreen';
 import { ProfileScreen } from '../features/profile/screens/ProfileScreen';
-import type { RootTabParamList } from './types';
+import type { RootStackParamList, RootTabParamList } from './types';
+import { useEffect } from 'react';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { GamificationShopScreen } from '../features/gamification/screens/GamificationShopScreen';
+import { gamificationResource } from '../features/gamification/resource';
 import { NavigationIcon } from '../components/NavigationIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, useWindowDimensions } from 'react-native';
 
 const Tabs = createBottomTabNavigator<RootTabParamList>();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator() {
+  useEffect(() => { void gamificationResource.ensureTimezone().catch(() => { /* Retry in Courses/Shop; navigation remains available. */ }); }, []);
+  return <NavigationContainer>
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="MainTabs" component={MainTabs} />
+      <Stack.Screen name="GamificationShop" component={GamificationShopScreen} />
+    </Stack.Navigator>
+  </NavigationContainer>;
+}
+
+export function MainTabs() {
   const insets = useSafeAreaInsets();
   const { fontScale } = useWindowDimensions();
   const bottomPadding = Math.max(insets.bottom, 8);
   const contentHeight = 56 + 18 * (Math.max(1, Math.min(fontScale, 1.5)) - 1);
   return (
-    <NavigationContainer>
       <Tabs.Navigator screenOptions={({ route }) => ({
         tabBarActiveTintColor: '#0063EE',
         tabBarInactiveTintColor: '#60759C',
@@ -33,6 +47,5 @@ export function RootNavigator() {
         <Tabs.Screen name="Progress" component={ProgressScreen} options={{ title: 'Progreso' }} />
         <Tabs.Screen name="Profile" component={ProfileScreen} options={{ title: 'Perfil' }} />
       </Tabs.Navigator>
-    </NavigationContainer>
   );
 }

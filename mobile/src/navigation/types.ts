@@ -1,6 +1,11 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { LessonOutcome } from '../features/lessons/types';
 
+export type RootStackParamList = {
+  MainTabs: NavigatorScreenParams<RootTabParamList> | undefined;
+  GamificationShop: undefined;
+};
+
 export type CoursesStackParamList = {
   Courses: undefined;
   CourseDetail: { courseId: string };

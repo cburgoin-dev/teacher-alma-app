@@ -8,6 +8,7 @@ export type ReviewItem = {
 export type ReviewBatch = { batchToken: string | null; items: ReviewItem[]; totalEligiblePending: number };
 export type ReviewSubmission = { batchToken: string; requestKey: string; answer: Answer };
 export type ReviewAttempt = {
+  gamification?: import('../gamification/types').GamificationDelta;
   reviewItem: { id: string; status: 'ACTIVE' | 'RESOLVED' };
   attempt: { id: string; attemptNumber: number; isCorrect: boolean };
   feedback: ReviewFeedback['feedback'];

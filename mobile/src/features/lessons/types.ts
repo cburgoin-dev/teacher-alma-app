@@ -41,6 +41,7 @@ export type AttemptResponse = {
   progress: StepProgress & { currentStepId: string | null };
 };
 export type LessonResult = {
+  gamification?: import('../gamification/types').GamificationDelta;
   mode?: never;
   course?: { id: string; title: string; level: string | null };
   lesson: { id: string; title: string };
