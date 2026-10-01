@@ -15,7 +15,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "demo:lessons:reset": "node --import tsx scripts/seed-courses-demo.ts --reset --lessons",
-    "demo:check": "node --import tsx scripts/seed-courses-demo.ts --check"
+    "demo:check": "node --import tsx scripts/seed-courses-demo.ts --check",
+    "seed:gamification": "node --import tsx scripts/seed-gamification.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",

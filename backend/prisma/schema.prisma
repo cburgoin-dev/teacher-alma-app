@@ -141,6 +141,12 @@ model User {
   purchases           Purchase[]            @relation("Purchase_userId")
   entitlements        Entitlement[]         @relation("Entitlement_userId")
 
+  gamificationLearningEvents GamificationLearningEvent[]
+  streak                     UserStreak?
+  gamificationSettings       GamificationSettings?
+  streakProtectionEvents     StreakProtectionEvent[]
+  streakRepairs              StreakRepair[]
+
   @@map("users")
 }
 
@@ -490,17 +496,22 @@ model LearningDay {
 }
 
 model CoinTransaction {
-  id            String   @id @default(uuid()) @db.Uuid
-  userId        String   @map("user_id") @db.Uuid
-  amount        Int
-  type          String   @db.Text
-  reason        String   @db.Text
-  referenceType String?  @map("reference_type") @db.Text
-  referenceId   String?  @map("reference_id") @db.Uuid
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  amount         Int
+  type           String   @db.Text
+  reason         String   @db.Text
+  referenceType  String?  @map("reference_type") @db.Text
+  referenceId    String?  @map("reference_id") @db.Uuid
+  referenceValue String?  @map("reference_value") @db.Text
+  idempotencyKey String   @map("idempotency_key") @db.Text
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   user User @relation("CoinTransaction_userId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
+  streakRepair StreakRepair?
+
+  @@unique([userId, idempotencyKey])
   @@index([userId, createdAt(sort: Desc)])
   @@map("coin_transactions")
 }
@@ -520,6 +531,8 @@ model ShopItem {
 
   userInventory    UserInventory[]   @relation("UserInventory_shopItemId")
   streakChallenges StreakChallenge[] @relation("StreakChallenge_shopItemId")
+
+  streakProtectionEvents StreakProtectionEvent[]
 
   @@map("shop_items")
 }
@@ -620,4 +633,82 @@ model Entitlement {
   @@index([courseId])
   @@index([sourcePurchaseId])
   @@map("entitlements")
+}
+
+model GamificationLearningEvent {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  eventType    String   @map("event_type") @db.Text
+  sourceType   String   @map("source_type") @db.Text
+  sourceId     String   @map("source_id") @db.Uuid
+  learningDate DateTime @map("learning_date") @db.Date
+  occurredAt   DateTime @map("occurred_at") @db.Timestamptz(6)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, sourceType, sourceId])
+  @@index([userId, learningDate])
+  @@index([userId, occurredAt(sort: Desc)])
+  @@map("gamification_learning_events")
+}
+
+model UserStreak {
+  userId            String    @id @map("user_id") @db.Uuid
+  currentDays       Int       @default(0) @map("current_days")
+  longestDays       Int       @default(0) @map("longest_days")
+  lastLearningDate  DateTime? @map("last_learning_date") @db.Date
+  continuityThrough DateTime? @map("continuity_through") @db.Date
+  lastEvaluatedDate DateTime? @map("last_evaluated_date") @db.Date
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_streaks")
+}
+
+model GamificationSettings {
+  userId                 String    @id @map("user_id") @db.Uuid
+  dailyGoalPreset        String    @default("NORMAL") @map("daily_goal_preset") @db.Text
+  pendingDailyGoalPreset String?   @map("pending_daily_goal_preset") @db.Text
+  pendingEffectiveDate   DateTime? @map("pending_effective_date") @db.Date
+  updatedAt              DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("gamification_settings")
+}
+
+model StreakProtectionEvent {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  shopItemId    String   @map("shop_item_id") @db.Uuid
+  protectedDate DateTime @map("protected_date") @db.Date
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shopItem ShopItem @relation(fields: [shopItemId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, protectedDate])
+  @@index([shopItemId])
+  @@map("streak_protection_events")
+}
+
+model StreakRepair {
+  id                 String    @id @default(uuid()) @db.Uuid
+  userId             String    @map("user_id") @db.Uuid
+  brokenDate         DateTime  @map("broken_date") @db.Date
+  previousStreakDays Int       @map("previous_streak_days")
+  eligibleUntil      DateTime  @map("eligible_until") @db.Timestamptz(6)
+  status             String    @default("ELIGIBLE") @db.Text
+  repairedAt         DateTime? @map("repaired_at") @db.Timestamptz(6)
+  coinTransactionId  String?   @unique @map("coin_transaction_id") @db.Uuid
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coinTransaction CoinTransaction? @relation(fields: [coinTransactionId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("streak_repairs")
 }

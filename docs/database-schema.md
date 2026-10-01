@@ -643,44 +643,88 @@ Indexes:
 Notes:
 
 - What exact event qualifies a date as a learning day is a business-rule/service concern and can evolve without changing this table.
-- Streak values should be derived from these rows initially rather than maintained as a single mutable counter.
+- Gamification v1 keeps current/longest state in `user_streaks`; these rows remain evidence of real learning. Protector and Repair never fabricate a LearningDay.
+- Historical LearningDays are preserved without synthesizing session events: their session cardinality is unknown.
+
+---
+
+## gamification_learning_events
+
+One durable row per qualifying completed session; the source identity is deliberately polymorphic (no FK to individual learning domains).
+
+- `id uuid primary key`
+- `user_id uuid not null references users(id) on delete cascade`
+- `event_type text not null`: CHECK in `LESSON_COMPLETION | LESSON_REPLAY_COMPLETION | UNIT_CHALLENGE_COMPLETION | REVIEW_COMPLETION | PRACTICE_COMPLETION`.
+- `source_type text not null`: CHECK in `LESSON_RUN | UNIT_CHALLENGE_RUN | REVIEW_BATCH | PRACTICE_SESSION`.
+- `source_id uuid not null`
+- `learning_date date not null`: durable local date derived from the applicable user timezone.
+- `occurred_at timestamptz not null`
+- `created_at timestamptz not null default now()`
+- Unique `(user_id, source_type, source_id)`.
+- Indexes `(user_id, learning_date)`, `(user_id, occurred_at desc)`.
+
+Daily Goal progress is derived from the count of these events per local date; no mutable progress counter is stored.
+
+---
+
+## user_streaks
+
+Compact authoritative current/longest state, backed by real learning days and protection/repair history.
+
+- `user_id uuid primary key references users(id) on delete cascade`
+- `current_days integer not null default 0`
+- `longest_days integer not null default 0`
+- `last_learning_date date null`
+- `continuity_through date null`: includes accepted Protector/Repair coverage.
+- `last_evaluated_date date null`
+- `updated_at timestamptz not null default now()` (Prisma updates on mutation).
+- CHECK: `current_days >= 0`, `longest_days >= 0`, `longest_days >= current_days`.
+
+Protected/repaired dates preserve continuity without adding real learning days to the count. This migration does not backfill streak state; lazy initialization belongs to the next service pass.
+
+---
+
+## gamification_settings
+
+- `user_id uuid primary key references users(id) on delete cascade`
+- `daily_goal_preset text not null default 'NORMAL'`
+- `pending_daily_goal_preset text null`
+- `pending_effective_date date null`
+- `updated_at timestamptz not null default now()` (Prisma updates on mutation).
+- CHECK: current and non-null pending presets in `CASUAL | NORMAL | INTENSE`.
+- CHECK: pending preset and effective date are both null or both non-null.
+
+Rows are not eagerly backfilled; service initialization is deferred.
 
 ---
 
 ## coin_transactions
 
-Immutable ledger for coin earnings/spending.
+Immutable ledger for coin earnings/spending. Balance remains `sum(amount)`; no mutable balance/cache is stored.
 
 - `id uuid primary key`
 - `user_id uuid not null references users(id) on delete cascade`
 - `amount integer not null`
 - `type text not null`
-- `reason text not null`
+- `reason text not null` (intentionally extensible; no reason CHECK).
 - `reference_type text null`
 - `reference_id uuid null`
+- `reference_value text null` (for example a learning date or milestone threshold).
+- `idempotency_key text not null`
 - `created_at timestamptz not null default now()`
+- Unique `(user_id, idempotency_key)`.
+- Index `(user_id, created_at desc)`.
+- CHECK: nonzero amount; only `CREDIT` with positive amount or `DEBIT` with negative amount.
 
-Examples:
+Migration `20260930000000_gamification_v1` backfills every existing row with `legacy:<transaction-id>` before enforcing NOT NULL/uniqueness. Older documented `EARN/SPEND` types are normalized to `CREDIT/DEBIT`; ids, amounts, reasons, references and timestamps remain intact. Unsupported types or inconsistent signs fail the transactional migration rather than silently rewriting monetary history.
 
-- `+20 / EARN / LESSON_COMPLETED`
-- `+5 / EARN / PERFECT_BONUS`
-- `-400 / SPEND / STREAK_SHIELD_PURCHASE`
-- `+150 / EARN / STREAK_CHALLENGE_REWARD`
-
-Indexes:
-
-- `(user_id, created_at desc)`.
-
-Notes:
-
-- The ledger is the source of truth. Current balance may initially be derived with `sum(amount)` and cached later only if needed.
-- `reference_type/reference_id` is intentionally generic audit metadata; important domain links should still exist in their own tables.
+Examples: `+3 / CREDIT / LESSON_FIRST_COMPLETION`, `-50 / DEBIT / STREAK_PROTECTOR_PURCHASE`, `-120 / DEBIT / STREAK_REPAIR`.
 
 ---
 
 ## shop_items
 
-Configurable items/actions shown in the coin shop.
+Reusable catalog; existing legacy items are preserved.
 
 - `id uuid primary key`
 - `code text not null unique`
@@ -693,33 +737,63 @@ Configurable items/actions shown in the coin shop.
 - `active boolean not null default true`
 - `created_at timestamptz not null default now()`
 - `updated_at timestamptz not null default now()`
+- CHECK: `coin_cost >= 0`; `max_owned IS NULL OR max_owned > 0`.
 
-Initial codes:
-
-- `STREAK_SHIELD`
-- `SEVEN_DAY_CHALLENGE`
-
-Notes:
-
-- Prices are configuration, not schema.
-- `SEVEN_DAY_CHALLENGE` is an activatable shop action rather than an inventory quantity.
+The only v1 seed is `STREAK_PROTECTOR`: `CONSUMABLE`, 50 coins, maxOwned 2, active. Run `node --import tsx scripts/seed-gamification.ts` (or `npm run seed:gamification`) from backend after migrating. It upserts by code, preserves the row id and existing name/description/config, and does not delete older catalog items or inventory.
 
 ---
 
 ## user_inventory
 
-For inventory-backed items such as streak shields.
+For inventory-backed items such as Streak Protectors.
 
 - `id uuid primary key`
 - `user_id uuid not null references users(id) on delete cascade`
 - `shop_item_id uuid not null references shop_items(id) on delete restrict`
 - `quantity integer not null default 0`
 - `updated_at timestamptz not null default now()`
+- Unique `(user_id, shop_item_id)`.
+- Index `(shop_item_id)`.
+- CHECK `quantity >= 0` (already enforced by the initial migration).
 
-Constraints:
+The cross-table stock cap and atomic balance/inventory changes belong to the subsequent service pass.
 
-- unique `(user_id, shop_item_id)`.
-- check `quantity >= 0`.
+---
+
+## streak_protection_events
+
+Evidence of automatic Protector consumption; does not create a LearningDay or coin transaction.
+
+- `id uuid primary key`
+- `user_id uuid not null references users(id) on delete cascade`
+- `shop_item_id uuid not null references shop_items(id) on delete restrict`
+- `protected_date date not null`
+- `created_at timestamptz not null default now()`
+- Unique `(user_id, protected_date)`.
+- Index `(shop_item_id)`.
+
+---
+
+## streak_repairs
+
+Contextual recovery candidate/history, never inventory.
+
+- `id uuid primary key`
+- `user_id uuid not null references users(id) on delete cascade`
+- `broken_date date not null`
+- `previous_streak_days integer not null`
+- `eligible_until timestamptz not null`
+- `status text not null default 'ELIGIBLE'`
+- `repaired_at timestamptz null`
+- `coin_transaction_id uuid null unique references coin_transactions(id) on delete restrict`
+- `created_at timestamptz not null default now()`
+- `updated_at timestamptz not null default now()` (Prisma updates on mutation).
+- Index `(user_id, created_at desc)`.
+- Partial unique index `streak_repairs_one_eligible` on `(user_id) WHERE status = 'ELIGIBLE'`.
+- CHECK: `previous_streak_days > 0`; `eligible_until > created_at`.
+- CHECK: `USED` requires both repaired_at and coin_transaction_id; `ELIGIBLE/INVALIDATED` require both null. Other statuses are rejected.
+
+Expiration is derived from eligible_until; the 24-hour eligibility policy, 14-day cooldown and ledger attribution are service responsibilities. CHECK constraints and the partial index live in migration SQL, not Prisma enums.
 
 ---
 
@@ -897,6 +971,11 @@ activities 1---N diagnostic_questions N---1 diagnostics
 users 1---N diagnostic_attempts N---1 diagnostics
 diagnostic_attempts 1---N diagnostic_answers N---1 diagnostic_questions
 
+users 1---N gamification_learning_events
+users 1---0..1 user_streaks
+users 1---0..1 gamification_settings
+users 1---N streak_protection_events N---1 shop_items
+users 1---N streak_repairs 0..1---0..1 coin_transactions
 users 1---N learning_days
 users 1---N coin_transactions
 users 1---N user_inventory N---1 shop_items
@@ -935,7 +1014,7 @@ Initially derive rather than store:
 
 - Home state (`NEW`, `ASSESSED`, `ACTIVE`, etc.).
 - current coin balance (`sum(coin_transactions.amount)`).
-- current streak / longest streak from `learning_days`.
+- Daily Goal progress from `gamification_learning_events`; current/longest streak is persisted in `user_streaks` with learning/protection/repair history.
 - course/roadmap progress percentage from required progression nodes (required Lessons plus required Unit Challenge milestones), using one consistent API denominator.
 - Unit Challenge percentage from persisted correct/total item counts.
 - lesson score/result variant from attempts/review data.
