@@ -40,7 +40,9 @@ session are not watched: relaunch the app to resync. No Profile vertical is adde
 coin balance and current streak, and makes only the coin pill actionable.
 Loading/errors use discreet placeholders; the Shop entry remains available.
 The host owns safe-area insets. Pills wrap at narrow widths, use scalable text and
-48dp minimum touch height. Only Courses integrates this app header in v1.
+48dp minimum touch height. Courses uses the branded app header; Roadmap uses the
+shared contextual variant with Back + Gamification metrics. Study-flow surfaces
+(Lesson, Unit Challenge and Review) intentionally do not show the global metrics header.
 
 Root native stack contains `MainTabs` and `GamificationShop`. Shop is outside tabs,
 uses ContextualHeader/back, and returns to the retained origin with `goBack()`.
@@ -316,6 +318,99 @@ physical repeated DEV replay will inform whether V5 needs motion polish. Home,
 Progress, Profile, Daily Goal settings UI, Practice, persistent Replay, general
 Roadmap/Lesson/UC redesign, social/commercial mechanics and new items stay deferred.
 
+
+## Gamification v1 closure and v2 baseline
+
+**Status: CLOSED / accepted on 2026-10-01.** This is the baseline for any future
+Gamification work. Future passes must start from the decisions below rather than
+reintroducing superseded v1 assumptions. Closing v1 does not mean the feature is
+visually final; it means the domain, persistence, integrations, retry/idempotency,
+primary Mobile surfaces and demo tooling are stable enough to stop expanding this
+vertical slice.
+
+### Accepted v1 baseline
+
+- Backend remains authoritative for coins, ledger, streak, Daily Goal, inventory,
+  Repair eligibility and rewards. Mobile never invents balance, rewards or learning
+  events.
+- Lesson, Unit Challenge and final Review are the durable v1 Gamification sources.
+  Lesson Replay stays ephemeral/read-only and excluded. Practice remains deferred
+  until it has a durable completion/session contract.
+- Streak Celebration is accepted as a **functional v1**, shown only when the backend
+  delta reports `advancedToday === true`, deduplicated per source in-session and
+  positioned after Result Continue but before the original exit/destination.
+- Shop is accepted as a **functional v1** with real balance, Protector stock/cap,
+  contextual Repair, exact shortages and retry-safe spending. Its current visual
+  treatment is not the final art-direction target.
+- Courses and Home-class surfaces may use the branded global app header. Roadmap
+  uses Back + coins/streak + Shop access because it is a primary daily-learning
+  surface. Course Detail and focused study flows should remain free of the global
+  Gamification header unless a later UX pass explicitly proves otherwise.
+- The official horizontal Alma mark is the preferred branded header asset. The
+  current extraction/density pipeline is authoritative; do not redraw or alter the
+  AI/PDF source. Header size/spacing may be recalibrated when Home is implemented.
+- Daily Goal remains backend-driven. Its configuration UI belongs to Profile/settings
+  or another explicitly approved surface, not Shop.
+- Granular demo tooling is intentionally narrow. Do not add destructive reset
+  commands that erase durable reward/source evidence merely to make testing easier.
+
+### Known non-blocking debt for Gamification v2+
+
+**Header/resource presentation:** the current shared resource preserves last-known
+data while refreshing, but `GamificationMetrics` hides it whenever `loading=true`
+and temporarily renders “—”. A future pass should use stale-while-revalidate
+presentation: show the last-known balance/streak immediately and refresh silently;
+only show placeholders when no snapshot exists.
+
+**Streak Celebration v2:** improve art direction and motion without changing backend
+semantics. Desired direction is a richer but short celebration: flame ignition/
+construction rather than simple scale-only motion, layered glow/energy, stronger
+count transition and optional weekly day context when real day-history data exists.
+Protected days may receive a distinct frozen/protected treatment. Do not fabricate
+weekday history from the current aggregate. Keep the experience concise and avoid
+stacking unnecessary chests/reward interruptions.
+
+**Shop v2:** preserve current product/retry semantics while improving hierarchy,
+illustration quality, state presentation and micro-motion. Insufficient-funds,
+full-stock, loading, success, Repair and retry states should feel intentionally
+designed rather than technical. Do not add products merely to fill the screen.
+
+**Results system:** Lesson, Unit Challenge, final Review and future Practice should
+eventually share one visual result language (performance → rewards → Daily Goal →
+progress/next step → CTA) while allowing UC/Review-specific emphasis. This is a
+separate Results System / Results v2 concern, not a reason to keep Gamification v1
+open or independently redesign each Result from Gamification.
+
+**Typography/brand polish:** a later cross-app visual-system pass should define the
+production type hierarchy, spacing rhythm and branded display treatment instead of
+letting individual vertical slices drift. Courses/Course Detail/Roadmap remain the
+current visual-quality reference bar.
+
+**Deferred product scope:** Daily Goal configuration UI, Practice integration,
+durable Replay, richer streak history/calendar, Streak Challenges, milestone/
+achievement presentation, rankings/social, notifications, cosmetics, ads,
+monetization and real-money coin purchase are not silently part of v1. Each requires
+its own product decision or vertical slice.
+
+**Lifecycle/performance debt:** a future authenticated account-switch lifecycle must
+recreate/clear the session-scoped Gamification resource and presentation registry.
+Backend reconciliation currently scans user history and may be optimized when data
+volume justifies it; this is not a v1 correctness issue.
+
+### Visual/physical acceptance notes
+
+Real Android checks confirmed the branded Courses header, Roadmap Back + metrics,
+Shop navigation, visible coins/streak, Shop insufficient-funds state and repeated
+DEV Streak Celebration preview. The horizontal logo is the correct asset, though
+the user still perceives it as slightly undersized/over-spaced in Courses; reassess
+that composition during Home rather than creating another logo variant now.
+
+The v1 celebration is intentionally recorded as visually provisional: useful and
+correct, but below the desired premium-motion bar. The DEV replay control exists
+specifically so a future motion pass can iterate repeatedly without mutating streak,
+coins, rewards or completion tickets.
+
+
 ## Validation and physical acceptance
 
 V4 validation on 2026-10-01: Mobile TypeScript PASS, Gamification 34/34,
@@ -324,8 +419,11 @@ full Mobile suite 142/142, Android production export PASS (1072 modules, Hermes
 Backend source + scripts TypeScript PASS; demo tooling 3/3 including real
 PostgreSQL integration with disposable users; existing demo check PASS; Prisma
 database-to-schema diff reports no difference. No configured-demo reset was run.
-Physical V4 acceptance remains pending: repeated DEV replay, narrow/large-font
-headers, global Shop return to Roadmap, TalkBack and motion/CTA feel.
+Physical V4 acceptance is partial and sufficient for the v1 close: the user verified
+Courses/Roadmap/Shop headers on Android, Roadmap access to Shop, Shop return/navigation,
+real coins/streak rendering, and repeated DEV Streak Celebration replay. Remaining
+non-blocking acceptance items are large-font/narrow-width edge cases, TalkBack,
+Protector/Repair purchase paths with prepared demo states, and further motion/art polish.
 
 From `mobile/`:
 
@@ -366,9 +464,9 @@ suite 128/128; Android production export PASS (1065 modules, Hermes 2.4 MB);
 `git diff --check` PASS. Expo needed execution outside the Windows sandbox because
 its local export log returned EPERM. Export output is ignored under `mobile/dist/`.
 
-Physical acceptance still required on the existing configured demo environment:
-open Courses, enter Shop via coins, buy with available balance, return/back, check
-stock cap and network retry, then complete Lesson/Challenge/Review and verify real
-result deltas. Repair requires a genuinely eligible backend candidate; Mobile does
-not fabricate one. Also check narrow widths/large fonts, safe areas and hardware
-Back. This pass does not reset/seed the demo or claim physical-device acceptance.
+Remaining optional acceptance for a later Gamification pass: exercise Protector and
+Repair purchasing with prepared demo states, stock cap and ambiguous network retry;
+check narrow widths/large fonts, TalkBack and additional hardware-Back edge cases.
+Repair still requires a genuinely eligible backend candidate; Mobile does not
+fabricate one. V1 already has physical Android acceptance for the core visible flow
+and is not kept open for these polish/accessibility follow-ups.
