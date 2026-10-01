@@ -1,4 +1,4 @@
-# Mobile Gamification — v3 Streak Celebration and polish
+# Mobile Gamification — v4 DEV controls and header system
 
 ## Scope and architecture
 
@@ -219,7 +219,113 @@ cosmetics, ads, notifications, monetization and general vertical redesigns remai
 outside scope. Replay's ephemeral/read-only exclusion is an explicit compatibility
 decision, not a missing qualifying event in this iteration.
 
+## V4 DEV controls, headers and demo tooling (2026-10-01)
+
+V3 is the accepted `dd8052c` checkpoint. The supplied app screenshots are physical
+V3 evidence; external screenshots inform metric hierarchy only. Official mockups
+remain primary. No external branding, calendar, currency, navigation or economy
+is introduced. Prior V1/V2/V3 sections remain historical.
+
+**DEV Streak replay:** in a development build, open Shop and use the bottom
+“DEV · Reproducir celebración” button. The preview remembers the last real
+celebration delta in this process. Before any real celebration exists, it uses the
+current aggregate's actual streak count with no invented rewards or advance;
+the surface explicitly labels which source it is showing. “DEV · Repetir
+animación” remounts the same animation as many times as needed. Continue/hardware
+Back dismiss only the preview and leave Shop in place. Production `__DEV__=false`
+renders no control or preview and captures no delta. The preview has no API,
+resource mutation, production gate, completion ticket or real exit callback.
+The V3 choreography (~3s, CTA at 900ms), Reduce Motion and production integrations
+are unchanged. A development preview of currentDays=0 is diagnostic, not evidence
+of an earned streak. Relaunch clears its cached last delta.
+
+**Header system:** `GamificationMetrics` owns shared coin/streak presentation,
+not fetching. Courses uses the root logo + metrics composition. Roadmap uses
+`RoadmapHeader`, which reads the existing focus resource and supplies Back +
+metrics through `ContextualHeader.trailing`. Its coin action opens the existing
+global Shop via the root navigator; returning retains the Roadmap route, tickets,
+bus, camera and motion. Shop uses centered “Tienda” + read-only coin balance + Back.
+No dead balance button points back to the already-open Shop. Lesson/UC/Review
+headers and bottom tabs are unchanged. Back/coin targets remain at least 48dp;
+large values wrap rather than abbreviate, and loading remains local/visual.
+
+Courses logo width is 148dp normally, 140dp on narrow (<360dp) or large-font
+layouts, with a proportional ~29–31dp height. Narrow root metrics reduce decorative
+padding/icon size, preserving touch targets. Offline raster derivatives were
+regenerated at 148×31, 296×62, 444×93 and 592×124px (~287 KiB maximum decoded),
+using the same official extraction script, without changing source AI/PDF.
+
+**Shop micro-polish:** moving the balance into the header removes the duplicate
+hero balance and TIENDA eyebrow, reduces vertical competition and retains streak
+context, tinted Protector/Repair faces, 50-coin price, local shortages, disabled
+CTA and illustrated tip. No new product or spending rule is added.
+
+**Granular demo tooling:** run from `backend/`, on the configured local demo:
+
+```powershell
+npm run demo:gamification:reset-streak
+npm run demo:gamification:reset-inventory
+npm run demo:gamification:set-coins -- --amount=0
+npm run demo:gamification:set-coins -- --amount=49
+npm run demo:gamification:set-coins -- --amount=50
+npm run demo:gamification:set-coins -- --amount=119
+npm run demo:gamification:set-coins -- --amount=120
+```
+
+All commands require `NODE_ENV=development`, loopback PostgreSQL port 5433,
+`teacher_alma_dev`, no URL overrides, and the existing `DEV_AUTH_USER_ID`. There
+is no user override or production endpoint. Mutations serialize on the same user
+row lock as learning/spending and return a JSON report. They never run from Mobile.
+Close active learning/spending flows before manual preparation, then relaunch or
+refresh the app; cached result deltas are historical responses, not rewritten data.
+
+- `reset-streak` deletes only that user's LearningDays and protection-event
+  timeline, sets current streak/date cursors to zero/null, and invalidates eligible
+  repairs. Longest streak, USED repairs and their cooldown, inventory, ledger,
+  durable event sources and Daily Goal are retained. A NEW durable source can
+  advance 0→1, including a new UC run or completed Review batch. Old source retries
+  and Lesson Replay cannot do so. Lifetime milestone keys remain spent and never
+  award twice. This deliberately resets the local demo streak timeline while
+  preserving source-event audit/idempotency; it is not a production history edit.
+- `reset-inventory` sets only STREAK_PROTECTOR quantity to zero; no refund, ledger
+  deletion or change to other items/history. Repeating an old purchase request
+  remains idempotent and does not refill inventory; new purchases use new keys.
+- `set-coins` derives the balance from SUM(ledger.amount), then appends only the
+  nonzero difference as a signed CREDIT/DEBIT with reason
+  `DEV_DEMO_BALANCE_ADJUSTMENT`, unique namespaced key and before/target metadata.
+  Existing entries/reward/spend keys stay intact. Repeating the same target adds
+  nothing; concurrency is serialized. Zero does not create a zero-value entry.
+- **Blocked deliberately:** `demo:gamification:reset-daily-goal` and
+  `demo:gamification:reset` exit before connecting/mutating. Daily Goal count is
+  derived from durable events; rewarded status and lifetime milestone uniqueness
+  live in the ledger. A fresh general baseline including repeatable old rewards
+  cannot preserve those keys and source uniqueness with the current model.
+  Deleting or re-dating events, deleting rewards, or resetting durable completions
+  is not substituted silently. There is no full-reset baseline implemented. A
+  future explicitly approved isolated demo-account/epoch design would be needed;
+  it is outside V4. A new real local day naturally starts the next Daily Goal.
+
+Course/Lesson/UC/Review completion/progression, timezone, schema, migrations and
+production backend logic remain untouched. PostgreSQL tests use disposable test
+users and never invoke resets for the configured demo user. See
+`backend/scripts/README.md` for the same operational guard/limitation summary.
+
+**FUTURE / DEFERRED:** unify Lesson/UC/Review/future Practice Result visual language
+in a separate Result System pass. V4 does not redesign Results or Streak motion;
+physical repeated DEV replay will inform whether V5 needs motion polish. Home,
+Progress, Profile, Daily Goal settings UI, Practice, persistent Replay, general
+Roadmap/Lesson/UC redesign, social/commercial mechanics and new items stay deferred.
+
 ## Validation and physical acceptance
+
+V4 validation on 2026-10-01: Mobile TypeScript PASS, Gamification 34/34,
+full Mobile suite 142/142, Android production export PASS (1072 modules, Hermes
+2.4 MB) at `mobile/dist/gamification-v4-check`, and `git diff --check` PASS.
+Backend source + scripts TypeScript PASS; demo tooling 3/3 including real
+PostgreSQL integration with disposable users; existing demo check PASS; Prisma
+database-to-schema diff reports no difference. No configured-demo reset was run.
+Physical V4 acceptance remains pending: repeated DEV replay, narrow/large-font
+headers, global Shop return to Roadmap, TalkBack and motion/CTA feel.
 
 From `mobile/`:
 
@@ -227,7 +333,7 @@ From `mobile/`:
 node node_modules/typescript/bin/tsc --noEmit
 node --test tests/gamification.test.cjs
 node --test tests/*.test.cjs
-node node_modules/expo/bin/cli export --platform android --output-dir dist/gamification-v3-check
+node node_modules/expo/bin/cli export --platform android --output-dir dist/gamification-v4-check
 git diff --check
 ```
 

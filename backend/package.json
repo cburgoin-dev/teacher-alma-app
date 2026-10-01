@@ -16,6 +16,11 @@
     "prisma:studio": "prisma studio",
     "demo:lessons:reset": "node --import tsx scripts/seed-courses-demo.ts --reset --lessons",
     "demo:check": "node --import tsx scripts/seed-courses-demo.ts --check",
+    "demo:gamification:reset": "node --import tsx scripts/run-gamification-demo.ts reset",
+    "demo:gamification:reset-streak": "node --import tsx scripts/run-gamification-demo.ts reset-streak",
+    "demo:gamification:reset-daily-goal": "node --import tsx scripts/run-gamification-demo.ts reset-daily-goal",
+    "demo:gamification:reset-inventory": "node --import tsx scripts/run-gamification-demo.ts reset-inventory",
+    "demo:gamification:set-coins": "node --import tsx scripts/run-gamification-demo.ts set-coins",
     "seed:gamification": "node --import tsx scripts/seed-gamification.ts"
   },
   "dependencies": {

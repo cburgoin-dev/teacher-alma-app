@@ -1,3 +1,5 @@
+import { GamificationMetrics } from '../../../components/GamificationMetrics';
+import { DevStreakReplay } from '../components/DevStreakReplay';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -26,16 +28,13 @@ export function GamificationShopScreen({ navigation }: NativeStackScreenProps<Ro
   const inlineShortage = operationErrorCode === 'INSUFFICIENT_COINS' && (missingCoins > 0 || missingRepairCoins > 0);
   const full = !!data && data.streak.protectorCount >= data.streak.protectorMax;
   return <SafeAreaView edges={['left', 'right']} style={s.page}>
-    <ContextualHeader backOnly backLabel="Volver desde Tienda" safeTop onBack={() => navigation.goBack()} />
+    <ContextualHeader title="Tienda" centered backLabel="Volver desde Tienda" safeTop onBack={() => navigation.goBack()} trailing={<GamificationMetrics data={data} loading={loading} error={error} showStreak={false} />} />
     <ScrollView contentContainerStyle={[s.content, { paddingBottom: insets.bottom + 24 }]} refreshControl={<RefreshControl refreshing={loading && !busy} onRefresh={() => { void state.refresh(); }} tintColor={colors.blue} />}>
       <View style={s.hero}>
         <View style={s.statusRow}>
           <View style={s.habit}><GamificationIcon kind="flame" size={22} /><Text style={s.habitText}>{data ? `${data.streak.currentDays} ${data.streak.currentDays === 1 ? 'día' : 'días'} de racha` : 'Tu hábito de aprender'}</Text></View>
-          <View accessible accessibilityLabel={data ? `Saldo: ${data.coins.balance} monedas${error || loading ? '. Pendiente de actualizar' : ''}` : 'Saldo no disponible'} style={s.balance}>
-            {loading ? <ActivityIndicator size="small" color={colors.gold} /> : <GamificationIcon kind="coin" size={30} />}<Text maxFontSizeMultiplier={1.5} style={s.balanceNumber}>{data ? data.coins.balance : '—'}</Text>
-          </View>
+
         </View>
-        <Text style={s.eyebrow}>TIENDA</Text>
         <Text style={s.title}>Pequeñas herramientas.{ '\n' }Grandes hábitos.</Text>
         <Text style={s.subtitle}>Usa tus monedas para cuidar tu racha y seguir aprendiendo.</Text>
       </View>
@@ -81,6 +80,7 @@ export function GamificationShopScreen({ navigation }: NativeStackScreenProps<Ro
           {missingRepairCoins > 0 ? <Shortage amount={missingRepairCoins} /> : null}
         </View> : null}
         <View style={s.tip}><View style={s.bulb}><Lightbulb size={30} fill="#FFD65C" color="#AD7718" strokeWidth={1.8} accessible={false} /></View><View style={s.tipContent}><Text style={s.tipTitle}>Aprender tiene su recompensa</Text><Text style={s.tipText}>Gana monedas al completar lecciones, alcanzar metas y mantener tu racha.</Text></View></View>
+        {__DEV__ ? <DevStreakReplay data={data} /> : null}
       </> : null}
     </ScrollView>
   </SafeAreaView>;
@@ -95,11 +95,8 @@ const s = StyleSheet.create({
   statusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 },
   habit: { flexDirection: 'row', alignItems: 'center', gap: 5, flexShrink: 1 },
   habitText: { color: colors.muted, fontSize: 13, fontWeight: '600', flexShrink: 1 },
-  eyebrow: { color: colors.blue, fontSize: 11, fontWeight: '800', letterSpacing: 1 },
   title: { color: colors.ink, fontSize: 28, lineHeight: 34, fontWeight: '800', letterSpacing: -.6 },
   subtitle: { color: colors.muted, fontSize: 15, lineHeight: 23, maxWidth: 420 },
-  balance: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#FFF', borderRadius: 18, borderWidth: 1, borderColor: '#EEE7D9', maxWidth: '100%', ...shadows.card },
-  balanceNumber: { color: colors.ink, fontSize: 23, fontWeight: '800', flexShrink: 1, fontVariant: ['tabular-nums'] },
   product: { padding: 8, borderRadius: 24, borderWidth: 1, borderColor: '#EAF0F9', backgroundColor: '#FFF', gap: 4 },
   productFace: { borderRadius: 18, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
   protectorFace: { backgroundColor: '#E6F3FF' }, repairFace: { backgroundColor: '#FFF2DA' },

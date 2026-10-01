@@ -1,3 +1,4 @@
+global.__DEV__ = false;
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -42,6 +43,8 @@ function component(relative, overrides = {}) {
     if (name === '@react-navigation/native-stack') return { createNativeStackNavigator: () => ({ Navigator: 'Stack', Screen: 'StackScreen' }) };
     if (name === '@react-navigation/bottom-tabs') return { createBottomTabNavigator: () => ({ Navigator: 'Tabs', Screen: 'TabScreen' }) };
     if (name.startsWith('lucide-react-native/icons/')) return { default: name };
+    if (name.endsWith('/GamificationMetrics')) return component(localRequire.resolve(name + '.tsx'), overrides);
+    if (name.endsWith('/DevStreakReplay')) return { DevStreakReplay: 'DevStreakReplay' };
     if (name.endsWith('/theme') || name === './styles') return component(localRequire.resolve(name), overrides);
     if (name.endsWith('/ui')) return { Button: 'Button', ProgressBar: 'ProgressBar', ResourceState: 'ResourceState', colors: {}, styles: {} };
     if (name.endsWith('/lessonStyles')) return { lessonStyles: {} };
@@ -61,7 +64,8 @@ function component(relative, overrides = {}) {
 function nodes(node) {
   if (Array.isArray(node)) return node.flatMap(nodes);
   if (node == null || typeof node === 'boolean') return [];
-  return typeof node === 'object' ? [node, ...nodes(node.props?.children)] : [node];
+  if (node.type?.name === 'GamificationMetrics') return [node, ...nodes(node.type(node.props))];
+  return typeof node === 'object' ? [node, ...nodes(node.props?.children), ...nodes(node.props?.trailing)] : [node];
 }
 const text = tree => nodes(tree).filter(n => typeof n === 'string' || typeof n === 'number').join('');
 const button = (tree, title) => nodes(tree).find(n => n.type === 'Button' && n.props.title === title);
@@ -489,7 +493,7 @@ test('Shop local shortage, silent refresh, domain rejection and repair use autho
   state.operationError = null; state.data.coins.balance = 120;
   assert.equal(button(render(), 'Comprar protector').props.disabled, false); assert.equal(button(render(), 'Restaurar racha').props.disabled, false);
   assert.equal(shortageCopy(render()), '');
-  assert.equal(nodes(render()).find(n => n.type === 'ContextualHeader').props.backOnly, true);
+  assert.equal(nodes(render()).find(n => n.type === 'ContextualHeader').props.title, 'Tienda');
 });
 
 test('horizontal official derivative is bounded at every density; back-only preserves 48dp/a11y/safe area', () => {
@@ -498,7 +502,7 @@ test('horizontal official derivative is bounded at every density; back-only pres
   assert.match(logo.props.source, /la-teacher-alma-horizontal\.png$/); assert.equal(logo.props.resizeMode, 'contain');
   for (const density of [1, 2, 3, 4]) {
     const bytes = fs.readFileSync(path.resolve(__dirname, `../assets/branding/la-teacher-alma-horizontal${density === 1 ? '' : '@' + density + 'x'}.png`));
-    assert.equal(bytes.readUInt32BE(16), 124 * density); assert.equal(bytes.readUInt32BE(20), 26 * density);
+    assert.equal(bytes.readUInt32BE(16), 148 * density); assert.equal(bytes.readUInt32BE(20), 31 * density);
   }
   const { ContextualHeader } = component('../src/components/ContextualHeader.tsx'); let back = 0;
   const tree = ContextualHeader({ title: 'Tienda', backOnly: true, safeTop: true, backLabel: 'Volver desde Tienda', onBack: () => back++ });
@@ -506,4 +510,72 @@ test('horizontal official derivative is bounded at every density; back-only pres
   const target = nodes(tree).find(n => n.type === 'Pressable'); assert.equal(target.props.accessibilityLabel, 'Volver desde Tienda');
   assert.equal(target.props.style({ pressed: false })[0].width, 48); assert.equal(target.props.style({ pressed: false })[0].minHeight, 48); target.props.onPress(); assert.equal(back, 1);
   assert.match(text(ContextualHeader({ title: 'Repaso', onBack() {} })), /Repaso/);
+});
+
+test('V4 DEV replay repeats actual state without production gate, backend, tickets or destination side effects', () => {
+  const { devCelebrationPreview, rememberDevCelebration } = require('../src/features/gamification/devStreakReplay.ts');
+  assert.equal(devCelebrationPreview(aggregate()), null);
+  rememberDevCelebration(delta()); // Production never captures a preview.
+  const gate = new StreakCelebrationGate(new Set()); let exits = 0;
+  gate.continue(delta(), 'real', () => exits++);
+  const savedFetch = global.fetch; let requests = 0;
+  global.fetch = () => { requests++; throw Error('DEV preview must not call backend'); };
+  global.__DEV__ = true;
+  try {
+    const preview = devCelebrationPreview(aggregate());
+    assert.equal(preview.delta.streak.currentDays, aggregate().streak.currentDays);
+    assert.equal(preview.delta.streak.advancedToday, false); assert.deepEqual(preview.delta.coinRewards, []);
+    const actual = delta([reward('STREAK_MILESTONE', 15)]); rememberDevCelebration(actual);
+    assert.equal(devCelebrationPreview(null).delta, actual);
+    const slots = []; let index = 0;
+    const { DevStreakReplay } = component('../src/features/gamification/components/DevStreakReplay.tsx', {
+      react: { useState: initial => { const i = index++; if (!(i in slots)) slots[i] = initial; return [slots[i], value => { slots[i] = typeof value === 'function' ? value(slots[i]) : value; }]; } },
+      './StreakCelebration': { StreakCelebration: 'StreakCelebration' },
+    });
+    const render = () => { index = 0; return DevStreakReplay({ data: aggregate() }); };
+    button(render(), 'DEV · Reproducir celebración').props.onPress();
+    for (let i = 0; i < 3; i++) {
+      const surface = nodes(render()).find(n => n.type === 'StreakCelebration');
+      assert.equal(surface.key, String(i)); assert.equal(surface.props.delta, actual); assert.match(surface.props.devLabel, /DEV/);
+      surface.props.onReplay(); assert.equal(exits, 0); assert.ok(gate.snapshot());
+    }
+    nodes(render()).find(n => n.type === 'StreakCelebration').props.onContinue();
+    assert.equal(nodes(render()).filter(n => n.type === 'StreakCelebration').length, 0);
+    assert.equal(requests, 0); assert.equal(exits, 0); gate.finish(); assert.equal(exits, 1);
+    global.__DEV__ = false; assert.equal(render(), null); assert.equal(devCelebrationPreview(aggregate()), null);
+  } finally { global.__DEV__ = false; global.fetch = savedFetch; }
+});
+
+test('V4 composed Roadmap header shares live metrics and coin navigation; root logo adapts moderately', () => {
+  let opened = 0, backs = 0;
+  const { RoadmapHeader } = component('../src/features/gamification/components/RoadmapHeader.tsx', {
+    '../hooks/useGamification': { useGamification: () => ({ data: aggregate(), loading: false, error: null }) },
+  });
+  const tree = RoadmapHeader({ onBack: () => backs++, onOpenShop: () => opened++ });
+  tree.props.onBack(); nodes(tree).find(n => n.type === 'Pressable').props.onPress();
+  assert.equal(opened, 1); assert.equal(backs, 1); assert.equal(tree.props.safeTop, true);
+  assert.ok(text(tree).includes('250')); assert.ok(text(tree).includes('4'));
+  for (const [width, fontScale, expected] of [[320, 1, 140], [390, 1, 148], [390, 1.5, 140]]) {
+    const { MainAppHeader } = component('../src/components/MainAppHeader.tsx', { dimensions: { width, fontScale } });
+    const header = MainAppHeader({ data: aggregate(), loading: false, error: null, onOpenShop() {} });
+    assert.equal(nodes(header).find(n => n.type === 'AlmaLogo').props.horizontalWidth, expected);
+    assert.equal(header.props.style.flexWrap, 'wrap');
+  }
+});
+
+
+test('Roadmap header reaches the existing global Shop without changing the Courses route configuration', () => {
+  const screens = {
+    '../screens/CoursesScreen': 'CoursesScreen', '../screens/CourseDetailScreen': 'CourseDetailScreen', '../screens/RoadmapScreen': 'RoadmapScreen',
+    '../../lessons/screens/LessonScreen': 'LessonScreen', '../../lessons/screens/LessonResultScreen': 'LessonResultScreen',
+    '../../review/screens/ReviewScreen': 'ReviewScreen', '../../unit-challenges/UnitChallengeScreen': 'UnitChallengeScreen',
+    '../../gamification/components/RoadmapHeader': 'RoadmapHeader',
+  };
+  const overrides = Object.fromEntries(Object.entries(screens).map(([file, name]) => [file, { [name]: name }]));
+  const { CoursesNavigator } = component('../src/features/courses/navigation/CoursesNavigator.tsx', overrides);
+  const screen = nodes(CoursesNavigator()).find(n => n.type === 'StackScreen' && n.props.name === 'Roadmap');
+  const visited = []; let back = 0;
+  const header = screen.props.options.header({ navigation: { goBack: () => back++, getParent: () => ({ getParent: () => ({ navigate: name => visited.push(name) }) }) } });
+  header.props.onOpenShop(); header.props.onBack();
+  assert.deepEqual(visited, ['GamificationShop']); assert.equal(back, 1); assert.equal(screen.props.component, 'RoadmapScreen');
 });

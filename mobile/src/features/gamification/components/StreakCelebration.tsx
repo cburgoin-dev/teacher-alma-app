@@ -7,7 +7,7 @@ import { GamificationIcon } from './GamificationIcon';
 import type { GamificationDelta } from '../types';
 import { STREAK_MOTION as timing, streakMilestones } from '../streakCelebration';
 
-export function StreakCelebration({ delta, onContinue }: { delta: GamificationDelta; onContinue: () => void }) {
+export function StreakCelebration({ delta, onContinue, onReplay, devLabel }: { delta: GamificationDelta; onContinue: () => void; onReplay?: () => void; devLabel?: string }) {
   const insets = useSafeAreaInsets();
   const entry = useRef(new Animated.Value(0)).current;
   const flame = useRef(new Animated.Value(0)).current;
@@ -43,6 +43,7 @@ export function StreakCelebration({ delta, onContinue }: { delta: GamificationDe
   return <Modal visible animationType="none" presentationStyle="fullScreen" onRequestClose={onContinue}>
     <View style={s.page} accessibilityViewIsModal>
       <ScrollView contentContainerStyle={[s.content, { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24 }]}>
+        {__DEV__ && devLabel ? <Text style={s.eyebrow}>{devLabel}</Text> : null}
         <Animated.View style={[s.art, { opacity: entry, transform: [{ scale: entry.interpolate({ inputRange: [0, 1], outputRange: [.92, 1] }) }] }]} accessible={false}>
           <View style={s.haloOuter} /><View style={s.haloInner} />
           <Animated.View style={{ transform: [{ scale: flame.interpolate({ inputRange: [0, .75, 1], outputRange: [.78, 1.04, 1] }) }] }}><GamificationIcon kind="flame" size={156} /></Animated.View>
@@ -55,7 +56,7 @@ export function StreakCelebration({ delta, onContinue }: { delta: GamificationDe
           <Text style={s.body}>Un día más aprendiendo. Un paso más hacia tu meta.</Text>
           {milestones.map((reward, index) => <View key={index} style={s.milestone}><GamificationIcon kind="coin" size={30} /><View style={s.rewardText}><Text style={s.rewardTitle}>¡Hito de racha alcanzado!</Text><Text style={s.rewardCaption}>+{reward.amount} monedas ganadas</Text></View></View>)}
         </Animated.View>
-        <View style={s.action}><Button title="Continuar" disabled={!ready} onPress={onContinue} /></View>
+        <View style={s.action}><Button title="Continuar" disabled={!ready} onPress={onContinue} />{__DEV__ && onReplay ? <Button title="DEV · Repetir animación" tone="blue" onPress={onReplay} /> : null}</View>
       </ScrollView>
     </View>
   </Modal>;
@@ -73,5 +74,5 @@ const s = StyleSheet.create({
   body: { color: colors.muted, fontSize: 17, lineHeight: 25, textAlign: 'center', maxWidth: 340 },
   milestone: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 16, borderRadius: 18, backgroundColor: '#FFF0CE', borderWidth: 1, borderColor: '#EDD8A4', maxWidth: '100%' },
   rewardText: { flexShrink: 1, gap: 4 }, rewardTitle: { color: colors.ink, fontSize: 15, fontWeight: '700' }, rewardCaption: { color: colors.gold, fontSize: 14 },
-  action: { width: '100%', paddingTop: 12 },
+  action: { width: '100%', paddingTop: 12, gap: 12 },
 });

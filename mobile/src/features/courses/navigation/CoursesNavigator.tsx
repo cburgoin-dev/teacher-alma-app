@@ -1,3 +1,4 @@
+import { RoadmapHeader } from '../../gamification/components/RoadmapHeader';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { CoursesStackParamList } from '../../../navigation/types';
 import { CoursesScreen } from '../screens/CoursesScreen';
@@ -17,7 +18,7 @@ export function CoursesNavigator() {
     <Stack.Navigator screenOptions={{ headerTintColor: '#101B4D', headerShadowVisible: false, headerTitleStyle: { fontSize: 19, fontWeight: '700' }, contentStyle: { backgroundColor: '#FFF' } }}>
       <Stack.Screen name="Courses" component={CoursesScreen} options={{ title: 'Cursos', headerShown: false }} />
       <Stack.Screen name="CourseDetail" component={CourseDetailScreen} options={{ title: 'Detalle del curso', header: ({ navigation }) => <ContextualHeader safeTop title="Detalle del curso" onBack={() => navigation.goBack()} /> }} />
-      <Stack.Screen name="Roadmap" component={RoadmapScreen} options={{ title: 'Ruta de aprendizaje', header: ({ navigation }) => <ContextualHeader safeTop backOnly backLabel="Volver desde la ruta de aprendizaje" onBack={() => navigation.goBack()} /> }} />
+      <Stack.Screen name="Roadmap" component={RoadmapScreen} options={{ title: 'Ruta de aprendizaje', header: ({ navigation }) => <RoadmapHeader onBack={() => navigation.goBack()} onOpenShop={() => navigation.getParent()?.getParent()?.navigate('GamificationShop')} /> }} />
       <Stack.Screen name="Lesson" component={LessonScreen} options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="LessonResult" component={LessonResultScreen} options={{ headerShown: false }} />
       <Stack.Screen name="UnitChallenge" component={UnitChallengeScreen} options={{ headerShown: false, gestureEnabled: false }} />

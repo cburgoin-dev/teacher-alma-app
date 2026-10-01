@@ -18,7 +18,7 @@ bitmap = page.render(scale=4, crop=(left, height-bottom, width-right, top),
                      fill_color=(255, 255, 255, 0))
 mark = bitmap.to_pil().convert('RGBA')
 for density in (1, 2, 3, 4):
-    canvas = Image.new('RGBA', (124*density, 26*density), (0, 0, 0, 0))
+    canvas = Image.new('RGBA', (148*density, 31*density), (0, 0, 0, 0))
     resized = mark.copy()
     resized.thumbnail(canvas.size, Image.Resampling.LANCZOS)
     canvas.alpha_composite(resized, ((canvas.width-resized.width)//2, (canvas.height-resized.height)//2))

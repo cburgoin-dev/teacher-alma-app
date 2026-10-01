@@ -92,3 +92,55 @@ Las pruebas ejecutan los servicios reales: catálogo, 3/8 completadas, ocho nodo
 - `Principiante` no tiene fuente independiente; se mantiene el nivel A1/A2/B1/C1. Podría acordarse una etiqueta presentacional por nivel sin alterar el modelo.
 - Monedas, racha y notificaciones necesitan sus contratos/estado real. No se inventan para la demo.
 - Antes de publicar, validar arte oficial y disponibilidad comercial; el acceso actual puede provenir de compra individual o Premium, no solo de una suscripción.
+
+## Gamification V4: preparación granular local
+
+Desde `backend/`:
+
+```powershell
+npm run demo:gamification:reset-streak
+npm run demo:gamification:reset-inventory
+npm run demo:gamification:set-coins -- --amount=49
+```
+
+`set-coins` acepta enteros no negativos (incluidos 0, 49, 50, 119 y 120). Calcula
+SUM del ledger bajo lock del usuario y añade únicamente la diferencia CREDIT/DEBIT,
+con motivo DEV_DEMO_BALANCE_ADJUSTMENT, clave única y metadata before/target. No
+borra transacciones/rewards ni asigna un balance separado. Repetir el mismo saldo
+es no-op; una nueva invocación tras gastar vuelve a preparar el saldo solicitado.
+
+`reset-inventory` vacía solo STREAK_PROTECTOR, sin reembolso ni borrar claves de
+compra. No altera otros items, racha o monedas. Para probar 2/2, preparar saldo y
+hacer dos compras NUEVAS desde Mobile.
+
+`reset-streak` borra LearningDays y StreakProtectionEvents del usuario demo,
+reinicia currentDays y cursores de fechas e invalida Repair ELIGIBLE. Mantiene
+longestDays, Repair USED/cooldown, eventos durables/source uniqueness, Daily Goal,
+coins/milestones lifetime-unique e inventario. El siguiente source durable NUEVO
+puede avanzar 0→1; callbacks antiguos y Lesson Replay no cuentan. La pérdida de
+la línea temporal de racha es deliberada y exclusiva de este escenario demo.
+
+Todos exigen development, localhost/loopback:5433/teacher_alma_dev sin parámetros
+de conexión adicionales y DEV_AUTH_USER_ID existente. No admiten --user ni otros
+overrides. Solo scripts, nunca endpoints; transacción con el mismo lock de usuario
+que producción. Reportan JSON con cambios y elementos preservados. Cerrar flujos
+activos antes de preparar datos y después refrescar/reabrir Mobile. No se ejecutan
+automáticamente y no cambian Course/Lesson/UC/Review, timezone ni catálogo.
+
+**Limitación explícita:** `demo:gamification:reset-daily-goal` y
+`demo:gamification:reset` están registrados pero se niegan a ejecutar antes de
+conectar: la meta deriva de eventos durables y su reward/uniqueness del ledger.
+No existe un baseline general nuevo que permita reotorgar rewards preservando
+idempotencia y completions con este modelo. No se borran ni se mueven eventos,
+ledger o completions para simularlo. Se requiere una decisión futura sobre un
+entorno/cuenta demo aislado; V4 no cambia schema ni reglas productivas. Para Daily
+Goal, el siguiente día local real usa un nuevo conjunto diario de eventos.
+
+Validación focalizada (usuarios de prueba desechables; nunca reset del demo):
+
+```powershell
+node node_modules/typescript/bin/tsc -p scripts/tsconfig.json --noEmit
+$env:RUN_GAMIFICATION_DB_TESTS='1'
+node --import tsx --test scripts/gamification-demo.test.ts
+npm run demo:check
+```
