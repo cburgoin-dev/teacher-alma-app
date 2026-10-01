@@ -34,6 +34,6 @@ export function CoursesScreen({ navigation }: CompositeScreenProps<NativeStackSc
 }
 const s = StyleSheet.create({
   list: { paddingHorizontal: 18, paddingTop: 12, paddingBottom: 22, flexGrow: 1, width: '100%', maxWidth: 640, alignSelf: 'center' },
-  header: { paddingBottom: 16, gap: 5 },
+  header: { paddingBottom: 18, gap: 8 },
   subtitle: { color: colors.muted, fontSize: 16, lineHeight: 22 },
 });

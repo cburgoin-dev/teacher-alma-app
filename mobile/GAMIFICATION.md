@@ -1,4 +1,4 @@
-# Mobile Gamification v1 — functional first pass
+# Mobile Gamification — v1 functional / v2 visual fidelity
 
 ## Scope and architecture
 
@@ -64,8 +64,66 @@ The four tabs, Courses stack, study-flow tab hiding and completion tickets remai
 - Pending keys are in memory, not durable across process termination. On a fresh
   app start, GET returns actual server state; there is no automatic mutation replay.
 
-No Shop-specific mockup was found in the repository's mockups; the first pass uses
-the existing shared buttons/header, palette, cards and public per-icon vectors.
+The v2 Shop reference is archived unchanged at `docs/mockups/gamification/shop.png`.
+It supplies visual direction only: its old prices, 7-day challenge, mascot and
+bottom Shop tab are not implemented.
+
+## V2 visual fidelity (2026-10-01)
+
+This continues the accepted v1 checkpoint and preserves the partial local v2 edits
+from the interrupted pass. Resource, API, timezone, retry keys and navigation are
+unchanged. No backend or demo seed changes.
+
+References inspected and used, without duplicating existing files:
+
+- `docs/mockups/courses/courses-catalog.png`: left brand/right coin and streak,
+  compact rhythm and separation from the catalog title.
+- All three `docs/mockups/results/lesson-result-{perfect,standard,review}.png`:
+  warm coin and coral flame tiles; distinct perfect/standard/Review treatment.
+- `docs/mockups/unit-challenge/unit-challenge-result.png`: retain challenge hero,
+  circular score and pass state before the secondary reward layer and route CTA.
+- `docs/mockups/gamification/shop.png`: illustrated tinted product face, white
+  price/action footer, rounded shell and subtle shadow. The archived PNG SHA256 is
+  `0833DC7D90A0576C343171A39DD4DC0C5EA221D9CBA8CDC85C0EDD4ADC269D60`, matching the attachment.
+
+**Logo/header:** the official available mark is vertical, unlike the mockup's
+wordmark. The existing raster derivative is preserved without crop, distortion or
+redrawing. An opt-in 54×40dp contain box removes the extra bottom margin in the
+app header; the default logo presentation elsewhere is unchanged. Coins retain a
+48dp touch target around a smaller visual pill; streak stays display-only. Warm
+layered coin/flame vectors replace outline icons. Numbers are exact, scalable,
+and can wrap rather than being truncated. Courses changes only header spacing.
+
+**Shop:** a compact balance and current streak lead into a short editorial hero.
+Protector has a blue illustrated shield/fire face, real `Tienes X / 2` stock and a
+50-coin price beside the existing coral purchase button. Full inventory uses a
+disabled gray CTA. Zero/low balance receives a small learning hint, but purchase
+validation remains with the backend. Repair occupies the second slot only when
+eligible: warm shield/restore illustration, prior days, returned price and real
+expiration. Large fonts stack artwork/text and price/action vertically. Loading
+uses muted artwork and a spinner, success a compact check strip, errors a small
+message rail; ambiguous retries retain their original action. There is no fake
+second product, new mascot, or Shop tab.
+
+**Results:** shared reward/streak tiles replace the text card, followed by compact
+reward rows and a Daily Goal progress track. `coinsEarned` remains operation-only.
+The DAILY_GOAL breakdown row is represented once in the goal footer, marked as
+included in the earned total; zero `rewardEarnedNow` renders no reward badge.
+The track caps visually at 100%, while the exact backend progress/target stays
+visible and accessible. No extra streak day is implied when `advancedToday=false`.
+Perfect Lesson uses a warmer coin tile; standard is positive; pending Review,
+Challenge and final Review use a quieter secondary treatment. Hero, score,
+progress, next step, Review action, CTAs and completion motion stay in place.
+Replay still returns before the Gamification component; intermediate Review items
+never display it. No animations were introduced.
+
+**Visual gaps:** no Android device was connected for this pass. Component checks
+cover branching/handlers and responsive style selection, not native text layout,
+TalkBack or touch acceptance. Narrow-device/large-font screenshots and physical
+scroll/CTA checks remain pending. The official vertical logo and the absence of
+an approved reusable mascot intentionally differ from the reference illustrations.
+Daily Goal settings, Home/Progress/Profile, Roadmap header, Practice, Streak
+Challenge and the previously deferred commercial/social scope remain deferred.
 
 ## Results and compatibility
 
@@ -93,7 +151,7 @@ From `mobile/`:
 node node_modules/typescript/bin/tsc --noEmit
 node --test tests/gamification.test.cjs
 node --test tests/*.test.cjs
-node node_modules/expo/bin/cli export --platform android --output-dir dist/gamification-v1-check
+node node_modules/expo/bin/cli export --platform android --output-dir dist/gamification-v2-check
 git diff --check
 ```
 
@@ -102,7 +160,15 @@ ambiguous retries, contextual Repair, component output/handlers, optional result
 deltas, Replay exclusion and root navigation. Native primitives are stubbed in
 component tests; they do not prove Android touch/layout/TalkBack behavior.
 
-Validation on 2026-09-30: TypeScript PASS; focused Gamification 20/20; full Mobile
+V2 validation on 2026-10-01: TypeScript PASS; focused Gamification 22/22; full
+Mobile suite 130/130; Android production export PASS (1064 modules, Hermes 2.4 MB)
+at `mobile/dist/gamification-v2-check`; `git diff --check` PASS. The additional
+component checks cover full long numbers, 48dp touch targets, adaptive stacking,
+zero balance, loading/operation states, Lesson emphasis and a single Daily Goal
+reward detail. No device was connected; these checks do not establish native
+visual fidelity or physical acceptance.
+
+V1 validation on 2026-09-30: TypeScript PASS; focused Gamification 20/20; full Mobile
 suite 128/128; Android production export PASS (1065 modules, Hermes 2.4 MB);
 `git diff --check` PASS. Expo needed execution outside the Windows sandbox because
 its local export log returned EPERM. Export output is ignored under `mobile/dist/`.

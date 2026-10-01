@@ -34,7 +34,7 @@ function component(relative, overrides = {}) {
     if (name in overrides) return overrides[name];
     if (name === 'react/jsx-runtime') return require(name);
     if (name === 'react') return { useEffect() {}, useRef: value => ({ current: value }), useCallback: fn => fn, useMemo: fn => fn(), useSyncExternalStore: (_, snapshot) => snapshot() };
-    if (name === 'react-native') return { View: 'View', Text: 'Text', ScrollView: 'ScrollView', Pressable: 'Pressable', SafeAreaView: 'SafeAreaView', RefreshControl: 'RefreshControl', ActivityIndicator: 'ActivityIndicator', KeyboardAvoidingView: 'KeyboardAvoidingView', FlatList: 'FlatList', Platform: { OS: 'android' }, StyleSheet: { create: value => value }, useWindowDimensions: () => ({ width: 320, fontScale: 1.5 }) };
+    if (name === 'react-native') return { View: 'View', Text: 'Text', ScrollView: 'ScrollView', Pressable: 'Pressable', SafeAreaView: 'SafeAreaView', RefreshControl: 'RefreshControl', ActivityIndicator: 'ActivityIndicator', KeyboardAvoidingView: 'KeyboardAvoidingView', FlatList: 'FlatList', Platform: { OS: 'android' }, StyleSheet: { create: value => value }, useWindowDimensions: () => overrides.dimensions ?? ({ width: 320, fontScale: 1.5 }) };
     if (name === 'react-native-safe-area-context') return { SafeAreaView: 'SafeAreaView', useSafeAreaInsets: () => ({ top: 24, bottom: 16 }) };
     if (name === 'react-native-svg') return { default: 'Svg', Circle: 'Circle', Path: 'Path', Rect: 'Rect' };
     if (name === '@react-navigation/native') return { useFocusEffect() {}, usePreventRemove() {}, NavigationContainer: 'NavigationContainer', getFocusedRouteNameFromRoute: route => route.state?.routes[route.state.index ?? 0]?.name };
@@ -50,6 +50,7 @@ function component(relative, overrides = {}) {
     if (leaf) return { [leaf]: leaf };
     if (name.endsWith('/LessonResultScreen')) return { CompletionHero: 'CompletionHero' };
     if (name.endsWith('/GamificationDeltaCard')) return { GamificationDeltaCard: 'GamificationDeltaCard' };
+    if (name.endsWith('/GamificationIcon')) return { GamificationIcon: 'GamificationIcon' };
     return localRequire(name);
   };
   new Function('require', 'module', 'exports', compile(filename))(load, output, output.exports);
@@ -189,7 +190,7 @@ test('Shop renders stock/disabled states, real deadline, contextual repair and o
   const { GamificationShopScreen } = component('../src/features/gamification/screens/GamificationShopScreen.tsx', { '../hooks/useGamification': { useGamification: () => state } });
   const render = () => GamificationShopScreen({ navigation: { goBack: () => back++ } });
   for (const stock of [0, 1, 2]) {
-    state.data = aggregate(stock); const tree = render(); assert.match(text(tree), new RegExp(`Disponibles: ${stock} / 2`));
+    state.data = aggregate(stock); const tree = render(); assert.match(text(tree), new RegExp(`Tienes ${stock} / 2`));
     assert.equal(button(tree, stock === 2 ? 'Inventario completo' : 'Comprar protector').props.disabled, stock === 2);
     assert.equal(button(tree, 'Restaurar racha'), undefined);
   }
@@ -206,9 +207,52 @@ test('delta renders operation earnings/breakdown, daily reward and same-day dist
   assert.equal(GamificationDeltaCard({}), null);
   const first = delta([reward('LESSON_FIRST_COMPLETION', 3), reward('LESSON_FIRST_PERFECT', 2), reward('DAILY_GOAL', 10), reward('COURSE_COMPLETION', 20), reward('STREAK_MILESTONE', 15)]);
   const copy = text(GamificationDeltaCard({ delta: first }));
-  assert.match(copy, /\+50 monedas ganadas/); assert.match(copy, /Primera lección completada/); assert.match(copy, /Primer resultado perfecto/); assert.match(copy, /Curso completado/); assert.match(copy, /Hito de racha/);
-  assert.match(copy, /Normal · 2\/2/); assert.match(copy, /\+10 monedas en esta sesión/); assert.doesNotMatch(copy, /999/);
+  assert.match(copy, /\+50 monedas/); assert.match(copy, /Ganadas en esta sesión/); assert.match(copy, /Primera lección completada/); assert.match(copy, /Primer resultado perfecto/); assert.match(copy, /Curso completado/); assert.match(copy, /Hito de racha/);
+  assert.match(copy, /Normal/); assert.match(copy, /2\/2/); assert.match(copy, /\+10 incluidas en el total/); assert.equal(copy.match(/\+10/g).length, 1); assert.doesNotMatch(copy, /999/);
   const sameDay = text(GamificationDeltaCard({ delta: delta([], false) })); assert.match(sameDay, /Sin avance adicional/); assert.doesNotMatch(sameDay, /\+1|avanzó/);
+});
+
+test('V2 header retains full large values and a 48dp coin target; result layout adapts to narrow/large text', () => {
+  const { MainAppHeader } = component('../src/components/MainAppHeader.tsx');
+  for (const amount of [0, 9, 99, 999, 1234567]) {
+    const data = aggregate(); data.coins.balance = amount; data.streak.currentDays = amount;
+    const tree = MainAppHeader({ data, loading: false, error: null, onOpenShop() {} });
+    const coin = nodes(tree).find(n => n.type === 'Pressable');
+    assert.ok(coin.props.accessibilityLabel.startsWith(`${amount} monedas`));
+    assert.ok(coin.props.style({ pressed: false }).some(style => style?.minHeight >= 48));
+    assert.equal(nodes(tree).filter(n => n === amount).length, 2, 'display exact values without truncation or invented abbreviations');
+  }
+  for (const dimensions of [{ width: 320, fontScale: 1 }, { width: 390, fontScale: 1.5 }, { width: 390, fontScale: 1 }]) {
+    const { GamificationDeltaCard } = component('../src/features/gamification/components/GamificationDeltaCard.tsx', { dimensions });
+    const earned = delta(); earned.dailyGoal.progress = 3;
+    const tree = GamificationDeltaCard({ delta: earned });
+    const tiles = tree.props.children[0];
+    const stacked = dimensions.width < 350 || dimensions.fontScale > 1.3;
+    assert.equal(tiles.props.style.some(style => style?.flexDirection === 'column'), stacked);
+    const bar = nodes(tree).find(n => n.props?.accessibilityRole === 'progressbar');
+    assert.equal(bar.props.accessibilityValue.now, 2); assert.equal(bar.props.accessibilityValue.text, '3 de 2 sesiones');
+    assert.equal(bar.props.children.props.style[1].width, '100%');
+  }
+});
+
+test('V2 Shop supports zero balance, no fabricated product, loading, compact notices and busy retry', () => {
+  let state = { data: null, loading: true, busy: false, error: null, pending: null, operationError: null, notice: null, refresh() {} };
+  const { GamificationShopScreen } = component('../src/features/gamification/screens/GamificationShopScreen.tsx', { '../hooks/useGamification': { useGamification: () => state } });
+  const render = () => GamificationShopScreen({ navigation: { goBack() {} } });
+  assert.equal(button(render(), 'Comprar protector'), undefined);
+  assert.ok(nodes(render()).some(n => n.props?.accessibilityLabel === 'Cargando protección de racha'));
+  state = { ...state, loading: false, data: { ...aggregate(), coins: { balance: 0 } } };
+  assert.ok(nodes(render()).some(n => n.props?.accessibilityLabel === 'Saldo: 0 monedas'));
+  assert.ok(nodes(render()).some(n => n.props?.accessibilityLabel === 'Precio: 50 monedas'));
+  assert.match(text(render()), /Sigue aprendiendo/); assert.equal(button(render(), 'Comprar protector').props.disabled, false);
+  assert.equal(button(render(), 'Restaurar racha'), undefined);
+  state.notice = 'Protector comprado.'; assert.match(text(render()), /Protector comprado/);
+  state.busy = true; state.pending = { kind: 'purchase', requestKey: 'stable' };
+  assert.equal(button(render(), 'Comprar protector').props.busy, true);
+  state.busy = false; state.operationError = 'Todavía no tienes suficientes monedas.';
+  assert.equal(button(render(), 'Comprar protector').props.disabled, true); assert.ok(button(render(), 'Reintentar operación'));
+  state.pending = null; assert.equal(button(render(), 'Reintentar operación'), undefined);
+  assert.doesNotMatch(text(render()), /7 días|Comenzar reto/);
 });
 
 test('Lesson normal result passes exact delta; Replay never mounts gamification even with stray field', () => {
@@ -216,6 +260,9 @@ test('Lesson normal result passes exact delta; Replay never mounts gamification 
   const response = { lesson: { id: 'l', title: 'Lesson' }, result: { correctAnswers: 1, totalActivities: 1, isPerfect: true, pendingReviewCount: 0 }, courseProgress: { percentage: 25, completedRequiredNodes: 1, totalRequiredNodes: 4 }, nextNode: null, gamification: delta([reward('LESSON_FIRST_COMPLETION', 3), reward('LESSON_FIRST_PERFECT', 2)]) };
   const render = result => LessonResultScreen({ route: { params: { courseId: 'c', result } }, navigation: {} });
   assert.equal(deltaNodes(render(response))[0].props.delta, response.gamification);
+  for (const [isPerfect, pendingReviewCount, emphasis] of [[true, 0, 'celebration'], [false, 0, 'standard'], [false, 2, 'quiet']]) {
+    assert.equal(deltaNodes(render({ ...response, result: { ...response.result, isPerfect, pendingReviewCount } }))[0].props.emphasis, emphasis);
+  }
   assert.equal(deltaNodes(render({ ...response, mode: 'REPLAY' })).length, 0);
 });
 
@@ -230,7 +277,7 @@ test('completed Challenge displays backend delta for pass, failed habits, zero r
     state = { metadata: { challenge: { topic: { position: 1 }, title: 'Reto' }, progress: { passed: false }, access: {}, progression: {} }, response: { run: { status: 'COMPLETED' }, result: { passed, percentage: passed ? 100 : 0, correctItems: passed ? 2 : 0, totalItems: 2 }, gamification } };
     const tree = UnitChallengeScreen({ route: { params: { courseId: 'c', unitChallengeId: 'uc' } }, navigation: {} });
     assert.equal(deltaNodes(tree).length, gamification ? 1 : 0);
-    if (gamification) assert.equal(deltaNodes(tree)[0].props.delta, gamification);
+    if (gamification) { assert.equal(deltaNodes(tree)[0].props.delta, gamification); assert.equal(deltaNodes(tree)[0].props.emphasis, 'quiet'); }
   }
 });
 

@@ -70,7 +70,7 @@ export function UnitChallengeScreen({ route, navigation }: NativeStackScreenProp
             </View>
             <Text style={s.body}>{result.passed ? '¡Buen trabajo! Sigue aprendiendo en tu ruta.' : metadata.progress.passed || state.response?.topic?.completed ? 'Tu avance anterior se conserva. Puedes volver a intentarlo desde la ruta.' : 'Puedes volver a intentarlo desde la ruta.'}</Text>
           </View>
-          <GamificationDeltaCard delta={state.response?.gamification} />
+          <GamificationDeltaCard delta={state.response?.gamification} emphasis="quiet" />
           <Button title="Continuar en la ruta" arrow onPress={exit} />
         </> : phase ? phase.type === 'CONVERSATION'
           ? <ConversationView onRootLayout={chatScroll.onRootLayout} onTarget={chatScroll.onTarget} onFollow={chatScroll.onFollow} key={phase.id} content={phase.content} disabled={disabled} busy={state.busy} submit={answer => { void flow.submit(answer); }} />

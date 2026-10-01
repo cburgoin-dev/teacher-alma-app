@@ -66,7 +66,7 @@ export function LessonResultScreen({ route, navigation }: NativeStackScreenProps
       <Text style={local.scoreNumber}>{accuracy(result.correctAnswers, result.totalActivities)}%</Text>
       <Text style={[s.body, local.center]}>{result.correctAnswers} de {result.totalActivities} correctas al primer intento</Text>
     </View> : null}
-    <GamificationDeltaCard delta={response.gamification} />
+    <GamificationDeltaCard delta={response.gamification} emphasis={result.pendingReviewCount > 0 ? 'quiet' : result.isPerfect ? 'celebration' : 'standard'} />
     <View style={local.progress}>
       <View style={local.progressHeading}><Text style={[s.heading, { flex: 1 }]}>Progreso del curso</Text><Text style={[s.heading, local.courseTitle]}>{Math.round(courseProgress.percentage)}%</Text></View>
       <View style={local.track} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: courseProgress.percentage }} accessibilityLabel="Progreso de pasos obligatorios">
