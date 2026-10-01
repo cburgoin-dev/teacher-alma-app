@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import Target from 'lucide-react-native/icons/target';
 import Check from 'lucide-react-native/icons/check';
 import { colors } from '../../../theme';
@@ -7,27 +7,16 @@ import { presetLabel, rewardLabel } from '../presentation';
 import { GamificationIcon } from './GamificationIcon';
 
 export function GamificationDeltaCard({ delta, emphasis = 'standard' }: { delta?: GamificationDelta; emphasis?: 'standard' | 'celebration' | 'quiet' }) {
-  const { width, fontScale } = useWindowDimensions();
   if (!delta) return null;
-  const stacked = width < 350 || fontScale > 1.3;
   // Daily Goal has its own row below: never repeat its amount in the breakdown.
   const rewards = delta.coinRewards.filter(reward => reward.reason !== 'DAILY_GOAL');
   const progress = delta.dailyGoal.target > 0 ? Math.min(100, Math.max(0, delta.dailyGoal.progress / delta.dailyGoal.target * 100)) : 0;
   return <View style={s.group}>
-    <View style={[s.tiles, stacked && s.stacked]}>
-      <View style={[s.tile, stacked && s.stackedTile, s.coins, emphasis === 'celebration' && s.celebration, emphasis === 'quiet' && s.quiet]}>
-        <GamificationIcon kind="coin" size={emphasis === 'quiet' ? 30 : 38} />
-        <View style={s.text}>
-          <Text style={s.value}>{delta.coinsEarned > 0 ? `+${delta.coinsEarned}` : '0'} <Text style={s.unit}>monedas</Text></Text>
-          <Text style={s.caption}>{delta.coinsEarned > 0 ? 'Ganadas en esta sesión' : 'Sin monedas nuevas'}</Text>
-        </View>
-      </View>
-      <View style={[s.tile, stacked && s.stackedTile, s.streak, emphasis === 'quiet' && s.quiet]}>
-        <GamificationIcon kind="flame" size={emphasis === 'quiet' ? 30 : 38} />
-        <View style={s.text}>
-          <Text style={s.value}>{delta.streak.currentDays} <Text style={s.unit}>{delta.streak.currentDays === 1 ? 'día' : 'días'}</Text></Text>
-          <Text style={s.caption}>{delta.streak.advancedToday ? '¡Tu racha avanzó hoy!' : 'Sin avance adicional'}</Text>
-        </View>
+    <View style={[s.tile, s.coins, emphasis === 'celebration' && s.celebration, emphasis === 'quiet' && s.quiet]}>
+      <GamificationIcon kind="coin" size={emphasis === 'quiet' ? 30 : 38} />
+      <View style={s.text}>
+        <Text style={s.value}>{delta.coinsEarned > 0 ? `+${delta.coinsEarned}` : '0'} <Text style={s.unit}>monedas</Text></Text>
+        <Text style={s.caption}>{delta.coinsEarned > 0 ? 'Ganadas en esta sesión' : 'Sin monedas nuevas'}</Text>
       </View>
     </View>
     {rewards.length ? <View style={s.breakdown}>{rewards.map((reward, index) => <View key={`${reward.reason}-${index}`} style={s.rewardRow}>
@@ -37,7 +26,7 @@ export function GamificationDeltaCard({ delta, emphasis = 'standard' }: { delta?
       <View style={s.goalHeading}>
         <View style={s.goalIcon}>{delta.dailyGoal.completed ? <Check size={19} color={colors.blue} accessible={false} /> : <Target size={19} color={colors.blue} accessible={false} />}</View>
         <View style={s.text}><Text style={s.goalTitle}>Meta diaria <Text style={s.caption}>· {presetLabel[delta.dailyGoal.preset]}</Text></Text></View>
-        <Text style={s.ratio}>{delta.dailyGoal.progress}/{delta.dailyGoal.target}</Text>
+        <Text style={s.ratio}>{Math.min(delta.dailyGoal.progress, delta.dailyGoal.target)}/{delta.dailyGoal.target}</Text>
       </View>
       <View style={s.track} accessibilityRole="progressbar" accessibilityLabel="Meta diaria" accessibilityValue={{ min: 0, max: delta.dailyGoal.target, now: Math.min(delta.dailyGoal.progress, delta.dailyGoal.target), text: `${delta.dailyGoal.progress} de ${delta.dailyGoal.target} sesiones` }}>
         <View style={[s.fill, { width: `${progress}%` }]} />
@@ -47,18 +36,14 @@ export function GamificationDeltaCard({ delta, emphasis = 'standard' }: { delta?
         {delta.dailyGoal.rewardEarnedNow > 0 ? <View style={s.goalReward}><GamificationIcon kind="coin" size={18} /><Text style={s.amount}>+{delta.dailyGoal.rewardEarnedNow} <Text style={s.caption}>incluidas en el total</Text></Text></View> : null}
       </View>
     </View>
-    {delta.streak.protectedDate ? <Text style={s.caption}>Día protegido: {delta.streak.protectedDate}</Text> : null}
   </View>;
 }
 const s = StyleSheet.create({
   group: { width: '100%', gap: 9 },
-  tiles: { flexDirection: 'row', gap: 10 }, stacked: { flexDirection: 'column' },
-  tile: { flex: 1, flexDirection: 'row', alignItems: 'center', padding: 12, gap: 9, borderWidth: 1, borderRadius: 17 },
-  stackedTile: { flex: 0 },
+  tile: { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 9, borderWidth: 1, borderRadius: 17 },
   text: { flex: 1, minWidth: 0, gap: 3 },
   coins: { backgroundColor: '#FFFAEF', borderColor: '#F7E7C7' },
   celebration: { backgroundColor: '#FFF3D5', borderColor: '#EED294' },
-  streak: { backgroundColor: '#FFF3EE', borderColor: '#F9E2D8' },
   quiet: { backgroundColor: '#FBFCFE', borderColor: colors.border },
   value: { fontSize: 23, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'] },
   unit: { fontSize: 14, fontWeight: '600' },

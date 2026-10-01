@@ -5,7 +5,7 @@ import type { GamificationAggregate } from './types';
 type Operation = { kind: 'purchase'; requestKey: string } | { kind: 'repair'; requestKey: string; repairId: string };
 type State = {
   data: GamificationAggregate | null; loading: boolean; error: string | null;
-  busy: boolean; pending: Operation | null; operationError: string | null; notice: string | null;
+  busy: boolean; pending: Operation | null; operationError: string | null; operationErrorCode: string | null; notice: string | null;
 };
 export function deviceTimezone() {
   try {
@@ -18,7 +18,7 @@ export function deviceTimezone() {
 const requestKey = () => `gamification_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}_${Math.random().toString(36).slice(2)}`;
 /** One app session; shared reads and pending spending survive Shop navigation. */
 export class GamificationResource {
-  private state: State = { data: null, loading: false, error: null, busy: false, pending: null, operationError: null, notice: null };
+  private state: State = { data: null, loading: false, error: null, busy: false, pending: null, operationError: null, operationErrorCode: null, notice: null };
   private listeners = new Set<() => void>();
   private timezonePromise?: Promise<void>;
   private timezoneFailed = false;
@@ -64,7 +64,7 @@ export class GamificationResource {
   retryOperation = () => this.state.pending ? this.execute(this.state.pending) : Promise.resolve();
   private async execute(operation: Operation) {
     if (this.state.busy || this.state.loading) return;
-    this.set({ busy: true, pending: operation, operationError: null, notice: null });
+    this.set({ busy: true, pending: operation, operationError: null, operationErrorCode: null, notice: null });
     try {
       if (operation.kind === 'purchase') await this.api.purchase(operation.requestKey);
       else await this.api.repair(operation.requestKey, operation.repairId);
@@ -73,7 +73,7 @@ export class GamificationResource {
       await this.read();
     } catch (error) {
       const definite = error instanceof ApiError && error.status >= 400 && error.status < 500 && ![408, 429].includes(error.status);
-      this.set({ operationError: gamificationError(error), ...(definite ? { pending: null } : {}) });
+      this.set({ operationError: gamificationError(error), operationErrorCode: error instanceof ApiError ? error.code : null, ...(definite ? { pending: null } : {}) });
       if (definite) await this.read();
     } finally { this.set({ busy: false }); }
   }

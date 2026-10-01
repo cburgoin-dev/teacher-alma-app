@@ -18,23 +18,26 @@ export function GamificationShopScreen({ navigation }: NativeStackScreenProps<Ro
   const insets = useSafeAreaInsets();
   const { width, fontScale } = useWindowDimensions();
   const stacked = width < 300 || fontScale > 1.3;
-  const { data, loading, busy, pending, error, operationError, notice } = state;
+  const { data, loading, busy, pending, error, operationError, operationErrorCode, notice } = state;
   const disabled = busy || loading || !!error || !!pending;
   const repair = data?.streak.repair;
+  const missingCoins = data ? Math.max(0, 50 - data.coins.balance) : 0;
+  const missingRepairCoins = data && repair ? Math.max(0, repair.costCoins - data.coins.balance) : 0;
+  const inlineShortage = operationErrorCode === 'INSUFFICIENT_COINS' && (missingCoins > 0 || missingRepairCoins > 0);
   const full = !!data && data.streak.protectorCount >= data.streak.protectorMax;
   return <SafeAreaView edges={['left', 'right']} style={s.page}>
-    <ContextualHeader title="Tienda" safeTop onBack={() => navigation.goBack()} />
+    <ContextualHeader backOnly backLabel="Volver desde Tienda" safeTop onBack={() => navigation.goBack()} />
     <ScrollView contentContainerStyle={[s.content, { paddingBottom: insets.bottom + 24 }]} refreshControl={<RefreshControl refreshing={loading && !busy} onRefresh={() => { void state.refresh(); }} tintColor={colors.blue} />}>
       <View style={s.hero}>
         <View style={s.statusRow}>
-          <View style={s.habit}><GamificationIcon kind="flame" size={22} /><Text style={s.habitText}>{data ? `${data.streak.currentDays} días de racha` : 'Tu hábito de aprender'}</Text></View>
+          <View style={s.habit}><GamificationIcon kind="flame" size={22} /><Text style={s.habitText}>{data ? `${data.streak.currentDays} ${data.streak.currentDays === 1 ? 'día' : 'días'} de racha` : 'Tu hábito de aprender'}</Text></View>
           <View accessible accessibilityLabel={data ? `Saldo: ${data.coins.balance} monedas${error || loading ? '. Pendiente de actualizar' : ''}` : 'Saldo no disponible'} style={s.balance}>
-            <GamificationIcon kind="coin" size={30} /><Text maxFontSizeMultiplier={1.5} style={s.balanceNumber}>{data ? data.coins.balance : '—'}</Text>
+            {loading ? <ActivityIndicator size="small" color={colors.gold} /> : <GamificationIcon kind="coin" size={30} />}<Text maxFontSizeMultiplier={1.5} style={s.balanceNumber}>{data ? data.coins.balance : '—'}</Text>
           </View>
         </View>
+        <Text style={s.eyebrow}>TIENDA</Text>
         <Text style={s.title}>Pequeñas herramientas.{ '\n' }Grandes hábitos.</Text>
         <Text style={s.subtitle}>Usa tus monedas para cuidar tu racha y seguir aprendiendo.</Text>
-        {data && (error || loading) ? <Text style={s.caption}>{error ? 'Saldo y protección pendientes de actualizar' : 'Actualizando tu saldo y protección…'}</Text> : null}
       </View>
       {loading && !data ? <View style={[s.product, s.loading]} accessibilityLabel="Cargando protección de racha" accessibilityState={{ busy: true }}>
         <View style={s.skeletonArt}><GamificationIcon kind="protector" size={76} /></View>
@@ -42,7 +45,7 @@ export function GamificationShopScreen({ navigation }: NativeStackScreenProps<Ro
       </View> : null}
       {error ? <View style={s.feedback}><Text accessibilityRole="alert" style={s.feedbackText}>{error}</Text><Button title="Actualizar estado" tone="blue" onPress={() => { void state.refresh(); }} disabled={busy || loading} /></View> : null}
       {notice ? <View style={[s.notice, s.success]} accessibilityLiveRegion="polite"><Check size={19} color={colors.blue} accessible={false} /><Text style={s.feedbackText}>{notice}</Text></View> : null}
-      {operationError ? <View style={s.feedback}><Text accessibilityRole="alert" style={s.feedbackText}>{operationError}</Text>
+      {operationError && !inlineShortage ? <View style={s.feedback}><Text accessibilityRole="alert" style={s.feedbackText}>{operationError}</Text>
         {pending ? <><Text style={s.caption}>Confirma el mismo pedido de forma segura.</Text><Button title="Reintentar operación" tone="blue" busy={busy} disabled={busy || loading} onPress={() => { void gamificationResource.retryOperation(); }} /></> : null}
       </View> : null}
       {data ? <>
@@ -57,9 +60,9 @@ export function GamificationShopScreen({ navigation }: NativeStackScreenProps<Ro
           </View>
           <View style={[s.purchaseRow, stacked && s.purchaseStacked]}>
             <View accessible accessibilityLabel="Precio: 50 monedas" style={s.priceGroup}><GamificationIcon kind="coin" size={30} /><Text style={s.price}>50</Text></View>
-            <View style={[s.action, stacked && s.actionStacked]}><Button title={full ? 'Inventario completo' : 'Comprar protector'} tone={full ? 'gray' : 'red'} disabled={disabled || full} busy={busy && pending?.kind === 'purchase'} onPress={() => { void gamificationResource.purchase(); }} /></View>
+            <View style={[s.action, stacked && s.actionStacked]}><Button title={full ? 'Inventario completo' : 'Comprar protector'} tone={full ? 'gray' : 'red'} disabled={disabled || full || missingCoins > 0} busy={busy && pending?.kind === 'purchase'} onPress={() => { void gamificationResource.purchase(); }} /></View>
           </View>
-          {full ? <Text style={s.productNote}>Ya tienes protección para dos días omitidos.</Text> : data.coins.balance < 50 && !operationError ? <Text style={s.productNote}>Sigue aprendiendo para sumar monedas.</Text> : null}
+          {full ? <Text style={s.productNote}>Ya tienes protección para dos días omitidos.</Text> : missingCoins > 0 ? <Shortage amount={missingCoins} /> : null}
         </View>
         {repair ? <View style={[s.product, shadows.card]}>
           <View style={[s.productFace, s.repairFace, stacked && s.faceStacked]}>
@@ -73,14 +76,17 @@ export function GamificationShopScreen({ navigation }: NativeStackScreenProps<Ro
           </View>
           <View style={[s.purchaseRow, stacked && s.purchaseStacked]}>
             <View accessible accessibilityLabel={`Precio: ${repair.costCoins} monedas`} style={s.priceGroup}><GamificationIcon kind="coin" size={30} /><Text style={s.price}>{repair.costCoins}</Text></View>
-            <View style={[s.action, stacked && s.actionStacked]}><Button title="Restaurar racha" tone="gold" disabled={disabled} busy={busy && pending?.kind === 'repair'} onPress={() => { void gamificationResource.repair(); }} /></View>
+            <View style={[s.action, stacked && s.actionStacked]}><Button title="Restaurar racha" tone="gold" disabled={disabled || missingRepairCoins > 0} busy={busy && pending?.kind === 'repair'} onPress={() => { void gamificationResource.repair(); }} /></View>
           </View>
-          {data.coins.balance < repair.costCoins && !operationError ? <Text style={s.productNote}>Sigue aprendiendo para sumar monedas.</Text> : null}
+          {missingRepairCoins > 0 ? <Shortage amount={missingRepairCoins} /> : null}
         </View> : null}
-        <View style={s.tip}><Lightbulb size={24} color={colors.gold} accessible={false} /><Text style={s.tipText}>Gana monedas al completar lecciones, alcanzar metas y mantener tu racha.</Text></View>
+        <View style={s.tip}><View style={s.bulb}><Lightbulb size={30} fill="#FFD65C" color="#AD7718" strokeWidth={1.8} accessible={false} /></View><View style={s.tipContent}><Text style={s.tipTitle}>Aprender tiene su recompensa</Text><Text style={s.tipText}>Gana monedas al completar lecciones, alcanzar metas y mantener tu racha.</Text></View></View>
       </> : null}
     </ScrollView>
   </SafeAreaView>;
+}
+function Shortage({ amount }: { amount: number }) {
+  return <View style={s.shortage} accessibilityLiveRegion="polite"><GamificationIcon kind="coin" size={22} /><View style={s.tipContent}><Text style={s.shortageTitle}>Te {amount === 1 ? 'falta 1 moneda' : `faltan ${amount} monedas`}</Text><Text style={s.caption}>Sigue aprendiendo para conseguirlas.</Text></View></View>;
 }
 const s = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#F8FAFE' },
@@ -89,6 +95,7 @@ const s = StyleSheet.create({
   statusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 },
   habit: { flexDirection: 'row', alignItems: 'center', gap: 5, flexShrink: 1 },
   habitText: { color: colors.muted, fontSize: 13, fontWeight: '600', flexShrink: 1 },
+  eyebrow: { color: colors.blue, fontSize: 11, fontWeight: '800', letterSpacing: 1 },
   title: { color: colors.ink, fontSize: 28, lineHeight: 34, fontWeight: '800', letterSpacing: -.6 },
   subtitle: { color: colors.muted, fontSize: 15, lineHeight: 23, maxWidth: 420 },
   balance: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#FFF', borderRadius: 18, borderWidth: 1, borderColor: '#EEE7D9', maxWidth: '100%', ...shadows.card },
@@ -105,7 +112,7 @@ const s = StyleSheet.create({
   caption: { color: colors.muted, fontSize: 12, lineHeight: 18 },
   stock: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, backgroundColor: '#D2E9FF', maxWidth: '100%' },
   stockFull: { backgroundColor: '#F5FAFF' }, stockText: { color: '#0759BA', fontWeight: '700', fontSize: 13, flexShrink: 1 },
-  purchaseRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', padding: 10, gap: 12 },
+  purchaseRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', paddingHorizontal: 10, paddingTop: 14, paddingBottom: 10, gap: 12 },
   purchaseStacked: { flexDirection: 'column', alignItems: 'stretch' },
   priceGroup: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 5, flexShrink: 1 },
   price: { color: colors.ink, fontWeight: '800', fontSize: 24, fontVariant: ['tabular-nums'] },
@@ -118,7 +125,12 @@ const s = StyleSheet.create({
   feedbackText: { color: colors.ink, fontSize: 13, lineHeight: 20, flexShrink: 1 },
   notice: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 14 },
   success: { backgroundColor: '#EAF4FF' },
-  tip: { flexDirection: 'row', gap: 10, padding: 14, borderRadius: 16, backgroundColor: '#ECF4FF' },
-  tipText: { flex: 1, color: colors.muted, fontSize: 13, lineHeight: 20 },
+  shortage: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 10, marginBottom: 10, padding: 10, borderRadius: 12, backgroundColor: '#FFFAED' },
+  shortageTitle: { color: colors.gold, fontSize: 13, fontWeight: '700' },
+  tip: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 20, backgroundColor: '#EAF3FF', borderWidth: 1, borderColor: '#DCEAFF' },
+  bulb: { width: 48, height: 54, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: '#FFF6D9', borderWidth: 1, borderColor: '#FFF', ...shadows.card },
+  tipContent: { flex: 1, gap: 4 },
+  tipTitle: { color: colors.ink, fontSize: 13, lineHeight: 19, fontWeight: '700' },
+  tipText: { color: colors.muted, fontSize: 13, lineHeight: 20 },
   loading: { alignItems: 'center', padding: 24, gap: 12 }, skeletonArt: { opacity: .3 },
 });

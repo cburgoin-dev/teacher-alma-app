@@ -1,4 +1,5 @@
 import { useConversationScroll } from './useConversationScroll';
+import { useStreakCelebration } from '../gamification/hooks/useStreakCelebration';
 import { finishCompletion } from '../courses/completionMotion';
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
 import { ActivityIndicator, Alert, BackHandler, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
@@ -21,6 +22,7 @@ export function UnitChallengeScreen({ route, navigation }: NativeStackScreenProp
   const flow = useMemo(() => new ChallengeFlow(unitChallengeId), [unitChallengeId]);
   const state = useSyncExternalStore(flow.subscribe, flow.snapshot);
   const insets = useSafeAreaInsets();
+  const celebration = useStreakCelebration();
   const { fontScale } = useWindowDimensions();
   const exit = useCallback(() => {
     const snapshot = flow.snapshot();
@@ -52,7 +54,7 @@ export function UnitChallengeScreen({ route, navigation }: NativeStackScreenProp
   const complete = state.response?.run.status === 'COMPLETED' && !!result;
   const disabled = state.busy || state.pending;
   const canStart = metadata?.access.hasAccess && metadata.progression.unlocked;
-  return <KeyboardAvoidingView style={s.page} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+  return celebration.wrap(<KeyboardAvoidingView style={s.page} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <View pointerEvents="none" accessible={false} style={{ position: 'absolute', top: 100, bottom: 0, left: 0, right: 0, opacity: phase ? .35 : .85 }}><ChallengeBackdrop /></View>
     <ContextualHeader prominent title="Reto de unidad" safeTop onBack={requestExit} disabled={state.busy} position={phase && metadata ? `${phase.position} de ${state.response?.run.totalPhases ?? metadata.challenge.phaseCount}` : undefined} />
     <ScrollView ref={chatScroll.ref} onLayout={chatScroll.onLayout} onContentSizeChange={chatScroll.onContentSizeChange} onScroll={chatScroll.onScroll} scrollEventThrottle={32} onScrollBeginDrag={chatScroll.onScrollBeginDrag} onScrollEndDrag={chatScroll.onScrollEndDrag} onMomentumScrollEnd={chatScroll.onMomentumScrollEnd} keyboardShouldPersistTaps="handled" contentContainerStyle={[s.content, { paddingBottom: insets.bottom + 24 }]}>
@@ -71,7 +73,7 @@ export function UnitChallengeScreen({ route, navigation }: NativeStackScreenProp
             <Text style={s.body}>{result.passed ? '¡Buen trabajo! Sigue aprendiendo en tu ruta.' : metadata.progress.passed || state.response?.topic?.completed ? 'Tu avance anterior se conserva. Puedes volver a intentarlo desde la ruta.' : 'Puedes volver a intentarlo desde la ruta.'}</Text>
           </View>
           <GamificationDeltaCard delta={state.response?.gamification} emphasis="quiet" />
-          <Button title="Continuar en la ruta" arrow onPress={exit} />
+          <Button title="Continuar en la ruta" arrow onPress={() => celebration.continue(state.response?.gamification, `challenge:${state.response!.run.id}`, exit)} />
         </> : phase ? phase.type === 'CONVERSATION'
           ? <ConversationView onRootLayout={chatScroll.onRootLayout} onTarget={chatScroll.onTarget} onFollow={chatScroll.onFollow} key={phase.id} content={phase.content} disabled={disabled} busy={state.busy} submit={answer => { void flow.submit(answer); }} />
           : <CrosswordView key={phase.id} content={phase.content} disabled={disabled} busy={state.busy} submit={answer => { void flow.submit(answer); }} />
@@ -93,5 +95,5 @@ export function UnitChallengeScreen({ route, navigation }: NativeStackScreenProp
         </>}
       </> : null}
     </ScrollView>
-  </KeyboardAvoidingView>;
+  </KeyboardAvoidingView>);
 }

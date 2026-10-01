@@ -127,6 +127,7 @@ function component(relative, overrides = {}) {
     if (name.endsWith('/RichContent')) return { AudioButton: 'AudioButton', DialogueRow: 'DialogueRow' };
     if (name.endsWith('/accessInfo')) return { showAccessInfo() {} };
     if (name.endsWith('/ContextualHeader')) return { ContextualHeader: 'ContextualHeader' };
+    if (name.endsWith('/useStreakCelebration')) return { useStreakCelebration: () => ({ continue: (_, __, done) => done(), wrap: node => node }) };
     if (name.endsWith('/GamificationDeltaCard')) return { GamificationDeltaCard: 'GamificationDeltaCard' };
     return localRequire(name);
   };

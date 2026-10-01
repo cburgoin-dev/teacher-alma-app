@@ -32,9 +32,10 @@ function component(relative, overrides = {}) {
   const output = { exports: {} };
   const load = name => {
     if (name in overrides) return overrides[name];
+    if (name.endsWith('.png')) return name;
     if (name === 'react/jsx-runtime') return require(name);
     if (name === 'react') return { useEffect() {}, useRef: value => ({ current: value }), useCallback: fn => fn, useMemo: fn => fn(), useSyncExternalStore: (_, snapshot) => snapshot() };
-    if (name === 'react-native') return { View: 'View', Text: 'Text', ScrollView: 'ScrollView', Pressable: 'Pressable', SafeAreaView: 'SafeAreaView', RefreshControl: 'RefreshControl', ActivityIndicator: 'ActivityIndicator', KeyboardAvoidingView: 'KeyboardAvoidingView', FlatList: 'FlatList', Platform: { OS: 'android' }, StyleSheet: { create: value => value }, useWindowDimensions: () => overrides.dimensions ?? ({ width: 320, fontScale: 1.5 }) };
+    if (name === 'react-native') return { Image: 'Image', View: 'View', Text: 'Text', ScrollView: 'ScrollView', Pressable: 'Pressable', SafeAreaView: 'SafeAreaView', RefreshControl: 'RefreshControl', ActivityIndicator: 'ActivityIndicator', KeyboardAvoidingView: 'KeyboardAvoidingView', FlatList: 'FlatList', Platform: { OS: 'android' }, StyleSheet: { create: value => value }, useWindowDimensions: () => overrides.dimensions ?? ({ width: 320, fontScale: 1.5 }) };
     if (name === 'react-native-safe-area-context') return { SafeAreaView: 'SafeAreaView', useSafeAreaInsets: () => ({ top: 24, bottom: 16 }) };
     if (name === 'react-native-svg') return { default: 'Svg', Circle: 'Circle', Path: 'Path', Rect: 'Rect' };
     if (name === '@react-navigation/native') return { useFocusEffect() {}, usePreventRemove() {}, NavigationContainer: 'NavigationContainer', getFocusedRouteNameFromRoute: route => route.state?.routes[route.state.index ?? 0]?.name };
@@ -49,6 +50,7 @@ function component(relative, overrides = {}) {
     const leaf = leaves.find(leaf => name.endsWith('/' + leaf));
     if (leaf) return { [leaf]: leaf };
     if (name.endsWith('/LessonResultScreen')) return { CompletionHero: 'CompletionHero' };
+    if (name.endsWith('/useStreakCelebration')) return { useStreakCelebration: () => ({ continue: (_, __, done) => done(), wrap: node => node }) };
     if (name.endsWith('/GamificationDeltaCard')) return { GamificationDeltaCard: 'GamificationDeltaCard' };
     if (name.endsWith('/GamificationIcon')) return { GamificationIcon: 'GamificationIcon' };
     return localRequire(name);
@@ -202,21 +204,23 @@ test('Shop renders stock/disabled states, real deadline, contextual repair and o
   assert.ok(button(render(), 'Reintentar operación')); assert.equal(button(render(), 'Restaurar racha').props.disabled, true);
 });
 
-test('delta renders operation earnings/breakdown, daily reward and same-day distinction, never balance', () => {
+test('delta renders operation earnings/breakdown, daily reward without a streak tile or balance', () => {
   const { GamificationDeltaCard } = component('../src/features/gamification/components/GamificationDeltaCard.tsx');
   assert.equal(GamificationDeltaCard({}), null);
   const first = delta([reward('LESSON_FIRST_COMPLETION', 3), reward('LESSON_FIRST_PERFECT', 2), reward('DAILY_GOAL', 10), reward('COURSE_COMPLETION', 20), reward('STREAK_MILESTONE', 15)]);
   const copy = text(GamificationDeltaCard({ delta: first }));
   assert.match(copy, /\+50 monedas/); assert.match(copy, /Ganadas en esta sesión/); assert.match(copy, /Primera lección completada/); assert.match(copy, /Primer resultado perfecto/); assert.match(copy, /Curso completado/); assert.match(copy, /Hito de racha/);
   assert.match(copy, /Normal/); assert.match(copy, /2\/2/); assert.match(copy, /\+10 incluidas en el total/); assert.equal(copy.match(/\+10/g).length, 1); assert.doesNotMatch(copy, /999/);
-  const sameDay = text(GamificationDeltaCard({ delta: delta([], false) })); assert.match(sameDay, /Sin avance adicional/); assert.doesNotMatch(sameDay, /\+1|avanzó/);
+  const sameDay = text(GamificationDeltaCard({ delta: delta([], false) })); assert.doesNotMatch(sameDay, /Sin avance adicional|días|racha/); assert.doesNotMatch(sameDay, /\+1|avanzó/);
 });
 
-test('V2 header retains full large values and a 48dp coin target; result layout adapts to narrow/large text', () => {
+test('V3 horizontal header retains full large values/48dp target; goal caps overflow without a streak tile', () => {
   const { MainAppHeader } = component('../src/components/MainAppHeader.tsx');
   for (const amount of [0, 9, 99, 999, 1234567]) {
     const data = aggregate(); data.coins.balance = amount; data.streak.currentDays = amount;
     const tree = MainAppHeader({ data, loading: false, error: null, onOpenShop() {} });
+    assert.equal(nodes(tree).find(n => n.type === 'AlmaLogo').props.horizontal, true);
+    assert.equal(tree.props.style.flexWrap, 'wrap');
     const coin = nodes(tree).find(n => n.type === 'Pressable');
     assert.ok(coin.props.accessibilityLabel.startsWith(`${amount} monedas`));
     assert.ok(coin.props.style({ pressed: false }).some(style => style?.minHeight >= 48));
@@ -226,16 +230,15 @@ test('V2 header retains full large values and a 48dp coin target; result layout 
     const { GamificationDeltaCard } = component('../src/features/gamification/components/GamificationDeltaCard.tsx', { dimensions });
     const earned = delta(); earned.dailyGoal.progress = 3;
     const tree = GamificationDeltaCard({ delta: earned });
-    const tiles = tree.props.children[0];
-    const stacked = dimensions.width < 350 || dimensions.fontScale > 1.3;
-    assert.equal(tiles.props.style.some(style => style?.flexDirection === 'column'), stacked);
+    assert.match(text(tree), /2\/2/); assert.doesNotMatch(text(tree), /3\/2/);
+    assert.equal(nodes(tree).filter(n => n.type === 'GamificationIcon' && n.props.kind === 'flame').length, 0);
     const bar = nodes(tree).find(n => n.props?.accessibilityRole === 'progressbar');
     assert.equal(bar.props.accessibilityValue.now, 2); assert.equal(bar.props.accessibilityValue.text, '3 de 2 sesiones');
     assert.equal(bar.props.children.props.style[1].width, '100%');
   }
 });
 
-test('V2 Shop supports zero balance, no fabricated product, loading, compact notices and busy retry', () => {
+test('V3 Shop supports zero balance, no fabricated product, loading, compact notices and busy retry', () => {
   let state = { data: null, loading: true, busy: false, error: null, pending: null, operationError: null, notice: null, refresh() {} };
   const { GamificationShopScreen } = component('../src/features/gamification/screens/GamificationShopScreen.tsx', { '../hooks/useGamification': { useGamification: () => state } });
   const render = () => GamificationShopScreen({ navigation: { goBack() {} } });
@@ -244,7 +247,9 @@ test('V2 Shop supports zero balance, no fabricated product, loading, compact not
   state = { ...state, loading: false, data: { ...aggregate(), coins: { balance: 0 } } };
   assert.ok(nodes(render()).some(n => n.props?.accessibilityLabel === 'Saldo: 0 monedas'));
   assert.ok(nodes(render()).some(n => n.props?.accessibilityLabel === 'Precio: 50 monedas'));
-  assert.match(text(render()), /Sigue aprendiendo/); assert.equal(button(render(), 'Comprar protector').props.disabled, false);
+  const shortage = nodes(render()).find(n => n.type?.name === 'Shortage');
+  assert.match(text(shortage.type(shortage.props)), /Te faltan 50 monedas.*Sigue aprendiendo/);
+  assert.equal(button(render(), 'Comprar protector').props.disabled, true);
   assert.equal(button(render(), 'Restaurar racha'), undefined);
   state.notice = 'Protector comprado.'; assert.match(text(render()), /Protector comprado/);
   state.busy = true; state.pending = { kind: 'purchase', requestKey: 'stable' };
@@ -349,4 +354,156 @@ test('ReviewFlow retains only server completion delta after the final authorized
   assert.equal(flow.snapshot().phase, 'IN_PROGRESS'); assert.equal(flow.snapshot().outcomes[0].response.gamification, undefined);
   await flow.submit({ text: 'wrong' }); flow.continue();
   assert.equal(flow.snapshot().phase, 'RESULT'); assert.equal(flow.snapshot().outcomes.at(-1).response.gamification, earned);
+});
+const { StreakCelebrationGate, streakMilestones } = require('../src/features/gamification/streakCelebration.ts');
+
+test('celebration gates only real advances, deduplicates taps/remounts and forwards one destination', () => {
+  const seen = new Set(), earned = delta(), destinations = [];
+  const gate = new StreakCelebrationGate(seen);
+  gate.continue(earned, 'run:1', () => destinations.push('Roadmap'));
+  assert.equal(gate.snapshot(), earned); assert.deepEqual(destinations, []);
+  gate.continue(earned, 'run:1', () => destinations.push('wrong'));
+  gate.finish(); gate.finish(); assert.deepEqual(destinations, ['Roadmap']); assert.equal(gate.snapshot(), null);
+  const reopened = new StreakCelebrationGate(seen);
+  reopened.continue(earned, 'run:1', () => destinations.push('origin'));
+  assert.equal(reopened.snapshot(), null); assert.deepEqual(destinations, ['Roadmap', 'origin']);
+  for (const [value, replay] of [[delta([], false), false], [undefined, false], [earned, true]]) {
+    const skipped = new StreakCelebrationGate(new Set()); let exits = 0;
+    skipped.continue(value, 'source', () => exits++, replay);
+    assert.equal(skipped.snapshot(), null); assert.equal(exits, 1);
+  }
+  const abandoned = new StreakCelebrationGate(new Set()); let exits = 0;
+  abandoned.continue(earned, 'source', () => exits++); abandoned.dispose(); abandoned.finish(); assert.equal(exits, 0);
+});
+
+const celebrationHook = gate => ({ useStreakCelebration: () => ({ continue: gate.continue, wrap: node => node }) });
+test('Lesson Continue delays the original completion ticket/destination; Replay bypasses even a stray advance', () => {
+  for (const mode of ['NORMAL', 'REPLAY']) {
+    const gate = new StreakCelebrationGate(new Set()), exits = [], tickets = [];
+    const { LessonResultScreen } = component('../src/features/lessons/screens/LessonResultScreen.tsx', {
+      '../../gamification/hooks/useStreakCelebration': celebrationHook(gate),
+      '../../courses/completionMotion': { finishCompletion: (...args) => { tickets.push(args); return 42; } },
+    });
+    const response = { mode, lesson: { id: 'l', title: 'Lesson' }, result: { correctAnswers: 1, totalActivities: 1, isPerfect: true, pendingReviewCount: 0 }, courseProgress: { percentage: 25, completedRequiredNodes: 1, totalRequiredNodes: 4 }, gamification: delta() };
+    const tree = LessonResultScreen({ route: { params: { courseId: 'course', completionTicket: 42, result: response } }, navigation: { popTo: (...args) => exits.push(args) } });
+    button(tree, 'Continuar en la ruta').props.onPress();
+    if (mode === 'NORMAL') { assert.equal(exits.length, 0); assert.equal(tickets.length, 0); assert.equal(gate.snapshot(), response.gamification); gate.finish(); }
+    else assert.equal(gate.snapshot(), null);
+    assert.deepEqual(tickets, [[42, mode !== 'REPLAY']]);
+    assert.deepEqual(exits, [['Roadmap', { courseId: 'course', completionTicket: 42 }]]);
+  }
+});
+
+test('Challenge celebration retains progressed route ticket and the existing non-progressed origin exit', () => {
+  for (const progressed of [true, false]) {
+    const gate = new StreakCelebrationGate(new Set()), exits = [], tickets = [];
+    const state = { metadata: { challenge: { topic: { position: 1 }, title: 'Reto' }, progress: { passed: !progressed }, access: {}, progression: {} }, response: { run: { id: 'durable-run', status: 'COMPLETED' }, result: { passed: true, percentage: 100, correctItems: 2, totalItems: 2 }, gamification: delta() } };
+    const { UnitChallengeScreen } = component('../src/features/unit-challenges/UnitChallengeScreen.tsx', {
+      '../gamification/hooks/useStreakCelebration': celebrationHook(gate),
+      '../courses/completionMotion': { finishCompletion: (...args) => { tickets.push(args); return 42; } },
+      './flow': { ChallengeFlow: class { snapshot = () => state; subscribe() {} } }, './useConversationScroll': { useConversationScroll: () => ({}) },
+      './ChallengeArt': { ChallengeBackdrop: 'Backdrop', ChallengeHero: 'Hero' }, './phaseViews': {},
+    });
+    const tree = UnitChallengeScreen({ route: { params: { courseId: 'c', unitChallengeId: 'uc', completionTicket: 42 } }, navigation: { canGoBack: () => true, goBack: () => exits.push('back'), popTo: (...args) => exits.push(args) } });
+    button(tree, 'Continuar en la ruta').props.onPress(); assert.equal(exits.length, 0); assert.equal(tickets.length, 0);
+    gate.finish(); gate.finish();
+    assert.deepEqual(exits, progressed ? [['Roadmap', { courseId: 'c', completionTicket: 42 }]] : ['back']);
+    assert.deepEqual(tickets, progressed ? [[42, true]] : []);
+  }
+});
+
+test('Review final Continue gates the original exit; same-day result exits directly', () => {
+  for (const advanced of [true, false]) {
+    const gate = new StreakCelebrationGate(new Set()); let exits = 0;
+    const state = { phase: 'RESULT', outcomes: [{ response: { attempt: { id: 'final-attempt' }, gamification: delta([], advanced) } }], index: 0, batch: { items: [] } };
+    const { ReviewScreen } = component('../src/features/review/screens/ReviewScreen.tsx', {
+      '../../gamification/hooks/useStreakCelebration': celebrationHook(gate),
+      '../flow': { ReviewFlow: class { snapshot = () => state; subscribe() {} requestExit = () => exits++; } },
+      '../presentation': { reviewResult: () => ({ topics: [], resolved: 1, total: 1, pending: 0 }), reviewError: () => '' },
+    });
+    const tree = ReviewScreen({ route: { params: { courseId: 'c' } }, navigation: {} });
+    button(tree, 'Continuar mi ruta').props.onPress(); assert.equal(exits, advanced ? 0 : 1);
+    gate.finish(); assert.equal(exits, 1);
+  }
+});
+
+function motionHarness(preference) {
+  const effects = [], values = [], updates = [], tweens = [];
+  let listener, stopped = 0, started = 0, removed = 0;
+  class Value { constructor(value) { this.value = value; values.push(this); } setValue(value) { this.value = value; } interpolate(config) { return config; } }
+  const { StreakCelebration } = component('../src/features/gamification/components/StreakCelebration.tsx', {
+    react: { useEffect: fn => effects.push(fn), useRef: value => ({ current: value }), useState: initial => [initial, value => updates.push(value)] },
+    'react-native': { View: 'View', Text: 'Text', ScrollView: 'ScrollView', Modal: 'Modal', StyleSheet: { create: value => value },
+      Easing: { cubic: 'cubic', out: fn => fn },
+      Animated: { View: 'AnimatedView', Value, timing: (_, config) => { tweens.push(config); return config; }, delay: ms => ({ delay: ms }), sequence: steps => steps, parallel: steps => ({ start: () => started++, stop: () => stopped++ }) },
+      AccessibilityInfo: { isReduceMotionEnabled: () => preference, addEventListener: (_, fn) => { listener = fn; return { remove: () => removed++ }; } },
+    },
+  });
+  let exits = 0;
+  const tree = StreakCelebration({ delta: delta([reward('STREAK_MILESTONE', 15), reward('DAILY_GOAL', 10)]), onContinue: () => exits++ });
+  const cleanup = effects[0]();
+  return { tree, cleanup, values, updates, tweens, change: value => listener(value), status: () => ({ stopped, started, removed, exits }) };
+}
+
+test('streak motion enables CTA at 900ms, honors live Reduce Motion and cleans timers/animation', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const h = motionHarness(Promise.resolve(false)); await Promise.resolve();
+  assert.equal(h.status().started, 1); assert.deepEqual(h.tweens.map(t => [t.delay, t.duration]), [[0, 400], [300, 700], [700, 700], [1200, 1000]]);
+  assert.ok(h.tweens.every(t => t.useNativeDriver));
+  t.mock.timers.tick(899); assert.deepEqual(h.updates, []); t.mock.timers.tick(1); assert.deepEqual(h.updates, [true]);
+  h.change(true); assert.ok(h.values.every(v => v.value === 1)); assert.equal(h.status().stopped, 1);
+  h.cleanup(); assert.equal(h.status().removed, 1);
+  const early = motionHarness(Promise.resolve(false)); await Promise.resolve(); early.cleanup(); t.mock.timers.tick(1000); assert.deepEqual(early.updates, []);
+});
+
+test('Reduce Motion or failed preference renders final state immediately; late preference cannot animate after unmount', async () => {
+  for (const preference of [Promise.resolve(true), Promise.reject(Error('unavailable'))]) {
+    const h = motionHarness(preference); await Promise.resolve(); await Promise.resolve();
+    assert.equal(h.status().started, 0); assert.ok(h.values.every(v => v.value === 1)); assert.deepEqual(h.updates, [true]);
+    button(h.tree, 'Continuar').props.onPress(); assert.equal(h.status().exits, 1); h.cleanup();
+  }
+  const pending = deferred(), h = motionHarness(pending.promise); h.cleanup(); pending.resolve(false); await Promise.resolve();
+  assert.equal(h.status().started, 0); assert.deepEqual(h.updates, []);
+});
+
+test('celebration shows only real milestone reward, without invented dates/history', () => {
+  assert.deepEqual(streakMilestones(delta()), []);
+  assert.deepEqual(streakMilestones(delta([reward('DAILY_GOAL', 10), reward('STREAK_MILESTONE', 15)])), [reward('STREAK_MILESTONE', 15)]);
+  const h = motionHarness(new Promise(() => {}));
+  assert.match(text(h.tree), /4 días seguidos/); assert.match(text(h.tree), /\+15 monedas ganadas/); assert.doesNotMatch(text(h.tree), /\+10|Lunes|Martes/); h.cleanup();
+});
+
+test('Shop local shortage, silent refresh, domain rejection and repair use authoritative balance', () => {
+  let state = { data: { ...aggregate(0, candidate), coins: { balance: 26 } }, loading: true, busy: false, error: null, pending: null, operationError: null, operationErrorCode: null, notice: null, refresh() {} };
+  const { GamificationShopScreen } = component('../src/features/gamification/screens/GamificationShopScreen.tsx', { '../hooks/useGamification': { useGamification: () => state } });
+  const render = () => GamificationShopScreen({ navigation: { goBack() {} } });
+  const shortageCopy = tree => nodes(tree).filter(n => n.type?.name === 'Shortage').map(n => text(n.type(n.props))).join('');
+  assert.doesNotMatch(text(render()), /Actualizando|pendientes de actualizar/);
+  assert.ok(nodes(render()).some(n => n.type === 'ActivityIndicator'));
+  state.loading = false;
+  assert.match(shortageCopy(render()), /Te faltan 24 monedas.*Sigue aprendiendo.*Te faltan 94 monedas/);
+  assert.equal(button(render(), 'Comprar protector').props.disabled, true); assert.equal(button(render(), 'Restaurar racha').props.disabled, true);
+  state.operationError = 'Todavía no tienes suficientes monedas.'; state.operationErrorCode = 'INSUFFICIENT_COINS';
+  assert.doesNotMatch(text(render()), /Todavía no/); assert.match(shortageCopy(render()), /24 monedas/);
+  state.operationErrorCode = 'UNKNOWN'; state.operationError = 'No pudimos completar la compra'; assert.match(text(render()), /No pudimos/);
+  state.operationError = null; state.data.coins.balance = 120;
+  assert.equal(button(render(), 'Comprar protector').props.disabled, false); assert.equal(button(render(), 'Restaurar racha').props.disabled, false);
+  assert.equal(shortageCopy(render()), '');
+  assert.equal(nodes(render()).find(n => n.type === 'ContextualHeader').props.backOnly, true);
+});
+
+test('horizontal official derivative is bounded at every density; back-only preserves 48dp/a11y/safe area', () => {
+  const { AlmaLogo } = component('../src/components/AlmaLogo.tsx');
+  const logo = AlmaLogo({ horizontal: true });
+  assert.match(logo.props.source, /la-teacher-alma-horizontal\.png$/); assert.equal(logo.props.resizeMode, 'contain');
+  for (const density of [1, 2, 3, 4]) {
+    const bytes = fs.readFileSync(path.resolve(__dirname, `../assets/branding/la-teacher-alma-horizontal${density === 1 ? '' : '@' + density + 'x'}.png`));
+    assert.equal(bytes.readUInt32BE(16), 124 * density); assert.equal(bytes.readUInt32BE(20), 26 * density);
+  }
+  const { ContextualHeader } = component('../src/components/ContextualHeader.tsx'); let back = 0;
+  const tree = ContextualHeader({ title: 'Tienda', backOnly: true, safeTop: true, backLabel: 'Volver desde Tienda', onBack: () => back++ });
+  assert.doesNotMatch(text(tree), /Tienda/); assert.equal(tree.props.style[1].paddingTop, 24);
+  const target = nodes(tree).find(n => n.type === 'Pressable'); assert.equal(target.props.accessibilityLabel, 'Volver desde Tienda');
+  assert.equal(target.props.style({ pressed: false })[0].width, 48); assert.equal(target.props.style({ pressed: false })[0].minHeight, 48); target.props.onPress(); assert.equal(back, 1);
+  assert.match(text(ContextualHeader({ title: 'Repaso', onBack() {} })), /Repaso/);
 });

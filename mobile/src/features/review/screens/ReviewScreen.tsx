@@ -1,4 +1,5 @@
 import { GamificationDeltaCard } from '../../gamification/components/GamificationDeltaCard';
+import { useStreakCelebration } from '../../gamification/hooks/useStreakCelebration';
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
 import { ActivityIndicator, Alert, BackHandler, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, usePreventRemove } from '@react-navigation/native';
@@ -20,6 +21,8 @@ export function ReviewScreen({ route, navigation }: NativeStackScreenProps<Cours
   const flow = useMemo(() => new ReviewFlow(preferredLessonId), [preferredLessonId]);
   const state = useSyncExternalStore(flow.subscribe, flow.snapshot);
   const insets = useSafeAreaInsets();
+  const celebration = useStreakCelebration();
+  const finalResponse = state.outcomes[state.outcomes.length - 1]?.response;
   const exit = useCallback(() => courseId ? navigation.popTo('Roadmap', { courseId }) : navigation.popTo('Courses'), [navigation, courseId]);
   useEffect(() => { void flow.load(); return flow.dispose; }, [flow]);
   useEffect(() => { if (state.exited) exit(); }, [state.exited, exit]);
@@ -41,7 +44,7 @@ export function ReviewScreen({ route, navigation }: NativeStackScreenProps<Cours
   const result = reviewResult(state.outcomes);
   const progress = state.batch?.items.length ? state.index / state.batch.items.length * 100 : 0;
   const contentStyle = [s.content, { paddingBottom: Math.max(24, insets.bottom + 12) }];
-  return <KeyboardAvoidingView style={[s.page, { paddingTop: insets.top }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+  return celebration.wrap(<KeyboardAvoidingView style={[s.page, { paddingTop: insets.top }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <ContextualHeader title="Repaso" onBack={flow.requestExit}
       position={state.phase === 'IN_PROGRESS' ? (state.index + 1) + ' de ' + state.batch!.items.length : undefined}>
       {state.phase === 'IN_PROGRESS' ? <ProgressBar percentage={progress} /> : null}
@@ -90,13 +93,13 @@ export function ReviewScreen({ route, navigation }: NativeStackScreenProps<Cours
             <Text style={local.statTitle}>{result.pending === 1 ? 'sigue pendiente' : 'siguen pendientes'}</Text><Text style={local.statCaption}>Puedes reforzarlos en otro repaso.</Text></View> : null}
         </View>
         {result.skipped > 0 ? <Text style={s.caption}>{result.skipped} {result.skipped === 1 ? 'ejercicio no disponible' : 'ejercicios no disponibles'}. No se cuentan como resueltos.</Text> : null}
-        <GamificationDeltaCard delta={state.outcomes[state.outcomes.length - 1]?.response?.gamification} emphasis="quiet" />
+        <GamificationDeltaCard delta={finalResponse?.gamification} emphasis="quiet" />
         {result.topics.length > 0 ? <View style={local.topicsCard}><Text style={local.topicsTitle}>Temas repasados</Text>
           {result.topics.map(topic => <View key={topic.id} style={local.topicResult}><LearningIcon kind="chat" plain size={22} />
             <Text style={local.resultTopicTitle}>{topic.title}</Text><Text accessibilityLabel={topic.resolved + ' de ' + topic.answered + ' corregidos'} style={local.topicRatio}>{topic.resolved}/{topic.answered}</Text></View>)}
           <Text style={local.statCaption}>Ejercicios corregidos / respondidos</Text>
         </View> : null}
-        <Button title={courseId ? 'Continuar mi ruta' : 'Continuar aprendiendo'} arrow onPress={flow.requestExit} />
+        <Button title={courseId ? 'Continuar mi ruta' : 'Continuar aprendiendo'} arrow onPress={() => celebration.continue(finalResponse?.gamification, `review:${finalResponse?.attempt.id}`, flow.requestExit)} />
       </ScrollView> : state.expired || state.unavailable ? <View style={s.center}>
         <Text accessibilityLiveRegion="polite" style={s.body}>{reviewError(state.error)}</Text>
         <Button title={state.expired ? 'Ver resumen' : 'Continuar'} onPress={state.expired ? flow.finishExpired : flow.continue} />
@@ -109,7 +112,7 @@ export function ReviewScreen({ route, navigation }: NativeStackScreenProps<Cours
           submitLabel={state.pending && state.error ? 'Reenviar respuesta' : 'Comprobar'}
           onSubmit={flow.submit} onContinue={flow.continue} />
       </> : null}
-  </KeyboardAvoidingView>;
+  </KeyboardAvoidingView>);
 }
 const local = StyleSheet.create({
   readyContent: { paddingHorizontal: 20, paddingTop: 8, gap: 10, width: '100%', maxWidth: 560, alignSelf: 'center' },

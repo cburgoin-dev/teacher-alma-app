@@ -1,4 +1,5 @@
 import { GamificationDeltaCard } from '../../gamification/components/GamificationDeltaCard';
+import { useStreakCelebration } from '../../gamification/hooks/useStreakCelebration';
 import { useRef } from 'react';
 import { finishCompletion } from '../../courses/completionMotion';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -30,6 +31,7 @@ export function LessonResultScreen({ route, navigation }: NativeStackScreenProps
   const { courseId, result: response } = route.params;
   const insets = useSafeAreaInsets();
   const leaving = useRef(false);
+  const celebration = useStreakCelebration();
   const exit = () => {
     if (leaving.current) return;
     leaving.current = true;
@@ -51,7 +53,7 @@ export function LessonResultScreen({ route, navigation }: NativeStackScreenProps
   </ScrollView>;
   const { result, nextNode, courseProgress, course } = response;
   const access = nextNode?.lockReason === 'ACCESS';
-  return <ScrollView style={s.page} contentContainerStyle={[s.content, local.content, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 24 }]}>
+  return celebration.wrap(<ScrollView style={s.page} contentContainerStyle={[s.content, local.content, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 24 }]}>
     <View style={local.hero}>
       <CompletionHero perfect={result.isPerfect} />
       <Text style={[s.title, local.center]}>{result.isPerfect ? '¡Excelente trabajo!' : '¡Lección completada!'}</Text>
@@ -95,8 +97,8 @@ export function LessonResultScreen({ route, navigation }: NativeStackScreenProps
       {access ? <Text style={[s.body, { color: '#84550C' }]}>Contenido Premium · Requiere acceso</Text> : null}
       {nextNode.lockReason === 'PREREQUISITE' ? <Text style={s.body}>Completa los pasos anteriores en la ruta.</Text> : null}
     </View> : <Text style={[s.heading, local.center]}>{courseProgress.status === 'COMPLETED' ? '¡Completaste este curso!' : 'Has llegado al final de la ruta disponible.'}</Text>}
-    <Button title="Continuar en la ruta" arrow onPress={exit} />
-  </ScrollView>;
+    <Button title="Continuar en la ruta" arrow onPress={() => celebration.continue(response.gamification, `lesson:${response.lesson.id}`, exit)} />
+  </ScrollView>);
 }
 const local = StyleSheet.create({
   content: { gap: 14 }, center: { textAlign: 'center' },

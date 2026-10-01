@@ -9,7 +9,7 @@ type Props = { data: GamificationAggregate | null; loading: boolean; error: stri
 export function MainAppHeader({ data, loading, error, onOpenShop }: Props) {
   const available = !!data && !error && !loading;
   return <View style={s.row}>
-    <AlmaLogo compact />
+    <AlmaLogo horizontal />
     <View style={s.pills}>
       <Pressable accessibilityRole="button" accessibilityLabel={available ? `${data.coins.balance} monedas. Abrir protección de racha` : 'Abrir protección de racha. Saldo no disponible'} accessibilityState={{ busy: loading }} onPress={onOpenShop} style={({ pressed }) => [s.pill, pressed && { opacity: .7 }]}>
         <View style={[s.surface, s.coin]}><GamificationIcon kind="coin" size={26} /><Text maxFontSizeMultiplier={1.5} style={s.coinText}>{available ? data.coins.balance : '—'}</Text></View>
