@@ -40,12 +40,13 @@ Read only the relevant group.
 
 ### Home
 - `docs/home-semantics-v1.md`
+- `docs/home-api-contract-v1.md`
 - `docs/screens.md`
 - `docs/business-rules.md`
 - `docs/design-direction.md`
 - Courses/Roadmap, Review and Gamification contracts only when Home actually needs to compose those existing domains.
 
-Home-specific state is derived. Do not invent `home_state`, duplicate Roadmap progression logic or fork Gamification into a Home-owned resource.
+Home-specific state is derived. Do not invent `home_state`, duplicate Roadmap progression logic or fork Gamification into a Home-owned resource. `GET /me/home` is read-only and Gamification remains authoritative under its existing shared contract.
 
 ### Lessons
 - `docs/lesson-content-contract-v2.md`
