@@ -13,13 +13,18 @@
   metadata, other levels are not inferred to be beginner courses.
 - Recommendations preserve COMING_SOON and paid access. Featured courses cap at two.
 
-Defensive editorial/data edges: durable progress on a subsequently hidden course
-still determines Home state, but the hero course is null to avoid exposing hidden
-content. A removed/fully completed frontier returns null topic/currentNode. Legacy
+Defensive editorial/data edges: prefer visible candidates within each progress status,
+using the same recency and tie rules. Hidden progress still determines Home state
+when no visible candidate exists, but the hero course is null to avoid exposing hidden
+content. Next-course recommendations use the chosen visible completed course; without
+that context the recommendation is null. A removed/fully completed frontier returns null topic/currentNode. Legacy
 completed records without timestamps return null dates; non-null completion dates
-rank first. These nullable editorial cases are not explicitly specified by the v1
-examples and should be considered when integrating Mobile. Progress numbers always
+rank first. These nullable cases are documented in the API contract; Mobile must
+render a safe degraded state without inventing content. Progress numbers always
 remain Courses-derived even if authored content has changed since course completion.
+
+MVP debt: historical LessonProgress/LessonRun/UnitChallengeProgress reads remain
+unchanged. Query aggregation/optimization is deferred until a separate performance iteration.
 
 Validation from backend:
 

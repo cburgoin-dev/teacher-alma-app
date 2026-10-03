@@ -80,3 +80,37 @@ test('hidden progress keeps durable state without leaking content; missing front
   f.progress = [start(c.id, 1, 'COMPLETED')]; r = await read(f);
   assert.ok(r.hero.type === 'COURSE_COMPLETED'); assert.equal(r.hero.completedCourse?.completedAt, null);
 });
+
+test('ACTIVE prefers visible candidates, preserving durable recency, start fallback and deterministic ties', async () => {
+  const f = facts();
+  f.courses = ['hidden', 'a', 'b'].map(id => course({ id, status: id === 'hidden' ? 'DRAFT' : 'PUBLISHED', courseProgress: [{ status: 'IN_PROGRESS' }] }));
+  f.progress = [start('hidden', 10), start('b', 3), start('a', 2)];
+  f.completions = [{ courseId: 'hidden', completedAt: date(20) }, { courseId: 'a', completedAt: date(5) }, { courseId: 'b', completedAt: date(4) }];
+  const selected = async () => {
+    const r = await read(f); assert.equal(r.state, 'ACTIVE'); assert.ok(r.hero.type === 'ACTIVE');
+    assert.ok(r.hero.currentNode); return r.hero.course?.id;
+  };
+  assert.equal(await selected(), 'a');
+  f.completions[2]!.completedAt = date(6); assert.equal(await selected(), 'b');
+  f.completions = [f.completions[0]!]; assert.equal(await selected(), 'b');
+  f.progress[2]!.startedAt = date(3); assert.equal(await selected(), 'a');
+  f.courses[1]!.status = 'DRAFT'; f.courses[2]!.status = 'DRAFT';
+  const r = await read(f); assert.equal(r.state, 'ACTIVE');
+  assert.deepEqual(r.hero, { type: 'ACTIVE', course: null, topic: null, currentNode: null });
+});
+
+test('COMPLETED prefers latest visible context and recommends from its position; only hidden stays nullable', async () => {
+  const f = facts();
+  f.courses = [course({ id: 'a', position: 1 }), course({ id: 'b', position: 2 }),
+    course({ id: 'soon', position: 3, status: 'COMING_SOON' }), course({ id: 'hidden', position: 4, status: 'DRAFT' }),
+    course({ id: 'later', position: 5 })];
+  f.progress = [start('hidden', 3, 'COMPLETED', date(10)), start('a', 2, 'COMPLETED', date(5)), start('b', 1, 'COMPLETED', date(6))];
+  let r = await read(f); assert.equal(r.state, 'COURSE_COMPLETED'); assert.ok(r.hero.type === 'COURSE_COMPLETED');
+  assert.equal(r.hero.completedCourse?.id, 'b'); assert.equal(r.hero.completedCourse?.completedAt, date(6).toISOString());
+  assert.equal(r.hero.recommendedCourse?.id, 'soon'); assert.equal(r.hero.recommendedCourse?.status, 'COMING_SOON');
+  assert.equal(r.featuredCourses[0]?.id, 'soon');
+  f.courses[0]!.status = 'DRAFT'; f.courses[1]!.status = 'DRAFT';
+  r = await read(f); assert.equal(r.state, 'COURSE_COMPLETED');
+  assert.deepEqual(r.hero, { type: 'COURSE_COMPLETED', completedCourse: null, recommendedCourse: null });
+  assert.deepEqual(r.featuredCourses.map(c => c.id), ['soon', 'later']);
+});

@@ -24,10 +24,14 @@ export class HomeService {
       Math.max(latest.get(completion.courseId) ?? -Infinity, completion.completedAt.getTime()));
     const startedOrder = (a: typeof facts.progress[number], b: typeof facts.progress[number]) =>
       b.startedAt.getTime() - a.startedAt.getTime() || a.courseId.localeCompare(b.courseId);
-    const active = facts.progress.filter(p => p.status === 'IN_PROGRESS').sort((a, b) =>
-      (latest.get(b.courseId) ?? -Infinity) - (latest.get(a.courseId) ?? -Infinity) || startedOrder(a, b))[0];
-    const completed = facts.progress.filter(p => p.status === 'COMPLETED').sort((a, b) =>
-      timestamp(b.completedAt) - timestamp(a.completedAt) || startedOrder(a, b))[0];
+    const visibleIds = new Set(catalog.map(c => c.id));
+    const activeCandidates = facts.progress.filter(p => p.status === 'IN_PROGRESS').sort((a, b) =>
+      (latest.get(b.courseId) ?? -Infinity) - (latest.get(a.courseId) ?? -Infinity) || startedOrder(a, b));
+    const completedCandidates = facts.progress.filter(p => p.status === 'COMPLETED').sort((a, b) =>
+      timestamp(b.completedAt) - timestamp(a.completedAt) || startedOrder(a, b));
+    // Prefer visible context without changing state precedence when only hidden progress remains.
+    const active = activeCandidates.find(p => visibleIds.has(p.courseId)) ?? activeCandidates[0];
+    const completed = completedCandidates.find(p => visibleIds.has(p.courseId)) ?? completedCandidates[0];
     let hero: HomeHero, recommended: CourseRecord | undefined;
     if (active) {
       // Preserve durable state even if editorial changes hide its course; never leak hidden content.
@@ -39,9 +43,8 @@ export class HomeService {
         currentNode: node ? { type: node.type, id: node.id, title: node.title,
           access: { hasAccess: node.access.hasAccess, lockReason: node.access.hasAccess ? null : 'ACCESS' } } : null };
     } else if (completed) {
-      const stored = facts.courses.find(c => c.id === completed.courseId);
       const course = catalog.find(c => c.id === completed.courseId);
-      recommended = stored && catalog.find(c => c.position > stored.position);
+      recommended = course && catalog.find(c => c.position > course.position);
       hero = { type: 'COURSE_COMPLETED', completedCourse: course ? { ...identity(course),
         completedAt: completed.completedAt?.toISOString() ?? null, progress: progress(course) } : null,
         recommendedCourse: recommended ? project(recommended) : null };

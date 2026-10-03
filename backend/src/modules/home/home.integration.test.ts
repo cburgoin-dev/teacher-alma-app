@@ -77,6 +77,14 @@ test('Home PostgreSQL: real read model, authenticated HTTP, no side effects', { 
       await prisma.lessonRun.create({ data: { userId, lessonId: lessonA, requestKey: randomUUID(), status: 'COMPLETED', completedAt: date(6), correctAnswers: 0, totalActivities: 0 } });
       r = await checkedRead(); assert.ok(r.hero.type === 'ACTIVE'); assert.equal(r.hero.course?.id, a);
     });
+    await t.test('hidden active winner falls back to visible; hidden-only retains ACTIVE without content', async () => {
+      await prisma.course.update({ where: { id: a }, data: { status: 'DRAFT' } });
+      let r = await checkedRead(); assert.ok(r.hero.type === 'ACTIVE'); assert.equal(r.hero.course?.id, b);
+      await prisma.course.update({ where: { id: b }, data: { status: 'DRAFT' } });
+      r = await checkedRead(); assert.equal(r.state, 'ACTIVE');
+      assert.deepEqual(r.hero, { type: 'ACTIVE', course: null, topic: null, currentNode: null });
+      await prisma.course.updateMany({ where: { id: { in: [a, b] } }, data: { status: 'PUBLISHED' } });
+    });
     await t.test('latest completed, next coming-soon, no next and Review eligibility', async () => {
       await prisma.courseProgress.updateMany({ where: { userId }, data: { status: 'COMPLETED', completedAt: date(7) } });
       await prisma.courseProgress.update({ where: { userId_courseId: { userId, courseId: b } }, data: { completedAt: date(8) } });
@@ -88,6 +96,16 @@ test('Home PostgreSQL: real read model, authenticated HTTP, no side effects', { 
       assert.equal((await checkedRead()).review.pendingCount, 1);
       await prisma.courseProgress.create({ data: { userId, courseId: later, status: 'COMPLETED', completedAt: date(9) } });
       r = await checkedRead(); assert.ok(r.hero.type === 'COURSE_COMPLETED'); assert.equal(r.hero.recommendedCourse, null);
+    });
+    await t.test('hidden completed winner uses latest visible and its next course; hidden-only has no recommendation', async () => {
+      await prisma.course.update({ where: { id: later }, data: { status: 'DRAFT' } });
+      let r = await checkedRead(); assert.ok(r.hero.type === 'COURSE_COMPLETED');
+      assert.equal(r.hero.completedCourse?.id, b); assert.equal(r.hero.recommendedCourse?.id, soon);
+      assert.equal(r.hero.recommendedCourse?.status, 'COMING_SOON'); assert.equal(r.featuredCourses[0]?.id, soon);
+      await prisma.course.updateMany({ where: { id: { in: [a, b] } }, data: { status: 'DRAFT' } });
+      r = await checkedRead(); assert.equal(r.state, 'COURSE_COMPLETED');
+      assert.deepEqual(r.hero, { type: 'COURSE_COMPLETED', completedCourse: null, recommendedCourse: null });
+      await prisma.course.updateMany({ where: { id: { in: [a, b, later] } }, data: { status: 'PUBLISHED' } });
     });
     await t.test('HTTP auth and compact response; repeated GETs leave all rows unchanged', async () => {
       server = createApp(courses, (req, _res, next) => { if (req.headers['x-test-auth'] === 'yes') req.auth = { userId }; next(); },

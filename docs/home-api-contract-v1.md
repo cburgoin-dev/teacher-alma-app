@@ -98,15 +98,15 @@ Do not persist a separate `home_state` value.
 
 ## Active-course selection
 
-If exactly one course is `IN_PROGRESS`, it is the active course.
+Prefer learner-visible `IN_PROGRESS` courses when any exist. A hidden course must not displace a visible candidate even when its durable activity is newer. If only hidden in-progress courses remain, preserve `ACTIVE` from durable state and return the defensive nullable hero described below.
 
-If multiple courses are `IN_PROGRESS`, choose the course with the most recent durable learning completion across that course:
+Among the eligible candidates, choose the course with the most recent durable learning completion across that course:
 
 - completed normal Lesson (`LessonProgress.completedAt` / completed `LessonRun`);
 - passed/completed Unit Challenge progression (`UnitChallengeProgress.completedAt`);
 - future durable course-associated learning sources only after they are explicitly integrated into Home semantics.
 
-If multiple in-progress courses have no durable completion signal yet, choose the one with the most recent `CourseProgress.startedAt`.
+If completion signals tie or are absent, choose the most recent `CourseProgress.startedAt`, then course id ascending for a deterministic final tie.
 
 Opening Course Detail, Roadmap or catalog browsing does not affect active-course selection.
 
@@ -114,7 +114,7 @@ Do not add `users.last_active_course_id` for Home v1 unless implementation prove
 
 ## Recently completed course
 
-For `COURSE_COMPLETED`, select the completed course with the greatest non-null `CourseProgress.completedAt`.
+For `COURSE_COMPLETED`, prefer learner-visible completed courses and select the one with the greatest non-null `CourseProgress.completedAt`. Hidden courses cannot displace a visible candidate. Null legacy dates rank last; ties use `startedAt` descending, then course id ascending. If only hidden completed courses remain, preserve `COURSE_COMPLETED` with `completedCourse = null` and `recommendedCourse = null`.
 
 Completing a course does not auto-start, auto-activate or grant access to another course.
 
@@ -279,6 +279,12 @@ If the canonical current node is commercially unavailable, keep it as the curren
 
 Do not choose another academic node to avoid the access restriction.
 
+### Defensive nullable context
+
+`hero.course`, `hero.topic` and `hero.currentNode` may be `null` only for legacy inconsistencies or editorial changes: for example, durable progress whose course is no longer learner-visible, or a missing required frontier. Prefer a valid learner-visible in-progress candidate before returning a null course. If no such candidate exists, all three fields are null while `state` remains `ACTIVE`. A visible course with no frontier keeps its course projection and returns null topic/currentNode. Commercial access restrictions alone never cause these nulls.
+
+Mobile must render a safe degraded state without inventing course, Topic or node content or offering navigation to missing content.
+
 ## `COURSE_COMPLETED` response
 
 Conditions:
@@ -332,7 +338,11 @@ Example:
 
 `recommendedCourse` may be `null`.
 
-The next-course recommendation is the next learner-visible course by configured catalog `position` after the completed course. If that next course is `COMING_SOON`, preserve it as the recommendation instead of skipping pedagogically to a later published course.
+The next-course recommendation is the next learner-visible course by configured catalog `position` after the visible completed course selected for the hero, including after a visibility fallback. If that next course is `COMING_SOON`, preserve it as the recommendation instead of skipping pedagogically to a later published course.
+
+`hero.completedCourse` may be `null` for the equivalent legacy/editorial case where durable completed progress has no learner-visible course context. Prefer a valid visible completed candidate before returning null. Without visible completed context, `recommendedCourse` is also null; do not derive a recommendation from hidden content. Mobile must render a safe degraded completion state without inventing content.
+
+`completedCourse.completedAt` and `diagnostic.completedAt` are ISO timestamp strings or `null` for legacy completed records without a timestamp. A missing timestamp does not erase durable completion state.
 
 The recommendation never starts the course automatically.
 
