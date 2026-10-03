@@ -7,7 +7,7 @@ function identity(course: CourseRecord) { return { id: course.id, title: course.
 function description(course: CourseRecord) {
   return { ...identity(course), slug: course.slug, description: course.description, coverUrl: course.coverUrl, status: course.status };
 }
-function access(course: CourseRecord, grants: EntitlementRecord[], now: Date) {
+export function courseAccess(course: CourseRecord, grants: EntitlementRecord[], now: Date) {
   const nodes = progressionPath(course);
   const source = nodes.length && nodes.every(n => n.accessType === 'FREE') ? 'FREE' as const : entitlementSource(course.id, grants, now);
   return { hasFullAccess: source !== 'NONE', hasFreeContent: nodes.some(n => n.accessType === 'FREE'), source };
@@ -19,7 +19,7 @@ export class CourseService {
     const [courses, grants] = await Promise.all([this.repository.findCourses(userId), this.repository.findEntitlements(userId)]);
     return { courses: courses.filter(isVisible).sort((a, b) => a.position - b.position).map(course => ({
       ...description(course), position: course.position,
-      progress: course.courseProgress.length ? courseProgress(course) : null, access: access(course, grants, this.clock()),
+      progress: course.courseProgress.length ? courseProgress(course) : null, access: courseAccess(course, grants, this.clock()),
     })) };
   }
   async detail(courseId: string, userId: string) {
@@ -28,7 +28,7 @@ export class CourseService {
     return { ...description(course), content: { topicCount: topics.length, lessonCount: lessons.length,
       freeLessonCount: lessons.filter(l => l.accessType === 'FREE').length, unitChallengeCount: topics.filter(t => t.unitChallenge).length },
       progress: course.courseProgress.length ? courseProgress(course) : null,
-      access: access(course, await this.repository.findEntitlements(userId), this.clock()) };
+      access: courseAccess(course, await this.repository.findEntitlements(userId), this.clock()) };
   }
   async roadmap(courseId: string, userId: string) {
     const course = requireVisible(await this.repository.findCourse(courseId, userId));

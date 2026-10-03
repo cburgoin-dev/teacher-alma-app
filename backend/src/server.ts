@@ -1,3 +1,5 @@
+import { HomeService } from './modules/home/home.service.js';
+import { PrismaHomeRepository } from './modules/home/home.repository.js';
 import { GamificationService } from './modules/gamification/gamification.service.js';
 import { PrismaGamificationRepository } from './modules/gamification/gamification.repository.js';
 import 'dotenv/config';
@@ -19,7 +21,8 @@ const app = createApp(new CourseService(new PrismaCourseRepository(prisma)),
   new LessonService(new PrismaLessonRepository(prisma)),
   new ReviewService(new PrismaReviewRepository(prisma), configuredReviewToken()),
   new UnitChallengeService(new PrismaUnitChallengeRepository(prisma)),
-  new GamificationService(new PrismaGamificationRepository(prisma)));
+  new GamificationService(new PrismaGamificationRepository(prisma)),
+  new HomeService(new PrismaHomeRepository(prisma)));
 
 const port = Number(process.env.PORT ?? 3000);
 if (!Number.isInteger(port) || port < 1 || port > 65535) {

@@ -1,3 +1,5 @@
+import { homeRoutes } from '../modules/home/home.routes.js';
+import type { HomeService } from '../modules/home/home.service.js';
 import { gamificationRoutes } from '../modules/gamification/gamification.routes.js';
 import type { GamificationService } from '../modules/gamification/gamification.service.js';
 import express from 'express';
@@ -15,7 +17,7 @@ import { reviewRoutes } from '../modules/review/review.routes.js';
 import type { ReviewService } from '../modules/review/review.service.js';
 
 /** Composition boundary permits HTTP tests without loading secrets or a database. */
-export function createApp(courses: CourseService, auth: RequestHandler, lessons?: LessonService, review?: ReviewService, challenges?: UnitChallengeService, gamification?: GamificationService) {
+export function createApp(courses: CourseService, auth: RequestHandler, lessons?: LessonService, review?: ReviewService, challenges?: UnitChallengeService, gamification?: GamificationService, home?: HomeService) {
   const app = express();
   app.use(cors());
   app.use(express.json());
@@ -26,6 +28,7 @@ export function createApp(courses: CourseService, auth: RequestHandler, lessons?
   if (review) app.use('/review', auth, reviewRoutes(review));
   if (challenges) app.use('/unit-challenges', auth, unitChallengeRoutes(challenges));
   if (gamification) app.use('/me/gamification', auth, gamificationRoutes(gamification));
+  if (home) app.use('/me/home', auth, homeRoutes(home));
   app.use(errorHandler);
   return app;
 }
