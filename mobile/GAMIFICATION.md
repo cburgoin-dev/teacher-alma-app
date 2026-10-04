@@ -470,3 +470,11 @@ check narrow widths/large fonts, TalkBack and additional hardware-Back edge case
 Repair still requires a genuinely eligible backend candidate; Mobile does not
 fabricate one. V1 already has physical Android acceptance for the core visible flow
 and is not kept open for these polish/accessibility follow-ups.
+
+## Home Mobile integration
+
+Home v1 reuses the existing resource and header. Shared metrics now retain the
+last-known balance/streak during refresh or transient errors; placeholders are used
+only before a snapshot exists. This resolves the header/resource presentation debt
+listed above. Home's opt-in header logo sizing does not change Courses sizing.
+See `HOME.md` for refresh, navigation, visual references and acceptance boundaries.

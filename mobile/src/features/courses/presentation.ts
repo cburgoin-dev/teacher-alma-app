@@ -1,7 +1,7 @@
 import type { Course, CourseDetail, Lesson, Roadmap } from './types';
 
 // Presentation only: the server remains authoritative for access and progression.
-export function catalogDestination(course: Course): 'CourseDetail' | 'Roadmap' {
+export function catalogDestination(course: Pick<Course, 'status'> & { progress: { status: string } | null }): 'CourseDetail' | 'Roadmap' {
   if (course.status === 'COMING_SOON') return 'CourseDetail';
   if (course.progress?.status === 'IN_PROGRESS' || course.progress?.status === 'COMPLETED') return 'Roadmap';
   return 'CourseDetail';

@@ -42,7 +42,7 @@ export function MainTabs() {
         tabBarItemStyle: { paddingVertical: 0 },
         tabBarStyle: { display: route.name === 'CoursesTab' && ['Lesson', 'LessonResult', 'Review', 'UnitChallenge'].includes(getFocusedRouteNameFromRoute(route) ?? '') ? 'none' : 'flex', height: contentHeight + bottomPadding, paddingTop: 4, paddingBottom: bottomPadding, borderTopColor: '#DEEAFA', backgroundColor: '#FFF' },
       })}>
-        <Tabs.Screen name="Home" component={HomeScreen} options={{ title: 'Inicio' }} />
+        <Tabs.Screen name="Home" component={HomeScreen} options={{ title: 'Inicio', headerShown: false }} />
         <Tabs.Screen name="CoursesTab" component={CoursesNavigator} options={{ title: 'Cursos', headerShown: false }} />
         <Tabs.Screen name="Progress" component={ProgressScreen} options={{ title: 'Progreso' }} />
         <Tabs.Screen name="Profile" component={ProfileScreen} options={{ title: 'Perfil' }} />

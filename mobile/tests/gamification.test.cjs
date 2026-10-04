@@ -178,14 +178,15 @@ test('domain errors are human, refresh authoritative state and release definite 
   }
 });
 
-test('MainAppHeader has real balance/streak, coin action, and safe loading/error placeholders', () => {
+test('MainAppHeader preserves last-known balance/streak on refresh/error and only uses placeholders without data', () => {
   const { MainAppHeader } = component('../src/components/MainAppHeader.tsx'); let opens = 0;
   const props = { data: aggregate(), loading: false, error: null, onOpenShop: () => opens++ };
   const tree = MainAppHeader(props), pressable = nodes(tree).find(n => n.type === 'Pressable');
   assert.match(pressable.props.accessibilityLabel, /250 monedas/); pressable.props.onPress(); assert.equal(opens, 1);
   assert.ok(nodes(tree).some(n => n.props?.accessibilityLabel === 'Racha de 4 días' && !n.props.onPress));
   for (const state of [{ loading: true }, { error: 'offline' }, { data: null }]) {
-    const safe = MainAppHeader({ ...props, ...state }); assert.doesNotMatch(text(safe), /250/);
+    const safe = MainAppHeader({ ...props, ...state });
+    if (state.data === null) assert.doesNotMatch(text(safe), /250/); else assert.match(text(safe), /250/);
     nodes(safe).find(n => n.type === 'Pressable').props.onPress();
   }
   assert.equal(opens, 4);

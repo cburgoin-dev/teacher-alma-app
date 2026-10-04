@@ -4,7 +4,7 @@ import { colors } from '../theme';
 import type { GamificationAggregate } from '../features/gamification/types';
 export type MetricProps = { data: GamificationAggregate | null; loading: boolean; error: string | null; onOpenShop?: () => void; showStreak?: boolean; compact?: boolean };
 export function GamificationMetrics({ data, loading, error, onOpenShop, showStreak = true, compact = false }: MetricProps) {
-  const available = !!data && !error && !loading;
+  const available = !!data; // Keep the shared last-known snapshot during refresh or a transient failure.
   return <View style={s.pills}>
       {onOpenShop ? <Pressable accessibilityRole="button" accessibilityLabel={available ? `${data.coins.balance} monedas. Abrir protección de racha` : 'Abrir protección de racha. Saldo no disponible'} accessibilityState={{ busy: loading }} onPress={onOpenShop} style={({ pressed }) => [s.pill, pressed && { opacity: .7 }]}>
         <View style={[s.surface, compact && s.compact, s.coin]}><GamificationIcon kind="coin" size={compact ? 22 : 26} /><Text maxFontSizeMultiplier={1.5} style={s.coinText}>{available ? data.coins.balance : '—'}</Text></View>

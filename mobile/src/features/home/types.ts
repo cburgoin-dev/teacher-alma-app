@@ -1,0 +1,11 @@
+import type { Course, Progress } from '../courses/types';
+export type HomeProgress = Pick<Progress, 'completedRequiredNodes' | 'totalRequiredNodes' | 'percentage'> & { status: 'IN_PROGRESS' | 'COMPLETED' };
+export type HomeIdentity = Pick<Course, 'id' | 'title' | 'level' | 'coverUrl'>;
+export type HomeCourse = HomeIdentity & Pick<Course, 'status' | 'access'> & { progress: HomeProgress | null };
+export type HomeCurrentNode = { type: 'LESSON' | 'UNIT_CHALLENGE'; id: string; title: string; access: { hasAccess: boolean; lockReason: 'ACCESS' | null } };
+export type NewHero = { type: 'NEW'; beginnerCourse: HomeCourse | null };
+export type AssessedHero = { type: 'ASSESSED'; diagnostic: { attemptId: string; completedAt: string | null; recommendedLevel: string | null }; recommendedCourse: HomeCourse | null };
+export type ActiveHero = { type: 'ACTIVE'; course: (HomeIdentity & { progress: HomeProgress }) | null; topic: { id: string; title: string } | null; currentNode: HomeCurrentNode | null };
+export type CompletedHero = { type: 'COURSE_COMPLETED'; completedCourse: (HomeIdentity & { completedAt: string | null; progress: HomeProgress }) | null; recommendedCourse: HomeCourse | null };
+export type HomeHero = NewHero | AssessedHero | ActiveHero | CompletedHero;
+export type HomeResponse = { state: HomeHero['type']; learner: { displayName: string | null }; hero: HomeHero; review: { pendingCount: number }; featuredCourses: HomeCourse[] };
