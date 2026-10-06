@@ -1,3 +1,4 @@
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { beginCompletion, consumeCompletion, type ProgressTransition } from '../completionMotion';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
@@ -21,6 +22,7 @@ function openLesson(lesson: Lesson, enter: () => void) {
 }
 export function RoadmapScreen({ route, navigation }: NativeStackScreenProps<CoursesStackParamList, 'Roadmap'>) {
   const resource = useCourseResource(useCallback((signal: AbortSignal) => coursesApi.roadmap(route.params.courseId, signal), [route.params.courseId]));
+  const insets = useSafeAreaInsets();
   const scroll = useRef<ScrollView>(null);
   const [transition, setTransition] = useState<ProgressTransition | null>(null);
   const [motionReady, setMotionReady] = useState(false);
@@ -36,7 +38,7 @@ export function RoadmapScreen({ route, navigation }: NativeStackScreenProps<Cour
   const [contentHeight, setContentHeight] = useState(0);
   const [mapY, setMapY] = useState<number | null>(null);
   const [anchor, setAnchor] = useState<{ id: string; y: number; range?: { top: number; bottom: number } } | null>(null);
-  const target = resource.data ? roadmapTarget(resource.data) : null;
+  const target = resource.data ? roadmapTarget(resource.data, route.params.focusNode) : null;
   useFocusEffect(useCallback(() => {
     positioned.current = false;
     checked.current = false;
@@ -75,7 +77,7 @@ export function RoadmapScreen({ route, navigation }: NativeStackScreenProps<Cour
 
   return <ScrollView ref={scroll} scrollEnabled={!transition} onLayout={e => setViewport(e.nativeEvent.layout.height)} onContentSizeChange={(_, height) => setContentHeight(height)}
     onTouchStart={() => { if (!transition) positioned.current = true; }}
-    onScrollBeginDrag={() => { positioned.current = true; }} style={[styles.page, { backgroundColor: '#F1F8FD' }]} contentContainerStyle={local.content}
+    onScrollBeginDrag={() => { positioned.current = true; }} style={[styles.page, { backgroundColor: '#F1F8FD' }]} contentContainerStyle={[local.content, { paddingBottom: Math.max(16, insets.bottom + 8) }]}
     refreshControl={<RefreshControl refreshing={resource.loading} onRefresh={() => { if (!transition) resource.retry(); }} tintColor={colors.blue} />}>
     <View style={local.summary}>
       {__DEV__ ? <Pressable accessibilityRole="button" accessibilityLabel="DEV: repetir transición de ruta" disabled={!!transition || resource.loading} onPress={() => {

@@ -1,9 +1,10 @@
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { useCallback } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { CompositeScreenProps } from '@react-navigation/native';
-import type { CoursesStackParamList, RootStackParamList } from '../../../navigation/types';
+import type { RootTabParamList, RootStackParamList } from '../../../navigation/types';
 import { coursesApi } from '../api/courses';
 import { useCourseResource } from '../hooks/useCourseResource';
 import { catalogDestination } from '../presentation';
@@ -12,7 +13,7 @@ import { CourseCard } from '../components/CourseCard';
 import { MainAppHeader } from '../../../components/MainAppHeader';
 import { useGamification } from '../../gamification/hooks/useGamification';
 
-export function CoursesScreen({ navigation }: CompositeScreenProps<NativeStackScreenProps<CoursesStackParamList, 'Courses'>, NativeStackScreenProps<RootStackParamList>>) {
+export function CoursesScreen({ navigation }: CompositeScreenProps<BottomTabScreenProps<RootTabParamList, 'CoursesTab'>, NativeStackScreenProps<RootStackParamList>>) {
   const resource = useCourseResource(useCallback((signal: AbortSignal) => coursesApi.catalog(signal), []));
   const gamification = useGamification();
   return <SafeAreaView edges={['top', 'left', 'right']} style={styles.page}>

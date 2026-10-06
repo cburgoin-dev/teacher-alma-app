@@ -49,10 +49,10 @@ function component(relative, overrides = {}) {
     if (name.endsWith('/ui')) return { Button: 'Button', ProgressBar: 'ProgressBar', ResourceState: 'ResourceState', colors: {}, styles: {} };
     if (name.endsWith('/lessonStyles')) return { lessonStyles: {} };
     if (name.endsWith('/AudioButton')) return { lessonAudio: { stop() {} } };
-    const leaves = ['AlmaLogo', 'ContextualHeader', 'LearningIcon', 'ActivityStep', 'NavigationIcon', 'HomeScreen', 'CoursesNavigator', 'ProgressScreen', 'ProfileScreen', 'GamificationShopScreen'];
+    const leaves = ['AlmaLogo', 'ContextualHeader', 'LearningIcon', 'ActivityStep', 'NavigationIcon', 'HomeScreen', 'CoursesScreen', 'CourseDetailScreen', 'RoadmapScreen', 'LessonScreen', 'UnitChallengeScreen', 'ReviewScreen', 'RoadmapHeader', 'ProgressScreen', 'ProfileScreen', 'GamificationShopScreen'];
     const leaf = leaves.find(leaf => name.endsWith('/' + leaf));
     if (leaf) return { [leaf]: leaf };
-    if (name.endsWith('/LessonResultScreen')) return { CompletionHero: 'CompletionHero' };
+    if (name.endsWith('/LessonResultScreen')) return { CompletionHero: 'CompletionHero', LessonResultScreen: 'LessonResultScreen' };
     if (name.endsWith('/useStreakCelebration')) return { useStreakCelebration: () => ({ continue: (_, __, done) => done(), wrap: node => node }) };
     if (name.endsWith('/GamificationDeltaCard')) return { GamificationDeltaCard: 'GamificationDeltaCard' };
     if (name.endsWith('/GamificationIcon')) return { GamificationIcon: 'GamificationIcon' };
@@ -306,17 +306,14 @@ test('Review renders gamification only in final result when final backend attemp
   assert.equal(deltaNodes(render()).length, 0);
 });
 
-test('root stack contains MainTabs and global Shop, retaining nested study tab-bar hiding', () => {
+test('root stack owns one learning history above unchanged MainTabs and global Shop', () => {
   const { RootNavigator, MainTabs } = component('../src/navigation/RootNavigator.tsx');
   const root = RootNavigator();
   assert.equal(root.type, 'NavigationContainer');
   const screens = nodes(root).filter(n => n.type === 'StackScreen');
-  assert.deepEqual(screens.map(n => n.props.name), ['MainTabs', 'GamificationShop']); assert.equal(screens[0].props.component, MainTabs);
+  assert.deepEqual(screens.map(n => n.props.name), ['MainTabs', 'GamificationShop', 'CourseDetail', 'Roadmap', 'Lesson', 'LessonResult', 'UnitChallenge', 'Review']); assert.equal(screens[0].props.component, MainTabs);
   const tabs = MainTabs(); assert.deepEqual(nodes(tabs).filter(n => n.type === 'TabScreen').map(n => n.props.name), ['Home', 'CoursesTab', 'Progress', 'Profile']);
-  for (const name of ['Lesson', 'LessonResult', 'Review', 'UnitChallenge']) {
-    assert.equal(tabs.props.screenOptions({ route: { name: 'CoursesTab', state: { routes: [{ name }] } } }).tabBarStyle.display, 'none');
-  }
-  assert.equal(tabs.props.screenOptions({ route: { name: 'CoursesTab' } }).tabBarStyle.display, 'flex');
+
 });
 
 test('Courses coin entry targets global Shop and pull refresh reloads both independent resources', () => {
@@ -565,18 +562,15 @@ test('V4 composed Roadmap header shares live metrics and coin navigation; root l
 });
 
 
-test('Roadmap header reaches the existing global Shop without changing the Courses route configuration', () => {
-  const screens = {
-    '../screens/CoursesScreen': 'CoursesScreen', '../screens/CourseDetailScreen': 'CourseDetailScreen', '../screens/RoadmapScreen': 'RoadmapScreen',
-    '../../lessons/screens/LessonScreen': 'LessonScreen', '../../lessons/screens/LessonResultScreen': 'LessonResultScreen',
-    '../../review/screens/ReviewScreen': 'ReviewScreen', '../../unit-challenges/UnitChallengeScreen': 'UnitChallengeScreen',
-    '../../gamification/components/RoadmapHeader': 'RoadmapHeader',
-  };
-  const overrides = Object.fromEntries(Object.entries(screens).map(([file, name]) => [file, { [name]: name }]));
-  const { CoursesNavigator } = component('../src/features/courses/navigation/CoursesNavigator.tsx', overrides);
-  const screen = nodes(CoursesNavigator()).find(n => n.type === 'StackScreen' && n.props.name === 'Roadmap');
+test('root Detail and Roadmap headers use natural Back and existing global Shop', () => {
+  const { RootNavigator } = component('../src/navigation/RootNavigator.tsx');
+  const screens = nodes(RootNavigator()).filter(n => n.type === 'StackScreen');
   const visited = []; let back = 0;
-  const header = screen.props.options.header({ navigation: { goBack: () => back++, getParent: () => ({ getParent: () => ({ navigate: name => visited.push(name) }) }) } });
-  header.props.onOpenShop(); header.props.onBack();
-  assert.deepEqual(visited, ['GamificationShop']); assert.equal(back, 1); assert.equal(screen.props.component, 'RoadmapScreen');
+  for (const name of ['CourseDetail', 'Roadmap']) {
+    const screen = screens.find(n => n.props.name === name);
+    const header = screen.props.options.header({ navigation: { goBack: () => back++, navigate: name => visited.push(name) } });
+    header.props.onBack();
+    if (name === 'Roadmap') header.props.onOpenShop();
+  }
+  assert.deepEqual(visited, ['GamificationShop']); assert.equal(back, 2);
 });

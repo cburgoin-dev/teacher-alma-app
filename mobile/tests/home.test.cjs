@@ -22,15 +22,16 @@ function component(relative, overrides = {}) {
   const filename = path.resolve(__dirname, relative), localRequire = require('node:module').createRequire(filename), output = { exports: {} };
   const load = name => {
     if (name in overrides) return overrides[name];
-    if (name === 'react') return { useState: value => [value, () => {}], useCallback: fn => fn, useSyncExternalStore: (_, snapshot) => snapshot() };
+    if (name === 'react') return { useEffect() {}, useState: value => [value, () => {}], useCallback: fn => fn, useSyncExternalStore: (_, snapshot) => snapshot() };
     if (name === 'react-native') return { StyleSheet: { create: v => v }, useWindowDimensions: () => overrides.dimensions ?? { width: 390, fontScale: 1 }, ...Object.fromEntries(['View', 'Text', 'Pressable', 'ScrollView', 'RefreshControl', 'ActivityIndicator'].map(n => [n, n])) };
     if (name === 'react-native-safe-area-context') return { SafeAreaView: 'SafeAreaView' };
     if (name.startsWith('lucide-react-native/icons/')) return { default: name };
     if (name.endsWith('/ui')) return { Button: 'Button' };
-    if (name.endsWith('/CourseCover')) return { CourseCover: 'CourseCover' };
+    if (name.endsWith('/CourseCover')) return { CourseCover: 'CourseCover', courseCoverSource: () => 1 };
+    if (name === 'react-native-svg') return { default: 'Svg', ...Object.fromEntries(['ClipPath', 'Defs', 'Ellipse', 'Image', 'LinearGradient', 'Path', 'Rect', 'Stop'].map(n => [n, n])) };
     if (name.endsWith('/MainAppHeader')) return { MainAppHeader: 'MainAppHeader' };
     if (name.endsWith('/theme')) return { colors: { blue: 'blue', red: 'red' }, shadows: { card: {} } };
-    if (name.includes('/components/Home')) return component(localRequire.resolve(name + '.tsx'), overrides);
+    if (name.includes('/components/Home') || name.endsWith('/ActiveHomeHero')) return component(localRequire.resolve(name + '.tsx'), overrides);
     return localRequire(name);
   };
   new Function('require', 'module', 'exports', compile(filename))(load, output, output.exports);
@@ -73,23 +74,23 @@ test('NEW has honest disabled diagnosis and real beginner navigation', () => {
   assert.equal(buttons(tree)[0].props.disabled, true); assert.equal(buttons(tree)[0].props.onPress, undefined);
   let route; const { HomeSecondaryCards } = component('../src/features/home/components/HomeSecondaryCards.tsx');
   const secondary = HomeSecondaryCards({ data: response(fresh), gamification: aggregate, onNavigate: r => { route = r; } });
-  buttons(secondary)[0].props.onPress(); assert.deepEqual(route, { screen: 'CourseDetail', params: { courseId: 'c' }, initial: false });
+  buttons(secondary)[0].props.onPress(); assert.deepEqual(route, { screen: 'CourseDetail', params: { courseId: 'c' } });
   assert.doesNotMatch(text(HomeSecondaryCards({ data: response({ ...fresh, beginnerCourse: null }), gamification: null, onNavigate() {} })), /A1/);
 });
 test('ASSESSED shows real level and course; null recommendation never invents a route', () => {
   let route; const tree = heroCard(assessed, r => { route = r; }); assert.match(text(tree), /A2/); buttons(tree)[0].props.onPress(); assert.equal(route.screen, 'CourseDetail');
   assert.equal(buttons(heroCard({ ...assessed, recommendedCourse: null })).length, 0);
 });
-for (const type of ['LESSON', 'UNIT_CHALLENGE']) test(`ACTIVE ${type} navigates to exact backend node and renders exact progress`, () => {
+for (const type of ['LESSON', 'UNIT_CHALLENGE']) test(`ACTIVE ${type} opens Roadmap with exact backend anchor and renders exact progress`, () => {
   const hero = { ...active, currentNode: { ...node, type } }; let route;
   const tree = heroCard(hero, r => { route = r; }); buttons(tree)[0].props.onPress();
-  assert.equal(route.screen, type === 'LESSON' ? 'Lesson' : 'UnitChallenge');
-  assert.deepEqual(route.params, type === 'LESSON' ? { courseId: 'c', lessonId: 'lesson' } : { courseId: 'c', unitChallengeId: 'lesson' });
+  assert.equal(route.screen, 'Roadmap');
+  assert.deepEqual(route.params, { courseId: 'c', focusNode: { id: 'lesson', type } });
   assert.match(text(tree), /30 %/); assert.match(text(tree), /Lección real/);
 });
 test('ACTIVE access lock preserves node with no dead payment CTA; null context is safe', () => {
   const locked = { ...active, currentNode: { ...node, access: { hasAccess: false, lockReason: 'ACCESS' } } };
-  assert.equal(activeDestination(locked), null); assert.match(text(heroCard(locked)), /Lección real/); assert.equal(buttons(heroCard(locked)).length, 0);
+  assert.equal(activeDestination(locked).screen, 'Roadmap'); assert.match(text(heroCard(locked)), /Lección real/); assert.match(text(heroCard(locked)), /Ver ruta/);
   for (const hero of [{ ...active, course: null, topic: null, currentNode: null }, { ...active, currentNode: null }, { ...active, topic: null }]) {
     assert.doesNotThrow(() => heroCard(hero)); if (!hero.currentNode) assert.equal(buttons(heroCard(hero)).length, 0);
   }
@@ -114,7 +115,7 @@ test('featured courses keep server order and cap two, use existing catalog desti
   const { HomeFeaturedCourses } = component('../src/features/home/components/HomeFeaturedCourses.tsx'); const routes = [];
   const courses = [{ ...course, id: 'b', progress }, { ...course, id: 'a', status: 'COMING_SOON' }, { ...course, id: 'never' }];
   const tree = HomeFeaturedCourses({ courses, onNavigate: r => routes.push(r) });
-  buttons(tree).forEach(b => b.props.onPress()); assert.deepEqual(routes.map(r => r.screen), ['Courses', 'Roadmap', 'CourseDetail']);
+  buttons(tree).forEach(b => b.props.onPress()); assert.deepEqual(routes.map(r => r.screen), ['Courses', 'CourseDetail', 'CourseDetail']);
   assert.deepEqual(routes.slice(1).map(r => r.params.courseId), ['b', 'a']);
   assert.equal(courseDestination({ ...course, access: { ...course.access, hasFreeContent: false } }).screen, 'CourseDetail');
 });
@@ -127,8 +128,8 @@ test('Home screen uses shared Gamification, preserves data on error, and routes 
   const tree = HomeScreen({ navigation: { navigate: (...args) => routes.push(args) } });
   const header = nodes(tree).find(n => n.type === 'MainAppHeader'); assert.equal(header.props.data, aggregate); header.props.onOpenShop();
   assert.match(text(tree), /última información/); assert.match(text(tree), /Hola , Ana/);
-  buttons(tree).find(b => b.props.title === 'Continuar').props.onPress();
-  assert.equal(routes[0][0], 'GamificationShop'); assert.equal(routes[1][0], 'CoursesTab'); assert.equal(routes[1][1].screen, 'Lesson');
+  buttons(tree).find(b => b.props.accessibilityLabel === 'Continuar en la ruta del curso').props.onPress();
+  assert.equal(routes[0][0], 'GamificationShop'); assert.equal(routes[1][0], 'Roadmap'); assert.deepEqual(routes[1][1].focusNode, { id: 'lesson', type: 'LESSON' });
 });
 test('focus refreshes Home, background resume refreshes Home/shared Gamification, blur removes listener', async () => {
   const oldHome = homeResource.refresh, oldGamification = gamificationResource.refresh; let homes = 0, games = 0, callback, cleanup, removed = 0;

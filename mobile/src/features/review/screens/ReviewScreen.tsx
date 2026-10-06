@@ -23,7 +23,7 @@ export function ReviewScreen({ route, navigation }: NativeStackScreenProps<Cours
   const insets = useSafeAreaInsets();
   const celebration = useStreakCelebration();
   const finalResponse = state.outcomes[state.outcomes.length - 1]?.response;
-  const exit = useCallback(() => courseId ? navigation.popTo('Roadmap', { courseId }) : navigation.popTo('Courses'), [navigation, courseId]);
+  const exit = useCallback(() => courseId ? navigation.popTo('Roadmap', { courseId }) : navigation.goBack(), [navigation, courseId]);
   useEffect(() => { void flow.load(); return flow.dispose; }, [flow]);
   useEffect(() => { if (state.exited) exit(); }, [state.exited, exit]);
   useEffect(() => () => lessonAudio.stop(), [state.index]);

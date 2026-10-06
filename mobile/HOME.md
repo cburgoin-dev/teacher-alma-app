@@ -21,13 +21,23 @@ parser, coalesced session resource, focus hook and components. The backend owns
 state selection, current node, course ordering, access and progression. Percentage
 labels use the returned value; only visual bar fill is clamped to its track.
 
-The existing Inicio tab now hosts Home with its own safe-area/header. Existing
-Courses stack destinations handle Course Detail, Roadmap, Lesson, Unit Challenge
-and Review. Nested navigation uses `initial: false` so direct entry retains the
-Courses landing route and existing completion/back behavior. No course is started
-by reading Home or tapping its course cards. Lessons/Challenges keep their existing
-start/confirmation flows. Locked current nodes remain visible and informational;
-there is no payment route. COMING_SOON cards open existing Course Detail.
+The existing Inicio tab hosts Home with its own safe-area/header. Course Detail,
+Roadmap, Lesson, Unit Challenge and Review are registered once in the existing root
+stack; the former nested CoursesNavigator is removed. Both Home and the Courses
+catalog push onto this history, so native/header Back retains the originating tab.
+The four bottom tabs retain their styling; detail/learning screens sit above them,
+like Shop, and provide contextual Back. Safe-area bottom padding is retained there.
+
+Home Continue opens Roadmap, never Lesson/Unit Challenge. Home passes `focusNode`
+(id/type) as an entry hint; Roadmap validates it against its own fresh currentNode
+and uses the existing measured auto-scroll. A stale hint cannot override academic
+progression. Lessons/Challenges enter from Roadmap with existing completion tickets.
+Starting a course keeps Course Detail in history. Review without course context
+returns through goBack instead of forcing the catalog.
+
+All Home course cards open Course Detail; Ver todos selects the Courses catalog.
+No course is auto-started. Locked nodes remain visible and offer the real Roadmap
+with Ver ruta rather than a nonexistent payment flow. Missing context has no CTA.
 
 `useGamification` and `gamificationResource` remain the only shared source for
 coins/streak/Daily Goal. MainAppHeader gains an opt-in Home logo size. Shared metrics
@@ -54,7 +64,7 @@ other screens' logo sizes.
 - NEW: disabled, explicitly coming-soon Diagnostic CTA; real beginner course or
   catalog alternative plus shared Daily Goal.
 - ASSESSED: real recommendation/level, nullable course and informational result card.
-- ACTIVE: backend node and percentage, direct accessible Lesson/Challenge CTA;
+- ACTIVE: backend node and percentage, Roadmap CTA with a validated focus hint;
   locked or missing content never creates a dead destination.
 - COURSE_COMPLETED: real completion context and next-course recommendation, including
   COMING_SOON. Null legacy context renders neutral copy without fabricated progress.
@@ -65,7 +75,7 @@ other screens' logo sizes.
 No course description is fabricated because HomeCourse does not provide one.
 Featured cards show real access/progress metadata instead. At large font scales,
 both two-card groups stack and hero artwork is omitted to protect readable copy.
-There are no fixed text heights or forced single-line titles. Scroll and safe areas
+There are no fixed text heights. The greeting wraps to at most two lines with ellipsis for long names. Scroll and safe areas
 remain enabled, and interactive controls have at least 48dp touch surfaces.
 
 ## Validation and remaining acceptance
@@ -90,8 +100,45 @@ deep payload validation follows the existing typed API boundary. Diagnosis,
 Practice, Notifications, avatar management, payment and Daily Goal settings remain
 outside this iteration. No backend changes or dependencies were needed.
 
-Validation result for this iteration: Mobile TypeScript PASS; full Mobile suite
+V1 historical validation result: Mobile TypeScript PASS; full Mobile suite
 154/154 PASS; Android production export PASS (1083 modules, 2.4 MB Hermes bundle)
 at `dist/home-v1-check`; `git diff --check` PASS. The attempted ADB device listing
 failed under the Windows sandbox before device discovery; no physical acceptance
 or screenshot evidence is claimed.
+
+## Visual + navigation revision (2026-10-03)
+
+Primary: `home-active-primary.png`. The real Android screenshots supplied for this
+revision are evidence of the prior implementation, not alternative design targets.
+
+- ACTIVE now has a dedicated composition: prominent Continuar aprendiendo heading,
+  course pill, Topic, node, progress and coral CTA in the left column; existing
+  landscape artwork is clipped into a curved right-hand region. An SVG blue
+  gradient, subtle cloud, lower blue sweep and actual level badge provide depth
+  without generating assets. Bundled course artwork remains until a remote image
+  is usable. Large fonts/narrow widths use the full text column without artwork.
+- Logo grows only in Home; header/greeting spacing is tighter. The greeting stays
+  API-driven, with controlled wrapping and the same non-interactive avatar.
+- Secondary cards use icon halos and text side-by-side, finer borders, smaller
+  spacing, real Review affordance and real shared goal count/percentage. Practice
+  and Daily Goal have no misleading navigation chevrons.
+- Featured cards have shorter image/body proportions, real completion/access
+  supporting copy and icon/status treatments. No description is invented because
+  the Home projection does not provide one.
+
+The configured development user's displayName was changed to Sofía, and only that
+field. Reapply after demo recreation with `node mobile/scripts/set-home-demo-name.cjs Sofía`
+from repository root. The script refuses non-local/non-development databases and
+only targets DEV_AUTH_USER_ID; it does not reset progress, coins, streak or fixtures.
+Backend code, schema, API and Gamification rules remain unchanged.
+
+Remaining differences: official horizontal branding instead of the mockup's alternate
+mark, an outline avatar, existing catalog landscapes rather than identical art,
+and no notifications or invented academic copy. No device was connected to ADB
+for this revision. Native layout/TalkBack/hardware Back and a new screenshot
+comparison remain physical acceptance items; no 75–85% fidelity claim is made.
+
+Revision validation: TypeScript PASS; full Mobile tests 156/156 PASS, including real
+StackRouter histories for Home vs catalog, Lesson/Challenge return, and stale
+Roadmap anchors. Android export PASS (1086 modules, 2.4 MB Hermes) at
+`dist/home-v2-check`; final `git diff --check` PASS.

@@ -1,14 +1,16 @@
+import { ActiveHomeHero } from './ActiveHomeHero';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import BookOpen from 'lucide-react-native/icons/book-open';
 import Trophy from 'lucide-react-native/icons/trophy';
 import { Button } from '../../courses/components/ui';
 import { CourseCover } from '../../courses/components/CourseCover';
-import { activeDestination, courseDestination, courseStatus, type HomeDestination } from '../presentation';
+import { courseDestination, courseStatus, type HomeDestination } from '../presentation';
 import type { HomeCourse, HomeHero, HomeIdentity } from '../types';
 import { colors, shadows } from '../../../theme';
 
 export function HomeHeroCard({ hero, onNavigate }: { hero: HomeHero; onNavigate: (destination: HomeDestination) => void }) {
   const { width, fontScale } = useWindowDimensions();
+  if (hero.type === 'ACTIVE') return <ActiveHomeHero hero={hero} onNavigate={onNavigate} />;
   const artVisible = width >= 350 && fontScale < 1.3;
   let eyebrow: string, title: string, detail: string | null = null, course: HomeIdentity | null = null;
   let percentage: number | null = null, destination: HomeDestination | null = null, cta: string | null = null;
@@ -23,15 +25,6 @@ export function HomeHeroCard({ hero, onNavigate }: { hero: HomeHero; onNavigate:
       eyebrow = 'TU PUNTO DE PARTIDA'; title = hero.diagnostic.recommendedLevel ? `Tu nivel recomendado: ${hero.diagnostic.recommendedLevel}` : 'Tu diagnóstico está listo';
       recommendation = hero.recommendedCourse; course = recommendation;
       detail = recommendation ? 'Este es el curso recomendado para ti.' : 'Explora los cursos y elige tu próximo paso.';
-      break;
-    case 'ACTIVE':
-      eyebrow = 'CONTINUAR APRENDIENDO'; course = hero.course;
-      title = hero.currentNode?.title ?? hero.course?.title ?? 'Tu aprendizaje sigue aquí';
-      detail = hero.topic?.title ?? null;
-      percentage = hero.course?.progress.percentage ?? null;
-      destination = activeDestination(hero); cta = destination ? 'Continuar' : null;
-      if (!hero.course || !hero.currentNode) note = 'Tu siguiente paso no está disponible en este momento. Puedes explorar los cursos.';
-      else if (!destination) note = 'Este paso requiere acceso al curso. Tu avance se conserva.';
       break;
     case 'COURSE_COMPLETED':
       eyebrow = '¡UN GRAN LOGRO!'; course = hero.completedCourse;
@@ -50,11 +43,11 @@ export function HomeHeroCard({ hero, onNavigate }: { hero: HomeHero; onNavigate:
     <Text style={s.eyebrow}>{eyebrow}</Text>
     <View style={s.heroRow}>
       <View style={s.copy}>
-        {hero.type === 'ACTIVE' && course ? <Text style={s.courseBadge}>{course.title}</Text> : null}
-        {hero.type === 'ACTIVE' && detail ? <Text style={s.detail}>{detail}</Text> : null}
+
+
         <Text accessibilityRole="header" style={s.title}>{title}</Text>
-        {hero.type !== 'ACTIVE' && detail ? <Text style={s.detail}>{detail}</Text> : null}
-        {hero.type === 'ACTIVE' && hero.currentNode?.type === 'UNIT_CHALLENGE' ? <Text style={s.nodeKind}>Reto de unidad</Text> : null}
+        {detail ? <Text style={s.detail}>{detail}</Text> : null}
+
       </View>
       {artVisible ? course ? <CourseCover uri={course.coverUrl} level={course.level} hero style={s.cover} />
         : <View accessible={false} style={s.symbol}>{hero.type === 'COURSE_COMPLETED' ? <Trophy color="#FFF" size={44} /> : <BookOpen color="#FFF" size={44} />}</View> : null}

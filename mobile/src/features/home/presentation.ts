@@ -1,15 +1,12 @@
-import type { NavigatorScreenParams } from '@react-navigation/native';
-import type { CoursesStackParamList } from '../../navigation/types';
-import { catalogDestination } from '../courses/presentation';
+import type { LearningStackParamList } from '../../navigation/types';
 import type { ActiveHero, HomeCourse, HomeHero } from './types';
-
-export type HomeDestination = NavigatorScreenParams<CoursesStackParamList>;
-export const courseDestination = (course: HomeCourse): HomeDestination => ({ screen: catalogDestination(course), params: { courseId: course.id }, initial: false });
+export type HomeDestination = { screen: 'Courses' } | {
+  [K in 'CourseDetail' | 'Roadmap' | 'Review']: { screen: K; params: LearningStackParamList[K] }
+}['CourseDetail' | 'Roadmap' | 'Review'];
+export const courseDestination = (course: HomeCourse): HomeDestination => ({ screen: 'CourseDetail', params: { courseId: course.id } });
 export function activeDestination(hero: ActiveHero): HomeDestination | null {
-  if (!hero.course || !hero.currentNode || !hero.currentNode.access.hasAccess || hero.currentNode.access.lockReason) return null;
-  return hero.currentNode.type === 'LESSON'
-    ? { screen: 'Lesson', params: { courseId: hero.course.id, lessonId: hero.currentNode.id }, initial: false }
-    : { screen: 'UnitChallenge', params: { courseId: hero.course.id, unitChallengeId: hero.currentNode.id }, initial: false };
+  if (!hero.course || !hero.currentNode) return null;
+  return { screen: 'Roadmap', params: { courseId: hero.course.id, focusNode: { id: hero.currentNode.id, type: hero.currentNode.type } } };
 }
 export const greetingSubtitle: Record<HomeHero['type'], string> = {
   NEW: 'Comienza tu camino en inglés.', ASSESSED: 'Tu próximo paso empieza aquí.',

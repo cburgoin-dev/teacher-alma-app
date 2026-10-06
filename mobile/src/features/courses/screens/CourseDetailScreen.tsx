@@ -1,3 +1,4 @@
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -14,6 +15,7 @@ import { demoLearningOutcomes } from '../demoLearningOutcomes';
 
 export function CourseDetailScreen({ route, navigation }: NativeStackScreenProps<CoursesStackParamList, 'CourseDetail'>) {
   const { courseId } = route.params;
+  const insets = useSafeAreaInsets();
   const resource = useCourseResource(useCallback(async (signal: AbortSignal) => {
     const [course, roadmap] = await Promise.all([coursesApi.detail(courseId, signal), coursesApi.roadmap(courseId, signal)]);
     return { course, roadmap };
@@ -35,7 +37,7 @@ export function CourseDetailScreen({ route, navigation }: NativeStackScreenProps
     setStarting(true); setStartError(null);
     try {
       await coursesApi.start(courseId, controller.signal);
-      if (!controller.signal.aborted) navigation.replace('Roadmap', { courseId });
+      if (!controller.signal.aborted) navigation.navigate('Roadmap', { courseId });
     } catch (error) { if (!controller.signal.aborted) setStartError(error); }
     finally { if (request.current === controller) { request.current = null; setStarting(false); } }
   };
@@ -81,7 +83,7 @@ export function CourseDetailScreen({ route, navigation }: NativeStackScreenProps
       </View>
       {startError ? <Text accessibilityRole="alert" style={[styles.body, { color: '#B21F36' }]}>{errorMessage(startError)}</Text> : null}
     </ScrollView>
-    <View style={local.footer}>
+    <View style={[local.footer, { paddingBottom: Math.max(12, insets.bottom) }]}>
       <View style={local.footerInner}>
         <Button arrow={action === 'START' || action === 'ROUTE'} title={labels[action]} busy={starting} disabled={action === 'SOON' || action === 'EMPTY'} tone={action === 'ACCESS' ? 'gold' : action === 'SOON' || action === 'EMPTY' ? 'gray' : 'red'} onPress={action === 'ACCESS' ? showAccessInfo : action === 'ROUTE' ? () => navigation.navigate('Roadmap', { courseId }) : start} />
       </View>

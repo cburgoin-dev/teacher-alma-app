@@ -13,13 +13,17 @@ const covers = {
 };
 const captions: Record<string, string[]> = { A1: ['Good things', 'start here'], A2: ['Bigger', 'conversations', 'await'] };
 
+/** Shared real course artwork; callers choose their own composition without duplicating asset maps. */
+export function courseCoverSource(uri: string | null, level: string | null) {
+  return uri ? { uri } : covers[level?.trim().toUpperCase() as keyof typeof covers] ?? covers.A1;
+}
 export function CourseCover({ uri, level, style, hero = false, badge }: {
   uri: string | null; level: string | null; style?: ViewStyle; hero?: boolean; badge?: 'premium' | 'soon' | undefined;
 }) {
   const [failedUri, setFailedUri] = useState<string | null>(null);
   const key = level?.trim().toUpperCase() ?? '';
   const fallback = !uri || uri === failedUri;
-  const source = fallback ? covers[key as keyof typeof covers] ?? covers.A1 : { uri };
+  const source = courseCoverSource(fallback ? null : uri, level);
   return (
     <View style={[s.cover, style]}>
       <Image source={source} resizeMode="cover" style={[s.image, hero && fallback && s.heroImage]}
