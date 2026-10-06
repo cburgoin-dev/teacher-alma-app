@@ -31,7 +31,7 @@ export function HomeScreen({ navigation }: CompositeScreenProps<BottomTabScreenP
   const data = home.data;
   return <SafeAreaView edges={['top', 'left', 'right']} style={s.page}>
     <ScrollView contentContainerStyle={s.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { void refresh(); }} tintColor={colors.blue} />}>
-      <MainAppHeader home data={gamification.data} loading={gamification.loading} error={gamification.error} onOpenShop={() => navigation.navigate('GamificationShop')} />
+      <MainAppHeader data={gamification.data} loading={gamification.loading} error={gamification.error} onOpenShop={() => navigation.navigate('GamificationShop')} />
       {home.error ? <View style={s.error} accessibilityLiveRegion="polite"><Text style={s.body}>{home.error}{data ? ' Mostramos tu última información disponible.' : ''}</Text><Button title="Reintentar" tone="blue" onPress={() => { void refresh(); }} /></View> : null}
       {!data && home.loading ? <View style={s.loading}><ActivityIndicator color={colors.blue} size="large" /><Text style={s.body}>Cargando tu inicio…</Text></View> : null}
       {data ? <>
@@ -47,8 +47,8 @@ export function HomeScreen({ navigation }: CompositeScreenProps<BottomTabScreenP
 }
 const s = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#FFF' },
-  content: { paddingHorizontal: 18, paddingTop: 6, paddingBottom: 22, gap: 14, width: '100%', maxWidth: 640, alignSelf: 'center', flexGrow: 1 },
-  greeting: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 0, paddingBottom: 3 }, greetingCopy: { flex: 1, gap: 3 },
+  content: { paddingHorizontal: 18, paddingTop: 4, paddingBottom: 22, gap: 10, width: '100%', maxWidth: 640, alignSelf: 'center', flexGrow: 1 },
+  greeting: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 0, paddingBottom: 1 }, greetingCopy: { flex: 1, gap: 3 },
   title: { color: colors.ink, fontSize: 27, lineHeight: 33, fontWeight: '800', letterSpacing: -.7 },
   subtitle: { color: colors.muted, fontSize: 15, lineHeight: 21 },
   avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#DDEBFF', borderWidth: 3, borderColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center' },

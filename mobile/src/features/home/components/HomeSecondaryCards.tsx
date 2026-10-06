@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Target from 'lucide-react-native/icons/target';
-import BookOpen from 'lucide-react-native/icons/book-open';
+import ArrowRight from 'lucide-react-native/icons/arrow-right';
+import ArrowUpRight from 'lucide-react-native/icons/arrow-up-right';
 import NotebookPen from 'lucide-react-native/icons/notebook-pen';
 import ChevronRight from 'lucide-react-native/icons/chevron-right';
 import { colors } from '../../../theme';
@@ -28,16 +29,16 @@ export function HomeSecondaryCards({ data, gamification, onNavigate }: { data: H
   const goal = gamification?.dailyGoal;
   const ratio = goal && goal.target > 0 ? Math.min(100, Math.max(0, goal.progress / goal.target * 100)) : 0;
   const left = <>
-    <View style={s.cardTop}><View accessible={false} style={[s.iconHalo, s.redHalo]}><View style={[s.iconCore, s.redCore]}>{title === 'Repaso' ? <NotebookPen size={23} color="#FFF" /> : <BookOpen size={23} color="#FFF" />}</View></View>
+    <View style={s.cardTop}><View accessible={false} style={[s.iconHalo, s.redHalo]}><View style={[s.iconCore, s.redCore]}><NotebookPen size={26} strokeWidth={2.5} color="#FFF" /></View></View>
       <View style={s.copy}><View style={s.titleRow}><Text style={s.title}>{title}</Text>{destination ? <ChevronRight size={15} color={colors.muted} /> : null}</View><Text style={s.detail}>{detail}</Text></View>
     </View>
-    {action ? <View style={s.actionPill}><Text style={s.action}>{action} →</Text></View> : null}
+    {action ? <View style={s.actionPill}><Text style={s.action}>{action}</Text><ArrowRight size={16} strokeWidth={2.5} color={colors.red} accessible={false} /></View> : null}
   </>;
   return <View style={[s.row, fontScale >= 1.35 && s.stacked]}>
     {destination ? <Pressable accessibilityRole="button" accessibilityLabel={`${title}. ${detail}. ${action}`} onPress={() => onNavigate(destination!)} style={({ pressed }) => [s.card, s.red, { opacity: pressed ? .8 : 1 }]}>{left}</Pressable>
       : <View style={[s.card, s.red]}>{left}</View>}
     <View style={[s.card, s.blue]}>
-      <View style={s.cardTop}><View accessible={false} style={[s.iconHalo, s.blueHalo]}><View style={[s.iconCore, s.blueCore]}><Target size={27} color={colors.blue} /></View></View>
+      <View style={s.cardTop}><View accessible={false} style={[s.iconHalo, s.blueHalo]}><View style={[s.iconCore, s.blueCore]}><Target size={30} strokeWidth={2.8} color={colors.blue} /><View style={s.targetAccent}><ArrowUpRight size={19} strokeWidth={3.5} color={colors.red} /></View></View></View>
         <View style={s.copy}><Text style={s.title}>{hero.type === 'NEW' ? 'Tu primera meta' : 'Meta diaria'}</Text>
           <Text style={s.detail}>{goal ? goal.completed ? '¡Meta completada!' : `Meta ${presetLabel[goal.preset].toLowerCase()}` : 'Aún sin cargar'}</Text></View>
       </View>
@@ -47,23 +48,24 @@ export function HomeSecondaryCards({ data, gamification, onNavigate }: { data: H
           <View style={s.track}><View style={[s.fill, { width: `${ratio}%` }]} /></View><Text style={s.percent}>{Math.round(ratio)}%</Text>
         </View>
       </View> : <Text style={s.detail}>Tu progreso aparecerá aquí.</Text>}
-      <View style={[s.actionPill, s.goalAction]}><Text style={[s.action, { color: colors.blue }]}>Ver detalles →</Text></View>
+      <View style={[s.actionPill, s.goalAction]}><Text style={[s.action, { color: colors.blue }]}>Ver detalles</Text><ArrowRight size={16} strokeWidth={2.5} color={colors.blue} accessible={false} /></View>
     </View>
   </View>;
 }
 const s = StyleSheet.create({
   row: { flexDirection: 'row', gap: 10, alignItems: 'stretch' }, stacked: { flexDirection: 'column' },
-  card: { flex: 1, minWidth: 0, borderRadius: 17, borderWidth: 1, padding: 11, gap: 10, shadowColor: '#547DB0', shadowOffset: { width: 0, height: 3 }, shadowOpacity: .06, shadowRadius: 7, elevation: 1 },
+  card: { flex: 1, minWidth: 0, borderRadius: 17, borderWidth: 1, padding: 10, gap: 8, shadowColor: '#547DB0', shadowOffset: { width: 0, height: 3 }, shadowOpacity: .06, shadowRadius: 7, elevation: 1 },
   red: { backgroundColor: '#FFF7F8', borderColor: '#FFE1E7' }, blue: { backgroundColor: '#F1F8FF', borderColor: '#D6E8FD' },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 7 }, copy: { flex: 1, minWidth: 0, gap: 4 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  iconHalo: { width: 44, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center' },
-  iconCore: { width: 36, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-7deg' }] },
+  iconHalo: { width: 44, height: 46, borderRadius: 25, alignItems: 'center', justifyContent: 'center' },
+  iconCore: { width: 36, height: 38, borderRadius: 20, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-7deg' }] },
+  targetAccent: { position: 'absolute', top: -3, right: -3 },
   redHalo: { backgroundColor: '#FFE3E9' }, redCore: { backgroundColor: '#FF3B58' }, blueHalo: { backgroundColor: '#DBECFF' }, blueCore: { backgroundColor: '#C0DEFF' },
   title: { color: colors.ink, fontSize: 15, lineHeight: 20, fontWeight: '800', flexShrink: 1, letterSpacing: -.2 },
   detail: { color: colors.muted, fontSize: 12, lineHeight: 17 },
-  actionPill: { backgroundColor: '#FFE8ED', borderRadius: 18, paddingVertical: 6, paddingHorizontal: 5, alignItems: 'center', marginTop: 'auto' },
-  action: { color: colors.red, fontSize: 12, lineHeight: 17, fontWeight: '700' },
+  actionPill: { backgroundColor: '#FFE8ED', borderRadius: 18, paddingVertical: 6, paddingHorizontal: 5, flexDirection: 'row', justifyContent: 'center', gap: 5, alignItems: 'center', marginTop: 'auto' },
+  action: { color: colors.red, fontSize: 12, lineHeight: 17, fontWeight: '700', flexShrink: 1 },
   goalAction: { backgroundColor: '#DFEFFF' },
   goalFooter: { gap: 5, marginTop: 'auto' }, ratio: { color: colors.muted, fontSize: 12, lineHeight: 17 },
   progressRow: { flexDirection: 'row', gap: 5, alignItems: 'center' }, percent: { color: colors.muted, fontSize: 12, fontWeight: '700' },

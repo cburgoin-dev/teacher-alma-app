@@ -41,7 +41,7 @@ No course is auto-started. Locked nodes remain visible and offer the real Roadma
 with Ver ruta rather than a nonexistent payment flow. Missing context has no CTA.
 
 `useGamification` and `gamificationResource` remain the only shared source for
-coins/streak/Daily Goal. MainAppHeader gains an opt-in Home logo size. Shared metrics
+coins/streak/Daily Goal. MainAppHeader uses one responsive logo/metrics policy for Home and Courses. Shared metrics
 now retain last-known values during refresh/transient errors instead of flashing
 placeholders. Shop spending validation is unchanged. No new cache or endpoint is
 introduced for Gamification.
@@ -60,7 +60,7 @@ to two cover-led featured cards follow the primary references. Existing course
 artwork and simple book/trophy symbols replace generated Alma characters. Greeting
 uses the real name or a neutral Hola; the avatar is a non-interactive outline.
 Notifications are omitted. Header uses the official horizontal mark without changing
-other screens' logo sizes.
+the shared Home/Courses composition.
 
 - NEW: disabled, explicitly coming-soon Diagnostic CTA; real beginner course or
   catalog alternative plus shared Daily Goal.
@@ -184,3 +184,35 @@ another device pass. The JS warning regression is verified, not physical accepta
 Remaining visual differences from primary: official horizontal branding, neutral
 avatar, existing landscapes and real course/goal copy; no notification or flag.
 The crop/layout changes need new Android screenshots before judging fidelity.
+
+## V4 ACTIVE final polish (2026-10-06)
+
+V3 was physically tested on Android and accepted by the user as the baseline.
+V4 retains its artwork, focal helper, general clip, featured cards, API and navigation.
+
+- MainAppHeader no longer accepts a home flag. Both screens use the official
+  trimmed logo at 172dp (150dp below 360dp or with fontScale >1.3). Metrics compact
+  below 390dp or with larger fonts, independently of screen. Wrapping remains
+  available for longer metrics; no notification placeholder space is reserved.
+- Hero heading uses ChevronRight; CTA keeps ArrowRight. Numeric gradient stops
+  remain valid, with slightly stronger lower blue depth. Pill/padding and badge
+  are subtly smaller. Decorative italic Let's do this! is hidden from accessibility
+  and omitted with the artwork at narrow widths/large fonts. No new font or asset.
+- Secondary uses a stronger notebook/pencil and target with a red arrow accent.
+  Footer arrows are ArrowRight components. Only real actions get a title chevron;
+  Practice and Goal remain non-interactive. Shared goal and Review behavior remain.
+- Main scroll gaps reduce 14 to 10dp, Hero padding/heading/pill save 8dp, and
+  secondary padding/gaps save about 6dp. Combined saving is approximately 30dp
+  at normal sizing, dependent on text wrapping. No fixed text heights were added.
+
+Validation: TypeScript PASS; full Mobile tests 162/162 PASS, including shared header
+policy, icon convention, decorative accessibility/responsive behavior and retained
+navigation/placeholder behavior. Backend and API unchanged; no backend tests needed.
+Physical V4 layout/fidelity remains to be confirmed with new Android captures;
+no 90% fidelity claim is made. Official horizontal brand, neutral avatar, existing
+landscapes and real goal copy remain deliberate differences from the primary.
+Future focal mapping by artwork identity instead of level and cross-app brand
+harmonization remain deferred.
+
+V4 Android export PASS: dist/home-v4-check (1089 modules, 2.4 MB Hermes).
+git diff --check PASS. Export reports the environment NO_COLOR/FORCE_COLOR warning.

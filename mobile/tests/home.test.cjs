@@ -25,7 +25,7 @@ function component(relative, overrides = {}) {
     if (name === 'react') return { useEffect() {}, useState: value => [value, () => {}], useCallback: fn => fn, useSyncExternalStore: (_, snapshot) => snapshot() };
     if (name === 'react-native') return { StyleSheet: { create: v => v }, useWindowDimensions: () => overrides.dimensions ?? { width: 390, fontScale: 1 }, ...Object.fromEntries(['View', 'Text', 'Pressable', 'ScrollView', 'RefreshControl', 'ActivityIndicator'].map(n => [n, n])) };
     if (name === 'react-native-safe-area-context') return { SafeAreaView: 'SafeAreaView' };
-    if (name.startsWith('lucide-react-native/icons/')) return { default: name };
+    if (name.startsWith('lucide-react-native/icons/')) return { __esModule: true, default: name };
     if (name.endsWith('/ui')) return { Button: 'Button' };
     if (name.endsWith('/CourseCover')) return { CourseCover: 'CourseCover', courseCoverSource: () => 1 };
     if (name === 'react-native-svg') return { default: 'Svg', ...Object.fromEntries(['ClipPath', 'Defs', 'Ellipse', 'Image', 'LinearGradient', 'Path', 'Rect', 'Stop'].map(n => [n, n])) };
@@ -110,7 +110,7 @@ test('secondary cards have Review only for real count, otherwise non-interactive
   assert.match(text(tree), /6 ejercicios pendientes/); assert.match(text(tree), /1 \/ 2/); buttons(tree)[0].props.onPress(); assert.equal(route.screen, 'Review');
   const practice = HomeSecondaryCards({ data: response(active), gamification: aggregate, onNavigate() {} });
   assert.match(text(practice), /Práctica/); assert.equal(buttons(practice).length, 0);
-  assert.match(text(practice), /Muy pronto →/); assert.match(text(practice), /Ver detalles →/);
+  assert.match(text(practice), /Muy pronto/); assert.match(text(practice), /Ver detalles/);
   const done = HomeSecondaryCards({ data: response(active), gamification: { ...aggregate, dailyGoal: { ...aggregate.dailyGoal, completed: true } }, onNavigate() {} });
   assert.match(text(done), /Meta completada/);
 });
@@ -192,4 +192,27 @@ test('focus refreshes Home, background resume refreshes Home/shared Gamification
     callback('background'); callback('active'); assert.equal(homes, 2); assert.equal(games, 1);
     cleanup(); assert.equal(removed, 1);
   } finally { homeResource.refresh = oldHome; gamificationResource.refresh = oldGamification; }
+});
+
+test('V4 Hero distinguishes navigation chevron from CTA arrow; decorative copy hides on narrow/large fonts', () => {
+  const tree = heroCard(active);
+  assert.equal(nodes(tree).filter(n => n.type === 'lucide-react-native/icons/chevron-right').length, 1);
+  assert.equal(nodes(tree).filter(n => n.type === 'lucide-react-native/icons/arrow-right').length, 1);
+  const decoration = nodes(tree).find(n => n.props?.importantForAccessibility === 'no-hide-descendants');
+  assert.ok(decoration); assert.equal(decoration.props.accessibilityElementsHidden, true);
+  assert.match(text(decoration), /Let's do this!/);
+  for (const dimensions of [{ width: 320, fontScale: 1 }, { width: 390, fontScale: 1.4 }]) {
+    const { ActiveHomeHero } = component('../src/features/home/components/ActiveHomeHero.tsx', { dimensions });
+    assert.doesNotMatch(text(ActiveHomeHero({ hero: active, onNavigate() {} })), /Let's/);
+  }
+});
+test('V4 secondary footer arrows are components; only actionable cards have title chevrons', () => {
+  const { HomeSecondaryCards } = component('../src/features/home/components/HomeSecondaryCards.tsx');
+  for (const count of [0, 3]) {
+    const tree = HomeSecondaryCards({ data: { ...response(active), review: { pendingCount: count } }, gamification: aggregate, onNavigate() {} });
+    assert.doesNotMatch(text(tree), /→/);
+    assert.equal(nodes(tree).filter(n => n.type === 'lucide-react-native/icons/arrow-right').length, 2);
+    assert.equal(nodes(tree).filter(n => n.type === 'lucide-react-native/icons/chevron-right').length, count ? 1 : 0);
+    assert.equal(buttons(tree).length, count ? 1 : 0);
+  }
 });

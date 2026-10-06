@@ -558,7 +558,7 @@ test('V4 composed Roadmap header shares live metrics and coin navigation; root l
   tree.props.onBack(); nodes(tree).find(n => n.type === 'Pressable').props.onPress();
   assert.equal(opened, 1); assert.equal(backs, 1); assert.equal(tree.props.safeTop, true);
   assert.ok(text(tree).includes('250')); assert.ok(text(tree).includes('4'));
-  for (const [width, fontScale, expected] of [[320, 1, 140], [390, 1, 148], [390, 1.5, 140]]) {
+  for (const [width, fontScale, expected] of [[320, 1, 150], [390, 1, 172], [390, 1.5, 150]]) {
     const { MainAppHeader } = component('../src/components/MainAppHeader.tsx', { dimensions: { width, fontScale } });
     const header = MainAppHeader({ data: aggregate(), loading: false, error: null, onOpenShop() {} });
     assert.equal(nodes(header).find(n => n.type === 'AlmaLogo').props.horizontalWidth, expected);
@@ -578,4 +578,19 @@ test('root Detail and Roadmap headers use natural Back and existing global Shop'
     if (name === 'Roadmap') header.props.onOpenShop();
   }
   assert.deepEqual(visited, ['GamificationShop']); assert.equal(back, 2);
+});
+
+test('V4 header policy is shared by Home and Courses, with common trimming and responsive metrics', () => {
+  for (const [width, fontScale, expected, compact] of [[320, 1, 150, true], [360, 1, 172, true], [390, 1, 172, false], [390, 1.5, 150, true]]) {
+    const { MainAppHeader } = component('../src/components/MainAppHeader.tsx', { dimensions: { width, fontScale } });
+    const tree = MainAppHeader({ data: aggregate(), loading: false, error: null });
+    const logo = nodes(tree).find(n => n.type === 'AlmaLogo');
+    assert.equal(logo.props.horizontalWidth, expected); assert.equal(logo.props.trimHorizontal, true);
+    const metric = nodes(tree).find(n => typeof n.type === 'function' && n.type.name === 'GamificationMetrics');
+    assert.equal(metric.props.compact, compact);
+  }
+  for (const screen of ['home/screens/HomeScreen.tsx', 'courses/screens/CoursesScreen.tsx']) {
+    const source = fs.readFileSync(path.resolve(__dirname, '../src/features', screen), 'utf8');
+    assert.match(source, /<MainAppHeader data=/); assert.doesNotMatch(source, /<MainAppHeader home/);
+  }
 });

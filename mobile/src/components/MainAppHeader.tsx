@@ -2,11 +2,12 @@ import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { AlmaLogo } from './AlmaLogo';
 import { GamificationMetrics, type MetricProps } from './GamificationMetrics';
 /** Safe-area insets belong to the hosting screen; long values may wrap. */
-export function MainAppHeader({ home = false, ...props }: MetricProps & { home?: boolean }) {
+export function MainAppHeader(props: MetricProps) {
   const { width, fontScale } = useWindowDimensions();
-  const logoWidth = home ? (width < 360 ? 164 : 184) : width < 360 || fontScale > 1.3 ? 140 : 148;
-  return <View style={home ? [s.row, { columnGap: 6, minHeight: 48 }] : s.row}><AlmaLogo horizontal horizontalWidth={logoWidth} trimHorizontal={home} /><GamificationMetrics {...props} compact={home || width < 360 || fontScale > 1.3} /></View>;
+  const compact = width < 390 || fontScale > 1.3;
+  const logoWidth = width < 360 || fontScale > 1.3 ? 150 : 172;
+  return <View style={s.row}><AlmaLogo horizontal horizontalWidth={logoWidth} trimHorizontal /><GamificationMetrics {...props} compact={compact} /></View>;
 }
 const s = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', columnGap: 10, rowGap: 2 },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', minHeight: 48, columnGap: 6, rowGap: 2 },
 });
