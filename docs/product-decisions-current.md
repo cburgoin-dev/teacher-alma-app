@@ -103,14 +103,25 @@ Do not implement this as a fake bottom bar inside Roadmap; treat it as navigatio
 
 ## Home v1 status
 
-Home Backend v1 is implemented. Home Mobile v1 is in its final physical/art-direction acceptance pass on `feature/home-v1`.
+Home Backend v1 and Home Mobile v1 are accepted as closed for the current MVP pass.
 
-The existing DEV Home state preview is a development-only presentation tool and must not affect production data or behavior.
+The development-only Home state preview remains useful for regression/design checks and must not affect production data or behavior.
 
-Expected post-v1 visual/product debt includes richer illustration motifs, official Alma character/avatar integration, decorative typography, brand harmonization and deeper polish of secondary Home states.
+Known post-v1 visual/product debt includes richer illustration motifs, official Alma character/avatar integration, decorative typography, brand harmonization, real Diagnosis/Practice/Notifications integration and deeper polish of ASSESSED/COURSE_COMPLETED if later justified.
 
-## Next functional vertical: Progress v1
+## Progress v1
 
-After Home v1 closes and the Roadmap/navigation follow-up is handled at the appropriate time, Progress is the next planned learner-facing vertical for conceptual definition/implementation.
+Canonical product semantics: `docs/progress-semantics-v1.md`.
 
-Progress should be derived from existing learning data rather than create a second progression engine. Relevant existing domains include Course/Lesson progress, Review, Unit Challenge progression and Gamification.
+Progress is the next learner-facing vertical. It is a read-oriented composition over existing Course/Roadmap progress, Review and Gamification data rather than a second progression engine.
+
+Approved v1 direction includes:
+
+- current/recent course progress with `Ver ruta`;
+- pending Review/reinforcement summary;
+- weekly consistency;
+- a separate monthly Activity Calendar;
+- calendar distinctions between real learning, Protector-covered dates, repaired dates and unrepaired breaks;
+- no Strengths/mastery, Achievements, XP, ranking/social system or fake Practice engine in v1.
+
+Gamification remains authoritative for streak, Daily Goal, coins, inventory and timezone semantics. Protected/repaired continuity dates are not counted as real learning days.
