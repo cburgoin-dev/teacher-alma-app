@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Svg, { ClipPath, Defs, Ellipse, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import Svg, { ClipPath, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import ArrowRight from 'lucide-react-native/icons/arrow-right';
 import ChevronRight from 'lucide-react-native/icons/chevron-right';
 import { HomeCourseArtwork } from './HomeCourseArtwork';
@@ -21,10 +21,9 @@ export function ActiveHomeHero({ hero, onNavigate }: { hero: ActiveHero; onNavig
           <ClipPath id="homeCourseLandscape"><Path d="M360 24 C321 20 292 20 270 36 C228 64 217 91 225 128 C234 174 246 227 257 273 Q308 281 360 284 Z" /></ClipPath>
         </Defs>
         <Rect width="360" height="300" fill="url(#homeBlue)" />
-        <Ellipse cx="60" cy="62" rx="85" ry="38" fill="#7EC4FF" opacity={0.045} />
-        <Ellipse cx="186" cy="195" rx="47" ry="36" fill="#00439B" opacity={0.07} />
-        <Ellipse cx="178" cy="116" rx="13" ry="5" fill="#7EC4FF" opacity={0.12} />
-        <Ellipse cx="183" cy="111" rx="6" ry="7" fill="#7EC4FF" opacity={0.12} />
+        <Path d="M167 118 C158 118 158 108 167 107 C167 96 182 93 187 104 C196 99 204 105 202 112 C211 113 211 121 202 121 L170 121 Q166 121 167 118 Z" fill="#7EC4FF" opacity={0.13} />
+        <Path d="M24 70 C38 53 68 63 80 53 S105 44 116 51 C98 52 87 67 69 67 S39 61 24 70 Z" fill="#A0D8FF" opacity={0.06} />
+        <Path d="M155 215 C148 193 166 178 178 189 C178 166 202 160 210 182 C225 171 243 183 239 202 Q254 221 222 226 Z" fill="#00439B" opacity={0.09} />
         {illustrated && hero.course ? <HomeCourseArtwork uri={hero.course.coverUrl} level={hero.course.level} box={{ x: 225, y: 24, width: 135, height: 260 }} clipPath="url(#homeCourseLandscape)" /> : null}
         {illustrated ? <Path d="M219 300 C261 267 272 229 360 225 L360 300 Z" fill="#0754B9" /> : null}
       </Svg>

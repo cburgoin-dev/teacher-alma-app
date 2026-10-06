@@ -379,3 +379,43 @@ fidelity or full Home closure is claimed from component tests.
 Android export PASS: dist/home-v1-preview-check (1089 modules, 2.4 MB Hermes).
 Production Hermes marker check: dev-preview-a1, dev-preview-diagnostic and DEV selector label absent.
 git diff --check PASS. Export only reported the existing NO_COLOR/FORCE_COLOR environment warning.
+
+## Final organic/compact pass — ready for final physical acceptance
+
+The official ACTIVE and NEW mockups were opened and compared with the supplied
+Android captures. Existing PathScenery was inspected: its circle-based cloud and
+Animated wrapper are not reused. ACTIVE instead uses three static, low-opacity
+SVG Paths (cloud, curved highlight and scalloped silhouette), retaining its focal
+crop, swoosh, slogan, navigation, progress and accepted layout.
+
+NEW removes the visible implementation-status note and CTA suffix. The label is
+now only Hacer diagnóstico; it remains disabled with no handler/route. Diagnosis
+is not implemented. This limitation belongs here, not in visible product copy.
+The sign, typography, gaps and padding are smaller; organic background paths replace
+the large circular glow. No new raster asset, font or dependency was introduced.
+
+ASSESSED removes the redundant recommendation sentence and standalone artwork row.
+Its single recommendation row combines actual title/status/access with a smaller
+cover. Missing recommendation/level remain safe. COMPLETED uses a compact trophy
+inside a scalloped medal with ribbons/star accents, excluded from accessibility.
+Real course/progress and next-course context remain, including COMING_SOON/nulls.
+Shared non-ACTIVE gaps reduce 16 to 10dp, padding 18 to 16dp; recommendation spacing
+and artwork dimensions are smaller, with no fixed text heights or new truncation.
+
+Secondary cards, Featured, header, Gamification, navigation, Roadmap, backend and
+DEV preview are unchanged. The existing preview remains the physical acceptance
+route; no synthetic navigation or persistence was added.
+
+Validation: TypeScript PASS; full Mobile suite 169/169 PASS. Await final Android
+captures of all four states with the DEV selector hidden, including narrow/large
+font checks. Status: ready for final physical acceptance, NOT closed by the agent.
+
+Home v2/transversal debt: official Alma character/avatar integration; richer
+illustration system; hand-drawn/decorative typography; brand harmonization; real
+Diagnosis; Practice; Daily Goal detail; Profile/avatar; Notifications; deeper
+secondary-state polish if product requires it. Existing Roadmap/navigation proposal
+remains separate and unimplemented. Physical fidelity is not established by tests.
+
+Final Android export PASS: dist/home-final-compact-check (1089 modules, 2.4 MB Hermes).
+Production DEV fixture/control markers absent. git diff --check PASS.
+Export reported only the existing NO_COLOR/FORCE_COLOR environment warning.

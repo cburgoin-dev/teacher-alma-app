@@ -223,7 +223,7 @@ test('V5 goal arrow enters the target; NEW, ASSESSED and completion use safe rea
   assert.equal(nodes(secondary).filter(n => n.type === 'lucide-react-native/icons/arrow-down-left').length, 1);
   assert.equal(nodes(secondary).filter(n => n.type === 'lucide-react-native/icons/arrow-up-right').length, 0);
   const newTree = heroCard(fresh);
-  assert.match(text(newTree), /TU PRIMER PASO/); assert.match(text(newTree), /Diagnóstico aún no disponible/);
+  assert.match(text(newTree), /TU PRIMER PASO/); assert.doesNotMatch(text(newTree), /Próximamente|no disponible|DEV|placeholder/); assert.equal(buttons(newTree)[0].props.title, 'Hacer diagnóstico');
   assert.equal(buttons(newTree).length, 1); assert.equal(buttons(newTree)[0].props.disabled, true);
   assert.equal(buttons(newTree)[0].props.onPress, undefined);
   const paid = heroCard({ ...assessed, recommendedCourse: { ...course, access: { ...course.access, hasFreeContent: false } } });
@@ -309,4 +309,19 @@ test('secondary chevrons are absolute card affordances, outside title rows', () 
   const holders = nodes(tree).filter(n => n.type === 'View' && n.props.style?.position === 'absolute' && nodes(n).some(c => c.type === 'lucide-react-native/icons/chevron-right'));
   assert.equal(holders.length, 2); assert.equal(buttons(tree).length, 0);
   for (const holder of holders) assert.equal(holder.props.pointerEvents, 'none');
+});
+
+test('final compact heroes remove redundant copy and preserve course access/status', () => {
+  const tree = heroCard(assessed);
+  assert.doesNotMatch(text(tree), /Este es el curso recomendado para ti/);
+  assert.match(text(tree), /Tu nivel recomendado: A2/);
+  assert.match(text(tree), /Incluye contenido gratuito/);
+  assert.equal(nodes(tree).filter(n => n.type === 'CourseCover').length, 1);
+  const soon = heroCard({ ...assessed, recommendedCourse: { ...course, status: 'COMING_SOON' } });
+  assert.match(text(soon), /Próximamente/);
+  const activeTree = heroCard(active);
+  assert.equal(nodes(activeTree).filter(n => n.type === 'Ellipse').length, 0);
+  const done = heroCard(completed);
+  const decoration = nodes(done).find(n => n.props?.importantForAccessibility === 'no-hide-descendants');
+  assert.ok(decoration); assert.equal(decoration.props.accessibilityElementsHidden, true);
 });
