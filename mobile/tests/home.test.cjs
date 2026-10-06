@@ -23,7 +23,7 @@ function component(relative, overrides = {}) {
   const load = name => {
     if (name in overrides) return overrides[name];
     if (name === 'react') return { useEffect() {}, useState: value => [value, () => {}], useCallback: fn => fn, useSyncExternalStore: (_, snapshot) => snapshot() };
-    if (name === 'react-native') return { StyleSheet: { create: v => v }, useWindowDimensions: () => overrides.dimensions ?? { width: 390, fontScale: 1 }, ...Object.fromEntries(['View', 'Text', 'Pressable', 'ScrollView', 'RefreshControl', 'ActivityIndicator'].map(n => [n, n])) };
+    if (name === 'react-native') return { Alert: { alert: (...args) => overrides.alerts?.push(args) }, StyleSheet: { create: v => v }, useWindowDimensions: () => overrides.dimensions ?? { width: 390, fontScale: 1 }, ...Object.fromEntries(['View', 'Text', 'Pressable', 'ScrollView', 'RefreshControl', 'ActivityIndicator'].map(n => [n, n])) };
     if (name === 'react-native-safe-area-context') return { SafeAreaView: 'SafeAreaView' };
     if (name.startsWith('lucide-react-native/icons/')) return { __esModule: true, default: name };
     if (name.endsWith('/ui')) return { Button: 'Button' };
@@ -244,4 +244,69 @@ test('V5 header containers share top spacing inside equivalent safe areas', () =
     assert.match(source, /paddingTop: mainHeaderTopSpacing/);
     assert.ok(source.includes("edges={['top', 'left', 'right']}"));
   }
+});
+
+test('DEV snapshots render all states; REAL and production preserve the exact resource reference', () => {
+  const { homePreviewFixtures, previewHomeData, homePreviewModes } = require('../src/features/home/devPreview.ts');
+  const real = response(active), before = JSON.stringify(real);
+  for (const mode of homePreviewModes) {
+    assert.equal(previewHomeData(real, mode, false), real);
+    const data = previewHomeData(real, mode, true);
+    if (mode === 'REAL') assert.equal(data, real);
+    else { assert.equal(data, homePreviewFixtures[mode]); assert.equal(data.state, mode); assert.doesNotThrow(() => nodes(heroCard(data.hero))); }
+  }
+  assert.equal(previewHomeData(null, 'REAL', true), null);
+  assert.equal(JSON.stringify(real), before);
+});
+test('DEV screen selection/hiding is in memory; fixture routes cannot reach real navigation; production ignores selection', () => {
+  const originalDev = global.__DEV__, originalFetch = global.fetch;
+  const states = [], routes = [], alerts = []; let index = 0, calls = 0;
+  const real = response(active), before = JSON.stringify(real);
+  const overrides = {
+    alerts,
+    react: { useEffect() {}, useState: initial => { const i = index++; if (!(i in states)) states[i] = initial; return [states[i], value => { states[i] = value; }]; } },
+    '../useHome': { useHome: () => ({ data: real, loading: false, error: null, refresh() {} }) },
+    '../../gamification/hooks/useGamification': { useGamification: () => ({ data: aggregate, loading: false, error: null, refresh() {} }) },
+    '../components/HomePreviewControl': { HomePreviewControl: 'PreviewControl' },
+  };
+  try {
+    global.fetch = () => { calls++; throw Error('unexpected network'); }; global.__DEV__ = true;
+    const { HomeScreen } = component('../src/features/home/screens/HomeScreen.tsx', overrides);
+    const render = () => { index = 0; return HomeScreen({ navigation: { navigate: (...args) => routes.push(args) } }); };
+    let tree = render();
+    const control = nodes(tree).find(n => n.type === 'PreviewControl');
+    assert.equal(control.props.mode, 'REAL'); control.props.onSelect('ACTIVE'); tree = render();
+    buttons(tree).find(n => n.props.accessibilityLabel === 'Continuar en la ruta del curso').props.onPress();
+    assert.equal(routes.length, 0); assert.equal(alerts.length, 1);
+    nodes(tree).find(n => n.type === 'PreviewControl').props.onHide(); tree = render();
+    assert.equal(nodes(tree).filter(n => n.type === 'PreviewControl').length, 0);
+    nodes(tree).find(n => n.type === 'Text' && n.props.onLongPress).props.onLongPress(); tree = render();
+    const restored = nodes(tree).find(n => n.type === 'PreviewControl'); assert.equal(restored.props.mode, 'ACTIVE');
+    restored.props.onSelect('REAL'); tree = render();
+    buttons(tree).find(n => n.props.accessibilityLabel === 'Continuar en la ruta del curso').props.onPress();
+    assert.deepEqual(routes[0], ['Roadmap', { courseId: 'c', focusNode: { id: 'lesson', type: 'LESSON' } }]);
+    global.__DEV__ = false; states[1] = 'NEW'; index = 0;
+    const production = component('../src/features/home/screens/HomeScreen.tsx', overrides).HomeScreen({ navigation: { navigate() {} } });
+    assert.equal(nodes(production).filter(n => n.type === 'PreviewControl').length, 0); assert.match(text(production), /Lección real/);
+    assert.equal(calls, 0); assert.equal(JSON.stringify(real), before);
+  } finally { global.__DEV__ = originalDev; global.fetch = originalFetch; }
+});
+test('DEV selector offers five states, collapses after selection, and hides explicitly', () => {
+  let expanded = false, selected, hidden = false;
+  const { HomePreviewControl } = component('../src/features/home/components/HomePreviewControl.tsx', {
+    react: { useState: () => [expanded, value => { expanded = value; }] },
+  });
+  const render = () => HomePreviewControl({ mode: 'REAL', onSelect: value => { selected = value; }, onHide: () => { hidden = true; } });
+  buttons(render())[0].props.onPress(); assert.equal(expanded, true);
+  const choices = buttons(render()); assert.equal(choices.length, 7);
+  choices.find(n => text(n) === 'COMPLETED').props.onPress();
+  assert.equal(selected, 'COURSE_COMPLETED'); assert.equal(expanded, false);
+  buttons(render())[1].props.onPress(); assert.equal(hidden, true);
+});
+test('secondary chevrons are absolute card affordances, outside title rows', () => {
+  const { HomeSecondaryCards } = component('../src/features/home/components/HomeSecondaryCards.tsx');
+  const tree = HomeSecondaryCards({ data: response(active), gamification: aggregate, onNavigate() {} });
+  const holders = nodes(tree).filter(n => n.type === 'View' && n.props.style?.position === 'absolute' && nodes(n).some(c => c.type === 'lucide-react-native/icons/chevron-right'));
+  assert.equal(holders.length, 2); assert.equal(buttons(tree).length, 0);
+  for (const holder of holders) assert.equal(holder.props.pointerEvents, 'none');
 });

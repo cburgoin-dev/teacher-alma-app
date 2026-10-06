@@ -21,10 +21,12 @@ export function ActiveHomeHero({ hero, onNavigate }: { hero: ActiveHero; onNavig
           <ClipPath id="homeCourseLandscape"><Path d="M360 24 C321 20 292 20 270 36 C228 64 217 91 225 128 C234 174 246 227 257 273 Q308 281 360 284 Z" /></ClipPath>
         </Defs>
         <Rect width="360" height="300" fill="url(#homeBlue)" />
+        <Ellipse cx="60" cy="62" rx="85" ry="38" fill="#7EC4FF" opacity={0.045} />
+        <Ellipse cx="186" cy="195" rx="47" ry="36" fill="#00439B" opacity={0.07} />
         <Ellipse cx="178" cy="116" rx="13" ry="5" fill="#7EC4FF" opacity={0.12} />
         <Ellipse cx="183" cy="111" rx="6" ry="7" fill="#7EC4FF" opacity={0.12} />
         {illustrated && hero.course ? <HomeCourseArtwork uri={hero.course.coverUrl} level={hero.course.level} box={{ x: 225, y: 24, width: 135, height: 260 }} clipPath="url(#homeCourseLandscape)" /> : null}
-        {illustrated ? <Path d="M239 300 Q300 245 360 253 L360 300 Z" fill="#0754B9" /> : null}
+        {illustrated ? <Path d="M219 300 C261 267 272 229 360 225 L360 300 Z" fill="#0754B9" /> : null}
       </Svg>
     </View>
     <View style={s.heading}><Text accessibilityRole="header" style={s.headingText}>Continuar aprendiendo</Text>{destination ? <View accessible={false} style={s.headingArrow}><ChevronRight color="#0861D3" size={17} strokeWidth={2.5} /></View> : null}</View>
@@ -70,7 +72,7 @@ const s = StyleSheet.create({
   ctaText: { color: '#FFF', fontSize: 17, lineHeight: 23, fontWeight: '800', flexShrink: 1 },
   note: { color: '#E3EFFF', fontSize: 13, lineHeight: 19 },
   levelBadge: { position: 'absolute', top: '35%', right: 8, backgroundColor: '#FFFFFFF2', paddingVertical: 5, paddingHorizontal: 6, borderRadius: 12, maxWidth: '23%', alignItems: 'center' },
-  motivation: { position: 'absolute', right: 15, bottom: 13, transform: [{ rotate: '-7deg' }] },
+  motivation: { position: 'absolute', right: 18, bottom: 20, transform: [{ rotate: '-7deg' }] },
   motivationText: { color: '#FFF', fontSize: 14, lineHeight: 15, fontWeight: '800', fontStyle: 'italic', textAlign: 'center' },
   language: { color: '#102347', fontSize: 10, lineHeight: 14 },
   level: { color: '#102347', fontSize: 18, fontWeight: '800' },

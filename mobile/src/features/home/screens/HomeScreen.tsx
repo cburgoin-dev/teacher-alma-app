@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import UserRound from 'lucide-react-native/icons/user-round';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -16,12 +16,22 @@ import { HomeHeroCard } from '../components/HomeHeroCard';
 import { HomeSecondaryCards } from '../components/HomeSecondaryCards';
 import { HomeFeaturedCourses } from '../components/HomeFeaturedCourses';
 import { colors } from '../../../theme';
+import type { HomePreviewMode } from '../devPreview';
+// Metro excludes these modules from production through the __DEV__ branch.
+const previewTools = typeof __DEV__ !== 'undefined' && __DEV__ ? {
+  ...require('../devPreview') as typeof import('../devPreview'),
+  ...require('../components/HomePreviewControl') as typeof import('../components/HomePreviewControl'),
+} : null;
 
 export function HomeScreen({ navigation }: CompositeScreenProps<BottomTabScreenProps<RootTabParamList, 'Home'>, NativeStackScreenProps<RootStackParamList>>) {
   const home = useHome(), gamification = useGamification();
   const [refreshing, setRefreshing] = useState(false);
+  const [previewMode, setPreviewMode] = useState<HomePreviewMode>('REAL');
+  const [previewVisible, setPreviewVisible] = useState(true);
+  const isPreview = !!previewTools && previewMode !== 'REAL';
   const refresh = async () => { setRefreshing(true); try { await Promise.all([home.refresh(), gamification.refresh()]); } finally { setRefreshing(false); } };
   const onNavigate = (destination: HomeDestination) => {
+    if (isPreview) { Alert.alert('DEV · Vista previa', 'Los cursos de muestra no abren aprendizaje real. Selecciona REAL para navegar.'); return; }
     switch (destination.screen) {
       case 'Courses': navigation.navigate('CoursesTab'); break;
       case 'CourseDetail': navigation.navigate('CourseDetail', destination.params); break;
@@ -29,14 +39,15 @@ export function HomeScreen({ navigation }: CompositeScreenProps<BottomTabScreenP
       case 'Review': navigation.navigate('Review', destination.params); break;
     }
   };
-  const data = home.data;
+  const data = previewTools ? previewTools.previewHomeData(home.data, previewMode, true) : home.data;
   return <SafeAreaView edges={['top', 'left', 'right']} style={s.page}>
     <ScrollView contentContainerStyle={s.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { void refresh(); }} tintColor={colors.blue} />}>
       <MainAppHeader data={gamification.data} loading={gamification.loading} error={gamification.error} onOpenShop={() => navigation.navigate('GamificationShop')} />
-      {home.error ? <View style={s.error} accessibilityLiveRegion="polite"><Text style={s.body}>{home.error}{data ? ' Mostramos tu última información disponible.' : ''}</Text><Button title="Reintentar" tone="blue" onPress={() => { void refresh(); }} /></View> : null}
-      {!data && home.loading ? <View style={s.loading}><ActivityIndicator color={colors.blue} size="large" /><Text style={s.body}>Cargando tu inicio…</Text></View> : null}
+      {previewTools && previewVisible ? <previewTools.HomePreviewControl mode={previewMode} onSelect={setPreviewMode} onHide={() => setPreviewVisible(false)} /> : null}
+      {!isPreview && home.error ? <View style={s.error} accessibilityLiveRegion="polite"><Text style={s.body}>{home.error}{data ? ' Mostramos tu última información disponible.' : ''}</Text><Button title="Reintentar" tone="blue" onPress={() => { void refresh(); }} /></View> : null}
+      {!isPreview && !data && home.loading ? <View style={s.loading}><ActivityIndicator color={colors.blue} size="large" /><Text style={s.body}>Cargando tu inicio…</Text></View> : null}
       {data ? <>
-        <View style={s.greeting}><View style={s.greetingCopy}><Text accessibilityRole="header" numberOfLines={2} ellipsizeMode="tail" style={s.title}>Hola{data.learner.displayName?.trim() ? `, ${data.learner.displayName.trim()}` : ''} 👋</Text><Text style={s.subtitle}>{greetingSubtitle[data.state]}</Text></View>
+        <View style={s.greeting}><View style={s.greetingCopy}><Text onLongPress={previewTools ? () => setPreviewVisible(true) : undefined} accessibilityHint={previewTools ? "Maintén pulsado para mostrar DEV Home preview" : undefined} accessibilityRole="header" numberOfLines={2} ellipsizeMode="tail" style={s.title}>Hola{data.learner.displayName?.trim() ? `, ${data.learner.displayName.trim()}` : ''} 👋</Text><Text style={s.subtitle}>{greetingSubtitle[data.state]}</Text></View>
           <View accessible={false} style={s.avatar}><UserRound color="#5787BD" size={32} /></View></View>
         <HomeHeroCard hero={data.hero} onNavigate={onNavigate} />
         <HomeSecondaryCards data={data} gamification={gamification.data} onNavigate={onNavigate} />

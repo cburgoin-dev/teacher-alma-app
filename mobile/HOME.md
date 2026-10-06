@@ -258,3 +258,124 @@ real Diagnosis/Practice/Goal detail, avatar and global brand harmonization.
 
 V5 Android export PASS: dist/home-v5-check (1089 modules, 2.4 MB Hermes).
 git diff --check PASS. Only the environment NO_COLOR/FORCE_COLOR warning appeared during export.
+
+## Home v1 DEV preview + localized art direction (2026-10-06)
+
+V5 ACTIVE and the shared Home/Courses header were physically exercised by the user.
+This revision does not declare Home closed: NEW/ASSESSED/COMPLETED still need
+physical acceptance, as do the final ACTIVE decorations below.
+
+### DEV Home State Preview
+
+Run the existing Expo development build/server (not a production export). Home
+shows DEV · Home: REAL under the shared header. Tap it for REAL, NEW, ASSESSED,
+ACTIVE and COMPLETED. Selecting collapses the options. Tap Ocultar to remove the
+entire control from layout for clean screenshots. Long-press the greeting to
+restore it, scroll back to the top if necessary, and choose REAL when finished.
+Selection and visibility exist only in mounted-screen memory; reloading resets
+REAL. Switching tabs may retain the mounted screen's selection.
+
+The __DEV__-guarded require loads HomePreviewControl and devPreview snapshots only
+in development. Production uses home.data directly. REAL returns the identical
+resource object. Other modes render typed HomeResponse fixtures with synthetic IDs,
+not a second progression engine. No resource write, storage, PostgreSQL change,
+POST or PATCH occurs on selection. Existing Home focus reads and pull-to-refresh
+remain active; Gamification is still real/shared (preview does not invent coins,
+streak or Daily Goal). Cached-data errors do not cover a selected fixture.
+
+While a fixture is selected, Home learning/course/Review navigation shows a DEV
+notice instead of sending synthetic IDs into real screens. Choose REAL to test
+navigation. The shared real Shop and global tabs retain their normal behavior.
+Fixtures: NEW beginner A1 and A1/A2 featured; ASSESSED recommends available A2;
+ACTIVE A1/Familia y amigos/Verb to be/33%/LESSON; COMPLETED A1/100% and available A2.
+All use Sofía and zero Review. Existing render tests separately cover unavailable
+recommendations, COMING_SOON and nullable/degraded records.
+
+### Final ACTIVE changes
+
+Secondary chevrons now sit in an absolute card layer, independent of title length;
+title padding reserves their space. Practice/Goal/diagnostic placeholders stay
+non-interactive; Review and beginner-course navigation retain their handlers.
+These temporary decorative affordances require review before production once
+Practice/Goal details are implemented.
+
+The lower-right blue swoosh rises over a small part of the photograph, keeping
+London and the bus recognizable and containing the two-line italic slogan farther
+from the edges. Two low-opacity blue ellipses add left-side depth. CTA, progress,
+focal geometry, badge, course pill and navigation are unchanged. The decoration is
+not functional information and remains excluded from accessibility/large-font mode.
+Featured and the shared header are unchanged. NEW retains the gradient, level sign
+and unavailable diagnostic CTA; ASSESSED retains real recommendation/access;
+COMPLETED retains trophy/progress and the separate next-course section.
+
+### Roadmap / bottom navigation: analysis only, future iteration
+
+Current RootNavigator registers MainTabs and Roadmap as sibling native-stack routes.
+MainTabs is defined in RootNavigator.tsx, not a separate file. Its four tabs host
+Home, Courses, Progress and Profile. Pushing Roadmap covers MainTabs and its bar;
+this is structural, not a missing bar style. Root Back correctly reveals the
+originating tab. Roadmap then pushes Lesson/UnitChallenge, consuming existing
+completion tickets on focus; canonical currentNode validates Home's focus hint.
+No navigator, Roadmap layout, Back, ticket, motion or animation changed here.
+
+Candidate for a separate implementation: keep an outer immersive root stack for
+Lesson/UnitChallenge/Result/Review/Shop, with MainTabs below. Within Home and Courses,
+use small tab-local stacks (HomeRoot -> Roadmap; CoursesRoot -> CourseDetail/Roadmap)
+that reuse the SAME Roadmap component. This keeps a real tab bar around Roadmap
+without drawing a duplicate bar or creating a fifth tab. Back pops to the actual
+entry screen in that tab. Tabs can switch directly to Home/Courses/Progress/Profile.
+
+Before implementing, decide tab-reselect behavior: Home/Courses should expose their
+root when explicitly selected, while returning from immersive learning must restore
+the exact originating Roadmap instance. Do not blindly reset all stacks on tab focus.
+Two instances may legitimately exist for different courses; never route completion
+to whichever Roadmap happens to be found first by name. Carry/target explicit origin
+navigator/route identity for immersive returns and preserve existing courseId,
+focusNode validation and completionTicket semantics. Current root popTo('Roadmap')
+assumptions will require a controlled migration, not a cosmetic navigator move.
+
+Risk/acceptance matrix for that later pass:
+- Home -> Roadmap -> Back -> Home; Courses -> Roadmap -> Back -> Courses, including
+  CourseDetail/start history where that detail was intentionally visited.
+- Roadmap -> Lesson/Challenge/Result/Review -> correct original Roadmap; Android
+  hardware Back, header Back, cancellation and completion all target that instance.
+- No duplicate consumption of tickets or repeated completion animation; no stale
+  focus anchor overriding fresh currentNode. Preserve focus reload and motion guards.
+- Tab switching/reselection, retained course state and deep links need explicit rules.
+- New tab-bar height changes the map viewport: recheck measured auto-scroll,
+  current-step visibility, bottom safe area, large fonts and transition timing.
+Start with router/history tests, then physical Android acceptance. This is a proposal,
+not an approved implementation of those unresolved tab-reselect details.
+
+### Global header actions: analysis only
+
+MainAppHeader already reuses GamificationMetrics with responsive compact policy.
+Home/Courses place it inside a top SafeAreaView with 8dp extra top spacing, a 48dp
+row and 18dp horizontal gutters. RoadmapHeader instead supplies non-compact metrics
+as ContextualHeader.trailing: ContextualHeader owns insets.top, uses a 54dp row,
+20dp gutters, 10dp bottom padding and a trailing maxWidth of 75%. It is a native-stack
+header rather than scrolling content. For a single row, the vertical center differs
+by about 5dp (8+24 versus 27 after safe area), with additional differences when metrics
+wrap. Aligning only the logo or adding a device-specific margin cannot solve this.
+
+A future AppHeaderActions primitive is useful chiefly to centralize action spacing,
+compact breakpoints and measured available-width behavior; GamificationMetrics already
+centralizes data rendering and should remain the source. A shared header-layout policy
+should establish row center/right gutter and minimum 48dp targets. Leading content may
+be logo or Back, without forcing a logo onto Roadmap. Each host owns top safe area
+exactly once; scrolling versus fixed placement must be an explicit screen decision.
+Reserve a composable optional notification child API, not empty visual space or a fake
+bell. When it exists, count its width before deciding compact/wrap behavior. Test
+large coin values, font scaling, narrow screens and loading/error shared values.
+No AppHeaderActions extraction or notification UI is implemented in this iteration.
+
+Validation so far: TypeScript PASS; full Mobile tests 168/168 PASS, including all
+snapshot states, production/REAL identity, in-memory selector/hiding, blocked fixture
+routes, no selection fetches, fixed chevrons and existing navigation/accessibility.
+Backend and contracts untouched. Physical captures needed: clean ACTIVE and all three
+other states, plus DEV selection/restore and large-font/narrow behavior. No physical
+fidelity or full Home closure is claimed from component tests.
+
+Android export PASS: dist/home-v1-preview-check (1089 modules, 2.4 MB Hermes).
+Production Hermes marker check: dev-preview-a1, dev-preview-diagnostic and DEV selector label absent.
+git diff --check PASS. Export only reported the existing NO_COLOR/FORCE_COLOR environment warning.
