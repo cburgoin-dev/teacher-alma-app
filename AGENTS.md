@@ -51,6 +51,14 @@ If `docs/product-decisions-current.md` explicitly conflicts with older provision
 
 Home-specific state is derived. Do not invent `home_state`, duplicate Roadmap progression logic or fork Gamification into a Home-owned resource. `GET /me/home` is read-only and Gamification remains authoritative under its existing shared contract.
 
+### Progress
+- `docs/progress-semantics-v1.md`
+- `docs/screens.md`
+- `docs/design-direction.md`
+- Course/Roadmap, Review and Gamification contracts only as needed to compose the read model.
+
+Progress is a read-oriented composition over existing durable learning state. Do not create a second progression engine, Review state, streak engine or timezone model. Protected/repaired continuity dates are not real learning days. Gamification remains authoritative for streak, Daily Goal, coins and inventory.
+
 ### Lessons
 - `docs/lesson-session-semantics-v1.md`
 - `docs/lesson-content-contract-v2.md`
