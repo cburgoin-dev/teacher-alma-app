@@ -32,11 +32,14 @@ Main architecture:
 Read only the relevant group.
 
 ### Architecture / domain
+- `docs/product-decisions-current.md` for recent decisions that explicitly supersede older provisional wording.
 - `docs/architecture.md`
 - `docs/business-rules.md`
 - `docs/data-model.md`
 - `docs/database-schema.md`
 - `docs/api-contracts.md`
+
+If `docs/product-decisions-current.md` explicitly conflicts with older provisional text in business rules, screens, external costs or historical mobile notes, use the current decision and do not revive the superseded behavior.
 
 ### Home
 - `docs/home-semantics-v1.md`
@@ -49,6 +52,7 @@ Read only the relevant group.
 Home-specific state is derived. Do not invent `home_state`, duplicate Roadmap progression logic or fork Gamification into a Home-owned resource. `GET /me/home` is read-only and Gamification remains authoritative under its existing shared contract.
 
 ### Lessons
+- `docs/lesson-session-semantics-v1.md`
 - `docs/lesson-content-contract-v2.md`
 - `docs/activities.md`
 - `docs/screens.md`
@@ -57,6 +61,8 @@ Home-specific state is derived. Do not invent `home_state`, duplicate Roadmap pr
 - `docs/mockups/activities/`
 - `docs/mockups/results/`
 - `mobile/LESSONS.md`
+
+For incomplete normal lessons, `lesson-session-semantics-v1.md` is canonical: there is no Resume UX. Older resume-oriented wording is historical/obsolete.
 
 ### Courses
 - `docs/screens.md`
@@ -83,6 +89,8 @@ Do not change these unless the user explicitly asks to change product behavior.
 - Unit Challenge v1 unlocks after all required Topic lessons and uses CONVERSATION/CROSSWORD phases; do not insert a generic learner-facing ACTIVITY phase.
 - Unit Challenge and Lesson/Roadmap learning state must reuse existing progression/access concepts rather than invent duplicate lock-state vocabularies.
 - Lesson block types: TEXT, VIDEO, IMAGE, EXAMPLE, ACTIVITY, SUMMARY.
+- Incomplete normal Lessons are short coherent runs with no learner-facing Resume; confirmed exit abandons the run and re-entry starts fresh at 0%.
+- Real video playback/hosting remains a required production capability for Lessons; do not treat the current preview-only VIDEO behavior as final production support.
 - Completion and correctness are separate.
 - Wrong answers do not block lesson completion.
 - First submitted attempt is the score-bearing attempt.
@@ -90,7 +98,9 @@ Do not change these unless the user explicitly asks to change product behavior.
 - Incorrect attempts may create Review state; an immediate correct retry does not silently resolve it.
 - TAP is the required Matching interaction; DRAG may be deferred.
 - Optional lesson steps must not block required progression.
-- Commercial access and progression are backend decisions.
+- Diagnostic should be implemented as a complete configurable flow without waiting for Alma to finalize every production question/threshold.
+- Current MVP monetization is freemium + Premium subscription. Permanent individual-course purchase is deferred, but the access layer should remain extensible to support another entitlement source in a future version.
+- Commercial access and progression are backend decisions and remain separate concepts.
 - Do not invent learner-facing data that the API/content contract does not provide.
 
 ## Lessons content v2
