@@ -7,6 +7,7 @@ import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList, RootTabParamList } from '../../../navigation/types';
 import { MainAppHeader } from '../../../components/MainAppHeader';
+import { mainHeaderTopSpacing } from '../../../components/headerLayout';
 import { Button } from '../../courses/components/ui';
 import { useGamification } from '../../gamification/hooks/useGamification';
 import { useHome } from '../useHome';
@@ -47,7 +48,7 @@ export function HomeScreen({ navigation }: CompositeScreenProps<BottomTabScreenP
 }
 const s = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#FFF' },
-  content: { paddingHorizontal: 18, paddingTop: 4, paddingBottom: 22, gap: 10, width: '100%', maxWidth: 640, alignSelf: 'center', flexGrow: 1 },
+  content: { paddingHorizontal: 18, paddingTop: mainHeaderTopSpacing, paddingBottom: 22, gap: 10, width: '100%', maxWidth: 640, alignSelf: 'center', flexGrow: 1 },
   greeting: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 0, paddingBottom: 1 }, greetingCopy: { flex: 1, gap: 3 },
   title: { color: colors.ink, fontSize: 27, lineHeight: 33, fontWeight: '800', letterSpacing: -.7 },
   subtitle: { color: colors.muted, fontSize: 15, lineHeight: 21 },

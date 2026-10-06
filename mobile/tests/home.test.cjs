@@ -206,13 +206,42 @@ test('V4 Hero distinguishes navigation chevron from CTA arrow; decorative copy h
     assert.doesNotMatch(text(ActiveHomeHero({ hero: active, onNavigate() {} })), /Let's/);
   }
 });
-test('V4 secondary footer arrows are components; only actionable cards have title chevrons', () => {
+test('V5 decorative secondary chevrons and footer arrows do not create actions', () => {
   const { HomeSecondaryCards } = component('../src/features/home/components/HomeSecondaryCards.tsx');
   for (const count of [0, 3]) {
     const tree = HomeSecondaryCards({ data: { ...response(active), review: { pendingCount: count } }, gamification: aggregate, onNavigate() {} });
     assert.doesNotMatch(text(tree), /→/);
     assert.equal(nodes(tree).filter(n => n.type === 'lucide-react-native/icons/arrow-right').length, 2);
-    assert.equal(nodes(tree).filter(n => n.type === 'lucide-react-native/icons/chevron-right').length, count ? 1 : 0);
+    assert.equal(nodes(tree).filter(n => n.type === 'lucide-react-native/icons/chevron-right').length, 2);
     assert.equal(buttons(tree).length, count ? 1 : 0);
+  }
+});
+
+test('V5 goal arrow enters the target; NEW, ASSESSED and completion use safe real context', () => {
+  const { HomeSecondaryCards } = component('../src/features/home/components/HomeSecondaryCards.tsx');
+  const secondary = HomeSecondaryCards({ data: response(active), gamification: aggregate, onNavigate() {} });
+  assert.equal(nodes(secondary).filter(n => n.type === 'lucide-react-native/icons/arrow-down-left').length, 1);
+  assert.equal(nodes(secondary).filter(n => n.type === 'lucide-react-native/icons/arrow-up-right').length, 0);
+  const newTree = heroCard(fresh);
+  assert.match(text(newTree), /TU PRIMER PASO/); assert.match(text(newTree), /Diagnóstico aún no disponible/);
+  assert.equal(buttons(newTree).length, 1); assert.equal(buttons(newTree)[0].props.disabled, true);
+  assert.equal(buttons(newTree)[0].props.onPress, undefined);
+  const paid = heroCard({ ...assessed, recommendedCourse: { ...course, access: { ...course.access, hasFreeContent: false } } });
+  assert.match(text(paid), /Requiere acceso/); assert.match(text(paid), /RECOMENDADO PARA TI/);
+  const noRecommendation = heroCard({ ...assessed, diagnostic: { ...assessed.diagnostic, recommendedLevel: null }, recommendedCourse: null });
+  assert.equal(buttons(noRecommendation).length, 0); assert.match(text(noRecommendation), /Explora los cursos/);
+  const done = heroCard({ ...completed, recommendedCourse: null });
+  assert.equal(nodes(done).filter(n => n.type === 'lucide-react-native/icons/trophy').length, 1);
+  assert.equal(buttons(done).length, 0); assert.match(text(done), /100 %/);
+  const missing = heroCard({ ...completed, completedCourse: null, recommendedCourse: null });
+  assert.doesNotMatch(text(missing), /100|Inglés real/); assert.equal(buttons(missing).length, 0);
+});
+test('V5 header containers share top spacing inside equivalent safe areas', () => {
+  const { mainHeaderTopSpacing } = require('../src/components/headerLayout.ts');
+  assert.equal(mainHeaderTopSpacing, 8);
+  for (const screen of ['home/screens/HomeScreen.tsx', 'courses/screens/CoursesScreen.tsx']) {
+    const source = fs.readFileSync(path.resolve(__dirname, '../src/features', screen), 'utf8');
+    assert.match(source, /paddingTop: mainHeaderTopSpacing/);
+    assert.ok(source.includes("edges={['top', 'left', 'right']}"));
   }
 });

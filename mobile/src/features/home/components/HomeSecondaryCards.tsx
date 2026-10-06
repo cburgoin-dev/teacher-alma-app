@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Target from 'lucide-react-native/icons/target';
 import ArrowRight from 'lucide-react-native/icons/arrow-right';
-import ArrowUpRight from 'lucide-react-native/icons/arrow-up-right';
+import ArrowDownLeft from 'lucide-react-native/icons/arrow-down-left';
 import NotebookPen from 'lucide-react-native/icons/notebook-pen';
 import ChevronRight from 'lucide-react-native/icons/chevron-right';
 import { colors } from '../../../theme';
@@ -30,7 +30,7 @@ export function HomeSecondaryCards({ data, gamification, onNavigate }: { data: H
   const ratio = goal && goal.target > 0 ? Math.min(100, Math.max(0, goal.progress / goal.target * 100)) : 0;
   const left = <>
     <View style={s.cardTop}><View accessible={false} style={[s.iconHalo, s.redHalo]}><View style={[s.iconCore, s.redCore]}><NotebookPen size={26} strokeWidth={2.5} color="#FFF" /></View></View>
-      <View style={s.copy}><View style={s.titleRow}><Text style={s.title}>{title}</Text>{destination ? <ChevronRight size={15} color={colors.muted} /> : null}</View><Text style={s.detail}>{detail}</Text></View>
+      <View style={s.copy}><View style={s.titleRow}><Text style={s.title}>{title}</Text><ChevronRight size={15} color={colors.muted} accessible={false} /></View><Text style={s.detail}>{detail}</Text></View>
     </View>
     {action ? <View style={s.actionPill}><Text style={s.action}>{action}</Text><ArrowRight size={16} strokeWidth={2.5} color={colors.red} accessible={false} /></View> : null}
   </>;
@@ -38,8 +38,8 @@ export function HomeSecondaryCards({ data, gamification, onNavigate }: { data: H
     {destination ? <Pressable accessibilityRole="button" accessibilityLabel={`${title}. ${detail}. ${action}`} onPress={() => onNavigate(destination!)} style={({ pressed }) => [s.card, s.red, { opacity: pressed ? .8 : 1 }]}>{left}</Pressable>
       : <View style={[s.card, s.red]}>{left}</View>}
     <View style={[s.card, s.blue]}>
-      <View style={s.cardTop}><View accessible={false} style={[s.iconHalo, s.blueHalo]}><View style={[s.iconCore, s.blueCore]}><Target size={30} strokeWidth={2.8} color={colors.blue} /><View style={s.targetAccent}><ArrowUpRight size={19} strokeWidth={3.5} color={colors.red} /></View></View></View>
-        <View style={s.copy}><Text style={s.title}>{hero.type === 'NEW' ? 'Tu primera meta' : 'Meta diaria'}</Text>
+      <View style={s.cardTop}><View accessible={false} style={[s.iconHalo, s.blueHalo]}><View style={[s.iconCore, s.blueCore]}><Target size={30} strokeWidth={2.8} color={colors.blue} /><View style={s.targetAccent}><ArrowDownLeft size={19} strokeWidth={3.5} color={colors.red} /></View></View></View>
+        <View style={s.copy}><View style={s.titleRow}><Text style={s.title}>{hero.type === 'NEW' ? 'Tu primera meta' : 'Meta diaria'}</Text><ChevronRight size={15} color={colors.muted} accessible={false} /></View>
           <Text style={s.detail}>{goal ? goal.completed ? '¡Meta completada!' : `Meta ${presetLabel[goal.preset].toLowerCase()}` : 'Aún sin cargar'}</Text></View>
       </View>
       {goal ? <View style={s.goalFooter}>
@@ -60,7 +60,7 @@ const s = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   iconHalo: { width: 44, height: 46, borderRadius: 25, alignItems: 'center', justifyContent: 'center' },
   iconCore: { width: 36, height: 38, borderRadius: 20, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-7deg' }] },
-  targetAccent: { position: 'absolute', top: -3, right: -3 },
+  targetAccent: { position: 'absolute', top: 0, right: 0 },
   redHalo: { backgroundColor: '#FFE3E9' }, redCore: { backgroundColor: '#FF3B58' }, blueHalo: { backgroundColor: '#DBECFF' }, blueCore: { backgroundColor: '#C0DEFF' },
   title: { color: colors.ink, fontSize: 15, lineHeight: 20, fontWeight: '800', flexShrink: 1, letterSpacing: -.2 },
   detail: { color: colors.muted, fontSize: 12, lineHeight: 17 },

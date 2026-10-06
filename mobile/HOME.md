@@ -216,3 +216,45 @@ harmonization remain deferred.
 
 V4 Android export PASS: dist/home-v4-check (1089 modules, 2.4 MB Hermes).
 git diff --check PASS. Export reports the environment NO_COLOR/FORCE_COLOR warning.
+
+## V5 state presentation and final localized polish (2026-10-06)
+
+V4 was physically tested on Android and accepted as the baseline. Featured,
+focal positioning, academic navigation, backend and API remain unchanged.
+
+- Home and Courses now use mainHeaderTopSpacing (8dp) inside identical top/left/right
+  SafeAreaView edges. This replaces container-specific 4dp/12dp offsets without
+  changing logo size or making the header sticky.
+- ACTIVE badge typography/padding is smaller. Let's / do this! uses 14sp bold italic
+  text, two lines, a slight tilt and a 13dp bottom inset, on a raised lower blue
+  sweep. The artwork/focal geometry remains unchanged. Decorative copy stays
+  excluded from accessibility and hidden in narrow/large-font layouts.
+- Daily Goal's red arrow points down-left into the target. Secondary title chevrons
+  are now approved temporary visual affordances, including Practice and Goal.
+  They DO NOT create handlers or Pressables. Review remains actionable only for
+  a real pending count. Before production, revisit affordances without actions
+  when Practice and Daily Goal detail exist.
+- NEW has a full-width title, blue gradient, a simple rotated level-sign graphic
+  inspired by the reference, brief description and an explicitly unavailable
+  disabled diagnostic CTA. No mascot, fake route or invented beginner course.
+- ASSESSED shares the gradient/type hierarchy and displays the actual recommendation
+  with status/access context. Missing recommendation/level remain safe, with no CTA.
+- COURSE_COMPLETED uses a trophy/celebratory accent with the real course and progress,
+  then a separate next-course section when available. COMING_SOON is preserved;
+  no auto-start. Missing completed context never fabricates title or percentage.
+
+No DEV state mutation helper was added. Existing component render fixtures in
+mobile/tests/home.test.cjs cover NEW (beginner present/null), ASSESSED (paid/null),
+ACTIVE and COURSE_COMPLETED (next/coming-soon/null/degraded), alongside shared goal
+and navigation tests. These stubbed renders validate behavior, not physical layout.
+Run: node --test mobile/tests/home.test.cjs from repository root. No productive
+Diagnostic data or demo user progress is changed to exercise these states.
+
+Validation: Mobile TypeScript PASS; full Mobile suite 164/164 PASS. Physical V5
+screenshots still required for ACTIVE plus NEW, ASSESSED and COURSE_COMPLETED,
+including narrow/large-font acceptance and shared header alignment when switching
+tabs. Home is not declared fully closed. Deferred debt: artwork-identity focal map,
+real Diagnosis/Practice/Goal detail, avatar and global brand harmonization.
+
+V5 Android export PASS: dist/home-v5-check (1089 modules, 2.4 MB Hermes).
+git diff --check PASS. Only the environment NO_COLOR/FORCE_COLOR warning appeared during export.

@@ -11,6 +11,7 @@ import { catalogDestination } from '../presentation';
 import { colors, ResourceState, styles } from '../components/ui';
 import { CourseCard } from '../components/CourseCard';
 import { MainAppHeader } from '../../../components/MainAppHeader';
+import { mainHeaderTopSpacing } from '../../../components/headerLayout';
 import { useGamification } from '../../gamification/hooks/useGamification';
 
 export function CoursesScreen({ navigation }: CompositeScreenProps<BottomTabScreenProps<RootTabParamList, 'CoursesTab'>, NativeStackScreenProps<RootStackParamList>>) {
@@ -34,7 +35,7 @@ export function CoursesScreen({ navigation }: CompositeScreenProps<BottomTabScre
   </SafeAreaView>;
 }
 const s = StyleSheet.create({
-  list: { paddingHorizontal: 18, paddingTop: 12, paddingBottom: 22, flexGrow: 1, width: '100%', maxWidth: 640, alignSelf: 'center' },
+  list: { paddingHorizontal: 18, paddingTop: mainHeaderTopSpacing, paddingBottom: 22, flexGrow: 1, width: '100%', maxWidth: 640, alignSelf: 'center' },
   header: { paddingBottom: 18, gap: 8 },
   subtitle: { color: colors.muted, fontSize: 16, lineHeight: 22 },
 });

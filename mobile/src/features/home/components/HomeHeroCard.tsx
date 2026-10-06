@@ -1,6 +1,6 @@
 import { ActiveHomeHero } from './ActiveHomeHero';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import BookOpen from 'lucide-react-native/icons/book-open';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import Trophy from 'lucide-react-native/icons/trophy';
 import { Button } from '../../courses/components/ui';
 import { CourseCover } from '../../courses/components/CourseCover';
@@ -19,7 +19,7 @@ export function HomeHeroCard({ hero, onNavigate }: { hero: HomeHero; onNavigate:
     case 'NEW':
       eyebrow = 'TU PRIMER PASO'; title = 'Descubre tu nivel';
       detail = 'Un diagnóstico corto te ayudará a encontrar por dónde empezar.';
-      note = 'Diagnóstico disponible próximamente. Mientras tanto, puedes explorar los cursos.';
+      note = 'Próximamente · Diagnóstico aún no disponible.';
       break;
     case 'ASSESSED':
       eyebrow = 'TU PUNTO DE PARTIDA'; title = hero.diagnostic.recommendedLevel ? `Tu nivel recomendado: ${hero.diagnostic.recommendedLevel}` : 'Tu diagnóstico está listo';
@@ -39,23 +39,22 @@ export function HomeHeroCard({ hero, onNavigate }: { hero: HomeHero; onNavigate:
     cta = recommendation.status === 'COMING_SOON' ? 'Ver curso' : 'Conocer el curso';
   }
   return <View style={s.hero}>
-    <View pointerEvents="none" accessible={false} style={s.glow} />
+    <View pointerEvents="none" accessible={false} style={StyleSheet.absoluteFill}>
+      <Svg width="100%" height="100%"><Defs><LinearGradient id="homeWelcome" x1={0} y1={1} x2={1} y2={0}><Stop offset={0} stopColor="#0750B2" /><Stop offset={1} stopColor="#258BFA" /></LinearGradient></Defs><Rect width="100%" height="100%" fill="url(#homeWelcome)" /></Svg>
+    </View><View pointerEvents="none" accessible={false} style={s.glow} />
     <Text style={s.eyebrow}>{eyebrow}</Text>
+    <Text accessibilityRole="header" style={s.title}>{title}</Text>
     <View style={s.heroRow}>
       <View style={s.copy}>
-
-
-        <Text accessibilityRole="header" style={s.title}>{title}</Text>
         {detail ? <Text style={s.detail}>{detail}</Text> : null}
-
       </View>
-      {artVisible ? course ? <CourseCover uri={course.coverUrl} level={course.level} hero style={s.cover} />
-        : <View accessible={false} style={s.symbol}>{hero.type === 'COURSE_COMPLETED' ? <Trophy color="#FFF" size={44} /> : <BookOpen color="#FFF" size={44} />}</View> : null}
+      {artVisible ? hero.type === 'COURSE_COMPLETED' && hero.completedCourse ? <View accessible={false} style={s.celebration}><Trophy color="#FFE297" size={48} strokeWidth={2.3} /><View style={s.spark} /></View> : course ? <CourseCover uri={course.coverUrl} level={course.level} hero style={s.cover} />
+        : hero.type === 'NEW' ? <View accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={s.levelSign}><Text style={s.signText}>{"What's\nyour level?"}</Text><View style={s.signRule} /></View> : null : null}
     </View>
     {percentage !== null ? <View style={s.progress} accessibilityRole="progressbar" accessibilityLabel="Progreso del curso" accessibilityValue={{ min: 0, max: 100, now: percentage }}>
       <View style={s.track}><View style={[s.fill, { width: `${Math.max(0, Math.min(100, percentage))}%` }]} /></View><Text style={s.percent}>{percentage}%</Text>
     </View> : null}
-    {recommendation ? <View style={s.recommendation}><Text style={s.small}>TU PRÓXIMO CURSO</Text><Text style={s.recommendedTitle}>{recommendation.title}</Text><Text style={s.detail}>{courseStatus(recommendation)}</Text></View> : null}
+    {recommendation ? <View style={s.recommendation}><Text style={s.small}>{hero.type === 'ASSESSED' ? 'RECOMENDADO PARA TI' : 'TU PRÓXIMO CURSO'}</Text><Text style={s.recommendedTitle}>{recommendation.title}</Text><Text style={s.detail}>{courseStatus(recommendation)}</Text>{!recommendation.access.hasFullAccess ? <Text style={s.note}>{recommendation.access.hasFreeContent ? 'Incluye contenido gratuito' : 'Consulta el acceso al curso'}</Text> : null}</View> : null}
     {note ? <Text style={s.note}>{note}</Text> : null}
     {hero.type === 'NEW' ? <Button title="Hacer diagnóstico · Próximamente" disabled /> : null}
     {destination && cta ? <Button title={cta} arrow onPress={() => onNavigate(destination!)} /> : null}
@@ -71,8 +70,12 @@ const s = StyleSheet.create({
   detail: { fontSize: 16, lineHeight: 23, color: '#E2EFFF' },
   courseBadge: { alignSelf: 'flex-start', backgroundColor: '#D6E9FF', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6, color: '#00499F', fontSize: 14, lineHeight: 20, fontWeight: '700', overflow: 'hidden' },
   nodeKind: { fontSize: 13, lineHeight: 19, color: '#FFF', fontWeight: '600' },
-  cover: { width: '29%', minHeight: 150, borderTopLeftRadius: 50, borderTopRightRadius: 18, borderBottomRightRadius: 18, borderBottomLeftRadius: 18 },
-  symbol: { width: 76, height: 96, borderRadius: 24, alignSelf: 'center', backgroundColor: '#3489F1', alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '8deg' }] },
+  cover: { width: '29%', minHeight: 100, borderTopLeftRadius: 50, borderTopRightRadius: 18, borderBottomRightRadius: 18, borderBottomLeftRadius: 18 },
+  levelSign: { width: 96, minHeight: 110, padding: 10, borderRadius: 16, alignSelf: 'center', backgroundColor: '#F2F8FF', justifyContent: 'center', alignItems: 'center', transform: [{ rotate: '-8deg' }] },
+  signText: { color: '#08438D', fontSize: 19, lineHeight: 24, fontWeight: '800', fontStyle: 'italic', textAlign: 'center' },
+  signRule: { width: 34, height: 3, backgroundColor: colors.red, borderRadius: 3, marginTop: 8 },
+  celebration: { width: 84, height: 84, borderRadius: 42, backgroundColor: '#FFFFFF20', alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
+  spark: { position: 'absolute', width: 8, height: 8, top: 4, right: 8, backgroundColor: '#FFE297', transform: [{ rotate: '45deg' }] },
   progress: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   track: { flex: 1, height: 12, borderRadius: 10, backgroundColor: '#77ADEE', overflow: 'hidden' },
   fill: { height: '100%', borderRadius: 10, backgroundColor: colors.red },
