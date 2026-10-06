@@ -53,11 +53,12 @@ Home-specific state is derived. Do not invent `home_state`, duplicate Roadmap pr
 
 ### Progress
 - `docs/progress-semantics-v1.md`
+- `docs/progress-api-contract-v1.md`
 - `docs/screens.md`
 - `docs/design-direction.md`
 - Course/Roadmap, Review and Gamification contracts only as needed to compose the read model.
 
-Progress is a read-oriented composition over existing durable learning state. Do not create a second progression engine, Review state, streak engine or timezone model. Protected/repaired continuity dates are not real learning days. Gamification remains authoritative for streak, Daily Goal, coins and inventory.
+Progress is a read-oriented composition over existing durable learning state. Do not create a second progression engine, Review state, streak engine or timezone model. Protected/repaired continuity dates are not real learning days. Gamification remains authoritative for streak, Daily Goal, coins and inventory. `GET /me/progress` and `GET /me/progress/calendar?month=YYYY-MM` are read-only and must not reconcile or mutate Gamification merely to render history.
 
 ### Lessons
 - `docs/lesson-session-semantics-v1.md`
