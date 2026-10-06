@@ -17,7 +17,7 @@ export class HomeService {
   async read(userId: string): Promise<HomeResponse> {
     const facts = await this.repository.read(userId), now = this.clock();
     const catalog = facts.courses.filter(isVisible).sort((a, b) => a.position - b.position || a.id.localeCompare(b.id));
-    const project = (c: CourseRecord): HomeCourse => ({ ...identity(c), status: c.status as HomeCourse['status'],
+    const project = (c: CourseRecord): HomeCourse => ({ ...identity(c), description: c.description, status: c.status as HomeCourse['status'],
       progress: c.courseProgress.length ? progress(c) : null, access: courseAccess(c, facts.grants, now) });
     const latest = new Map<string, number>();
     for (const completion of facts.completions) latest.set(completion.courseId,

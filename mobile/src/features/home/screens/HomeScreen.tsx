@@ -51,7 +51,7 @@ const s = StyleSheet.create({
   greeting: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 0, paddingBottom: 3 }, greetingCopy: { flex: 1, gap: 3 },
   title: { color: colors.ink, fontSize: 27, lineHeight: 33, fontWeight: '800', letterSpacing: -.7 },
   subtitle: { color: colors.muted, fontSize: 15, lineHeight: 21 },
-  avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#E1EEFF', alignItems: 'center', justifyContent: 'center' },
+  avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#DDEBFF', borderWidth: 3, borderColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center' },
   body: { color: colors.muted, fontSize: 14, lineHeight: 21 },
   error: { backgroundColor: '#FFF4F4', borderRadius: 16, padding: 16, gap: 12 },
   loading: { paddingVertical: 64, gap: 16, alignItems: 'center' },

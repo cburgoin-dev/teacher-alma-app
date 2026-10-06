@@ -9,7 +9,7 @@ const { parseHome, homeApi } = require('../src/features/home/api.ts');
 const { HomeResource, homeResource } = require('../src/features/home/resource.ts');
 const { gamificationResource } = require('../src/features/gamification/resource.ts');
 const { activeDestination, courseDestination } = require('../src/features/home/presentation.ts');
-const course = { id: 'c', title: 'Inglés real', level: 'A1', coverUrl: null, status: 'PUBLISHED', progress: null, access: { hasFullAccess: false, hasFreeContent: true, source: 'NONE' } };
+const course = { id: 'c', title: 'Inglés real', description: 'Bases para comunicarte en situaciones reales.', level: 'A1', coverUrl: null, status: 'PUBLISHED', progress: null, access: { hasFullAccess: false, hasFreeContent: true, source: 'NONE' } };
 const progress = { status: 'IN_PROGRESS', completedRequiredNodes: 3, totalRequiredNodes: 10, percentage: 30 };
 const node = { type: 'LESSON', id: 'lesson', title: 'Lección real', access: { hasAccess: true, lockReason: null } };
 const active = { type: 'ACTIVE', course: { ...course, progress }, topic: { id: 't', title: 'Tema real' }, currentNode: node };
@@ -31,7 +31,7 @@ function component(relative, overrides = {}) {
     if (name === 'react-native-svg') return { default: 'Svg', ...Object.fromEntries(['ClipPath', 'Defs', 'Ellipse', 'Image', 'LinearGradient', 'Path', 'Rect', 'Stop'].map(n => [n, n])) };
     if (name.endsWith('/MainAppHeader')) return { MainAppHeader: 'MainAppHeader' };
     if (name.endsWith('/theme')) return { colors: { blue: 'blue', red: 'red' }, shadows: { card: {} } };
-    if (name.includes('/components/Home') || name.endsWith('/ActiveHomeHero')) return component(localRequire.resolve(name + '.tsx'), overrides);
+    if (name.includes('/components/Home') || name.endsWith('/ActiveHomeHero') || name.endsWith('/HomeCourseArtwork')) return component(localRequire.resolve(name + '.tsx'), overrides);
     return localRequire(name);
   };
   new Function('require', 'module', 'exports', compile(filename))(load, output, output.exports);
@@ -84,6 +84,8 @@ test('ASSESSED shows real level and course; null recommendation never invents a 
 for (const type of ['LESSON', 'UNIT_CHALLENGE']) test(`ACTIVE ${type} opens Roadmap with exact backend anchor and renders exact progress`, () => {
   const hero = { ...active, currentNode: { ...node, type } }; let route;
   const tree = heroCard(hero, r => { route = r; }); buttons(tree)[0].props.onPress();
+  assert.equal(buttons(tree).length, 1); // Entire card and decorative CTA share one interaction.
+  assert.match(text(buttons(tree)[0]), /Continuar aprendiendo/);
   assert.equal(route.screen, 'Roadmap');
   assert.deepEqual(route.params, { courseId: 'c', focusNode: { id: 'lesson', type } });
   assert.match(text(tree), /30 %/); assert.match(text(tree), /Lección real/);
@@ -108,6 +110,7 @@ test('secondary cards have Review only for real count, otherwise non-interactive
   assert.match(text(tree), /6 ejercicios pendientes/); assert.match(text(tree), /1 \/ 2/); buttons(tree)[0].props.onPress(); assert.equal(route.screen, 'Review');
   const practice = HomeSecondaryCards({ data: response(active), gamification: aggregate, onNavigate() {} });
   assert.match(text(practice), /Práctica/); assert.equal(buttons(practice).length, 0);
+  assert.match(text(practice), /Muy pronto →/); assert.match(text(practice), /Ver detalles →/);
   const done = HomeSecondaryCards({ data: response(active), gamification: { ...aggregate, dailyGoal: { ...aggregate.dailyGoal, completed: true } }, onNavigate() {} });
   assert.match(text(done), /Meta completada/);
 });
@@ -115,9 +118,55 @@ test('featured courses keep server order and cap two, use existing catalog desti
   const { HomeFeaturedCourses } = component('../src/features/home/components/HomeFeaturedCourses.tsx'); const routes = [];
   const courses = [{ ...course, id: 'b', progress }, { ...course, id: 'a', status: 'COMING_SOON' }, { ...course, id: 'never' }];
   const tree = HomeFeaturedCourses({ courses, onNavigate: r => routes.push(r) });
-  buttons(tree).forEach(b => b.props.onPress()); assert.deepEqual(routes.map(r => r.screen), ['Courses', 'CourseDetail', 'CourseDetail']);
+  buttons(tree).forEach(b => b.props.onPress()); assert.deepEqual(routes.map(r => r.screen), ['Courses', 'Roadmap', 'CourseDetail']);
   assert.deepEqual(routes.slice(1).map(r => r.params.courseId), ['b', 'a']);
   assert.equal(courseDestination({ ...course, access: { ...course.access, hasFreeContent: false } }).screen, 'CourseDetail');
+  assert.match(text(tree), /Bases para comunicarte/); assert.doesNotMatch(text(tree), /30|pasos completados/);
+  for (const [status, progressStatus, expected] of [['PUBLISHED', 'IN_PROGRESS', 'Roadmap'], ['PUBLISHED', 'COMPLETED', 'Roadmap'], ['PUBLISHED', 'NOT_STARTED', 'CourseDetail'], ['COMING_SOON', 'IN_PROGRESS', 'CourseDetail'], ['COMING_SOON', 'COMPLETED', 'CourseDetail']]) {
+    assert.equal(courseDestination({ ...course, status, progress: { ...progress, status: progressStatus } }).screen, expected);
+  }
+  const nullable = { ...response(fresh), featuredCourses: [{ ...course, description: null }] };
+  assert.equal(parseHome(nullable).featuredCourses[0].description, null);
+  assert.match(text(HomeFeaturedCourses({ courses: nullable.featuredCourses, onNavigate() {} })), /Incluye contenido gratuito/);
+});
+
+test('SVG gradient uses valid numeric offsets; degraded hero has no arrow affordance', () => {
+  const stops = nodes(heroCard(active)).filter(n => n.type === 'Stop');
+  assert.deepEqual(stops.map(n => n.props.offset), [0, 0.5, 1]);
+  const degraded = heroCard({ ...active, currentNode: null });
+  assert.equal(nodes(degraded).filter(n => n.type === 'lucide-react-native/icons/arrow-right').length, 0);
+});
+
+test('installed SVG gradient extractor reproduces old warning and accepts rendered Home stops without warnings', () => {
+  const extractGradient = component('../node_modules/react-native-svg/src/lib/extract/extractGradient.ts', {
+    react: require('react'), 'react-native': { processColor: () => 0xff126ae1 },
+    './extractTransform': () => null, '../units': {},
+  }).default;
+  const warnings = [], original = console.warn;
+  console.warn = message => warnings.push(message);
+  try {
+    const { jsx } = require('react/jsx-runtime');
+    extractGradient({ id: 'old', children: [jsx('Stop', { offset: '.5', stopColor: '#126AE1' })] }, null);
+    assert.match(warnings[0], /not a valid number or percentage string/);
+    warnings.length = 0;
+    const stops = nodes(heroCard(active)).filter(n => n.type === 'Stop');
+    const result = extractGradient({ id: 'home', children: stops }, null);
+    assert.deepEqual(warnings, []);
+    assert.deepEqual(result.gradient.filter((_, index) => index % 2 === 0), [0, .5, 1]);
+  } finally { console.warn = original; }
+});
+
+test('shared artwork frame preserves A1 landmark/bus and has deterministic safe fallbacks', () => {
+  const { courseArtworkFrame } = require('../src/features/home/artwork.ts');
+  const box = { x: 225, y: 24, width: 135, height: 260 };
+  const frame = courseArtworkFrame(' a1 ', box);
+  assert.deepEqual(frame, courseArtworkFrame('A1', box));
+  // Actual landmark at x=.62 and bus at x=.64, y=.89 in the bundled landscape.
+  for (const x of [0.62, 0.64]) assert.ok(frame.x + frame.width * x > 275 && frame.x + frame.width * x < 310);
+  assert.ok(frame.y + frame.height * .89 < 278);
+  assert.deepEqual(courseArtworkFrame(null, box), courseArtworkFrame('unknown', box));
+  assert.deepEqual(courseArtworkFrame('A1', box, 2, false), courseArtworkFrame(null, box, 2, false));
+  assert.deepEqual(courseArtworkFrame('A1', { x: 0, y: 0, width: 150, height: 100 }), { x: 0, y: 0, width: 150, height: 100 });
 });
 test('Home screen uses shared Gamification, preserves data on error, and routes existing Courses and Shop', () => {
   const routes = [], data = response(active);

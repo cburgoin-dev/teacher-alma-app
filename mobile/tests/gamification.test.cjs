@@ -497,6 +497,11 @@ test('Shop local shortage, silent refresh, domain rejection and repair use autho
 test('horizontal official derivative is bounded at every density; back-only preserves 48dp/a11y/safe area', () => {
   const { AlmaLogo } = component('../src/components/AlmaLogo.tsx');
   const logo = AlmaLogo({ horizontal: true });
+  const trimmed = AlmaLogo({ horizontal: true, horizontalWidth: 184, trimHorizontal: true });
+  const image = nodes(trimmed).find(n => n.type === 'Image');
+  assert.equal(trimmed.props.style.overflow, 'hidden');
+  assert.ok(Math.abs(image.props.style.width / image.props.style.height - 592 / 124) < 1e-10);
+  assert.equal(image.props.source, logo.props.source);
   assert.match(logo.props.source, /la-teacher-alma-horizontal\.png$/); assert.equal(logo.props.resizeMode, 'contain');
   for (const density of [1, 2, 3, 4]) {
     const bytes = fs.readFileSync(path.resolve(__dirname, `../assets/branding/la-teacher-alma-horizontal${density === 1 ? '' : '@' + density + 'x'}.png`));

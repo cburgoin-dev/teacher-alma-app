@@ -24,7 +24,7 @@ export function HomeSecondaryCards({ data, gamification, onNavigate }: { data: H
   } else if (data.review.pendingCount > 0) {
     title = 'Repaso'; detail = `${data.review.pendingCount} ${data.review.pendingCount === 1 ? 'ejercicio pendiente' : 'ejercicios pendientes'}`;
     destination = { screen: 'Review', params: {} }; action = 'Empezar ahora';
-  } else { title = 'Práctica'; detail = 'Más formas de practicar, muy pronto.'; }
+  } else { title = 'Práctica'; detail = 'Más formas de practicar, muy pronto.'; action = 'Muy pronto'; }
   const goal = gamification?.dailyGoal;
   const ratio = goal && goal.target > 0 ? Math.min(100, Math.max(0, goal.progress / goal.target * 100)) : 0;
   const left = <>
@@ -47,22 +47,24 @@ export function HomeSecondaryCards({ data, gamification, onNavigate }: { data: H
           <View style={s.track}><View style={[s.fill, { width: `${ratio}%` }]} /></View><Text style={s.percent}>{Math.round(ratio)}%</Text>
         </View>
       </View> : <Text style={s.detail}>Tu progreso aparecerá aquí.</Text>}
+      <View style={[s.actionPill, s.goalAction]}><Text style={[s.action, { color: colors.blue }]}>Ver detalles →</Text></View>
     </View>
   </View>;
 }
 const s = StyleSheet.create({
   row: { flexDirection: 'row', gap: 10, alignItems: 'stretch' }, stacked: { flexDirection: 'column' },
-  card: { flex: 1, minWidth: 0, borderRadius: 17, borderWidth: 1, padding: 11, gap: 9 },
+  card: { flex: 1, minWidth: 0, borderRadius: 17, borderWidth: 1, padding: 11, gap: 10, shadowColor: '#547DB0', shadowOffset: { width: 0, height: 3 }, shadowOpacity: .06, shadowRadius: 7, elevation: 1 },
   red: { backgroundColor: '#FFF7F8', borderColor: '#FFE1E7' }, blue: { backgroundColor: '#F1F8FF', borderColor: '#D6E8FD' },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 7 }, copy: { flex: 1, minWidth: 0, gap: 4 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  iconHalo: { width: 42, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-  iconCore: { width: 33, height: 37, borderRadius: 17, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-7deg' }] },
+  iconHalo: { width: 44, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center' },
+  iconCore: { width: 36, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-7deg' }] },
   redHalo: { backgroundColor: '#FFE3E9' }, redCore: { backgroundColor: '#FF3B58' }, blueHalo: { backgroundColor: '#DBECFF' }, blueCore: { backgroundColor: '#C0DEFF' },
   title: { color: colors.ink, fontSize: 15, lineHeight: 20, fontWeight: '800', flexShrink: 1, letterSpacing: -.2 },
   detail: { color: colors.muted, fontSize: 12, lineHeight: 17 },
   actionPill: { backgroundColor: '#FFE8ED', borderRadius: 18, paddingVertical: 6, paddingHorizontal: 5, alignItems: 'center', marginTop: 'auto' },
   action: { color: colors.red, fontSize: 12, lineHeight: 17, fontWeight: '700' },
+  goalAction: { backgroundColor: '#DFEFFF' },
   goalFooter: { gap: 5, marginTop: 'auto' }, ratio: { color: colors.muted, fontSize: 12, lineHeight: 17 },
   progressRow: { flexDirection: 'row', gap: 5, alignItems: 'center' }, percent: { color: colors.muted, fontSize: 12, fontWeight: '700' },
   track: { flex: 1, height: 9, backgroundColor: '#D5E4F5', borderRadius: 9, overflow: 'hidden' }, fill: { height: '100%', backgroundColor: '#087DF5', borderRadius: 9 },

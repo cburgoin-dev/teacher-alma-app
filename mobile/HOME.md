@@ -35,7 +35,8 @@ progression. Lessons/Challenges enter from Roadmap with existing completion tick
 Starting a course keeps Course Detail in history. Review without course context
 returns through goBack instead of forcing the catalog.
 
-All Home course cards open Course Detail; Ver todos selects the Courses catalog.
+Home course cards reuse Courses' catalogDestination: IN_PROGRESS and COMPLETED
+open Roadmap; unstarted and COMING_SOON open Course Detail. Ver todos selects the Courses catalog.
 No course is auto-started. Locked nodes remain visible and offer the real Roadmap
 with Ver ruta rather than a nonexistent payment flow. Missing context has no CTA.
 
@@ -72,8 +73,9 @@ other screens' logo sizes.
   Practice coming-soon. Daily Goal is informational and counts sessions, not invented
   lesson/exercise mixes. It follows the returned completion flag.
 
-No course description is fabricated because HomeCourse does not provide one.
-Featured cards show real access/progress metadata instead. At large font scales,
+HomeCourse provides the nullable editorial description. Featured cards prefer it,
+with existing access/coming-soon copy when absent; status never repeats percentage.
+At large font scales,
 both two-card groups stack and hero artwork is omitted to protect readable copy.
 There are no fixed text heights. The greeting wraps to at most two lines with ellipsis for long names. Scroll and safe areas
 remain enabled, and interactive controls have at least 48dp touch surfaces.
@@ -98,7 +100,7 @@ Session/account switching must clear/recreate Home and shared resources when a
 real authentication lifecycle is added. The parser checks envelope/discriminants;
 deep payload validation follows the existing typed API boundary. Diagnosis,
 Practice, Notifications, avatar management, payment and Daily Goal settings remain
-outside this iteration. No backend changes or dependencies were needed.
+outside this iteration. V3 only adds description to the Home projection; no new dependencies.
 
 V1 historical validation result: Mobile TypeScript PASS; full Mobile suite
 154/154 PASS; Android production export PASS (1083 modules, 2.4 MB Hermes bundle)
@@ -106,7 +108,7 @@ at `dist/home-v1-check`; `git diff --check` PASS. The attempted ADB device listi
 failed under the Windows sandbox before device discovery; no physical acceptance
 or screenshot evidence is claimed.
 
-## Visual + navigation revision (2026-10-03)
+## Historical V2 visual + navigation revision (2026-10-03)
 
 Primary: `home-active-primary.png`. The real Android screenshots supplied for this
 revision are evidence of the prior implementation, not alternative design targets.
@@ -142,3 +144,43 @@ Revision validation: TypeScript PASS; full Mobile tests 156/156 PASS, including 
 StackRouter histories for Home vs catalog, Lesson/Challenge return, and stale
 Roadmap anchors. Android export PASS (1086 modules, 2.4 MB Hermes) at
 `dist/home-v2-check`; final `git diff --check` PASS.
+
+## V3 fidelity + navigation revision (2026-10-06)
+
+- Fixed the invalid string gradient offset with numeric stops. A regression test
+  runs the installed react-native-svg gradient extractor: the old value produces
+  the reported warning, and the rendered numeric stops produce none. No warning
+  suppression is used in application code.
+- Home-only logo treatment clips measured transparent margins (alpha bounds
+  17,21..575,106 in the official 592x124 derivative). Both axes scale equally;
+  other screens retain their original mark/layout. Metrics remain live and the
+  header/greeting still scroll. The neutral avatar only gains a subtle border.
+- ACTIVE is one Pressable containing both the entire hero and decorative CTA;
+  both lead to the same Roadmap/focusNode. Missing destinations remove all arrow
+  affordances. The badge reads the real level plus Inglés, the v1 product language.
+  The artwork boundary is smoother, with more space around progress and CTA.
+- HomeCourseArtwork and courseArtworkFrame share a visual crop between ACTIVE
+  and Featured. The bundled A1 focal x=.64 targets Big Ben and the red bus; cover
+  geometry preserves aspect ratio and clamps edges. Other/remote covers center,
+  using remote dimensions when loaded; bundled art remains on failure. Featured
+  uses a 3:2 frame to retain the complete local landscape, with smaller badges.
+- Practice's Muy pronto and Daily Goal's Ver detalles footers are intentionally
+  non-interactive views, as approved. Review remains a real action only when its
+  pending count is positive. Halos, depth and footer surfaces follow the primary.
+- HomeCourse.description is projected from Course for beginner/recommended/featured
+  cards. No second fetch, schema, repository or progression changes. Featured uses
+  the description, a simple status and a stronger progress icon.
+
+Validation: Mobile/backend TypeScript PASS; full Mobile tests 159/159 PASS;
+Home backend tests 19/19 PASS including PostgreSQL/HTTP and read-only snapshots.
+Android export PASS at `dist/home-v3-check` (1088 modules, 2.4 MB Hermes);
+`git diff --check` PASS. Export also reports the environment's NO_COLOR/FORCE_COLOR
+conflict; it does not affect bundling.
+The PG driver emitted its existing concurrent-query deprecation warning; query
+optimization remains deferred. No ADB device was connected, so native screenshots,
+TalkBack/font scaling, physical Back and on-device warning disappearance require
+another device pass. The JS warning regression is verified, not physical acceptance.
+
+Remaining visual differences from primary: official horizontal branding, neutral
+avatar, existing landscapes and real course/goal copy; no notification or flag.
+The crop/layout changes need new Android screenshots before judging fidelity.

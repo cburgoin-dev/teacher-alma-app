@@ -1,9 +1,10 @@
 import type { LearningStackParamList } from '../../navigation/types';
+import { catalogDestination } from '../courses/presentation';
 import type { ActiveHero, HomeCourse, HomeHero } from './types';
 export type HomeDestination = { screen: 'Courses' } | {
   [K in 'CourseDetail' | 'Roadmap' | 'Review']: { screen: K; params: LearningStackParamList[K] }
 }['CourseDetail' | 'Roadmap' | 'Review'];
-export const courseDestination = (course: HomeCourse): HomeDestination => ({ screen: 'CourseDetail', params: { courseId: course.id } });
+export const courseDestination = (course: HomeCourse): HomeDestination => ({ screen: catalogDestination(course), params: { courseId: course.id } });
 export function activeDestination(hero: ActiveHero): HomeDestination | null {
   if (!hero.course || !hero.currentNode) return null;
   return { screen: 'Roadmap', params: { courseId: hero.course.id, focusNode: { id: hero.currentNode.id, type: hero.currentNode.type } } };

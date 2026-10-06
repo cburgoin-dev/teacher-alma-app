@@ -8,6 +8,16 @@ const facts = (): HomeFacts => ({ learner: { displayName: 'Alma' }, courses: [co
 const read = (f: HomeFacts) => new HomeService({ read: async () => f }, () => date(100)).read('user');
 const start = (courseId: string, n = 1, status = 'IN_PROGRESS', completedAt: Date | null = null) => ({ courseId, status, startedAt: date(n), completedAt });
 
+test('HomeCourse projects exact editorial description and null without manufacturing copy', async () => {
+  for (const description of ['Bases para comunicarte en situaciones reales.', null]) {
+    const f = facts(); f.courses = [course({ description })];
+    const result = await read(f);
+    assert.equal(result.featuredCourses[0]?.description, description);
+    assert.ok(result.hero.type === 'NEW');
+    assert.equal(result.hero.beginnerCourse?.description, description);
+  }
+});
+
 test('NEW, empty catalog, real beginner and deterministic featured cap', async () => {
   const f = facts();
   f.courses = [course({ id: 'c', position: 3 }), course({ id: 'a' }), course({ id: 'b', position: 2 })];

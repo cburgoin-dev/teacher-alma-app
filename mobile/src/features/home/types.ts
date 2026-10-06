@@ -1,7 +1,7 @@
 import type { Course, Progress } from '../courses/types';
 export type HomeProgress = Pick<Progress, 'completedRequiredNodes' | 'totalRequiredNodes' | 'percentage'> & { status: 'IN_PROGRESS' | 'COMPLETED' };
 export type HomeIdentity = Pick<Course, 'id' | 'title' | 'level' | 'coverUrl'>;
-export type HomeCourse = HomeIdentity & Pick<Course, 'status' | 'access'> & { progress: HomeProgress | null };
+export type HomeCourse = HomeIdentity & Pick<Course, 'status' | 'access' | 'description'> & { progress: HomeProgress | null };
 export type HomeCurrentNode = { type: 'LESSON' | 'UNIT_CHALLENGE'; id: string; title: string; access: { hasAccess: boolean; lockReason: 'ACCESS' | null } };
 export type NewHero = { type: 'NEW'; beginnerCourse: HomeCourse | null };
 export type AssessedHero = { type: 'ASSESSED'; diagnostic: { attemptId: string; completedAt: string | null; recommendedLevel: string | null }; recommendedCourse: HomeCourse | null };

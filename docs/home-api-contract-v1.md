@@ -48,6 +48,7 @@ Notifications and avatar management are also outside this contract. Mobile may u
 type HomeCourse = {
   id: string;
   title: string;
+  description: string | null;
   level: string | null;
   coverUrl: string | null;
   status: "PUBLISHED" | "COMING_SOON";
@@ -65,7 +66,7 @@ type HomeCourse = {
 };
 ```
 
-This projection reuses Courses semantics. Home must not invent different progress percentages, access sources or visibility rules.
+This projection reuses Courses semantics. Home must not invent different progress percentages, access sources or visibility rules. `description` is the existing editorial Course description, nullable; Mobile uses it without a second Courses request and must not fabricate missing descriptions. This field belongs to HomeCourse (featured/beginner/recommended), not the smaller ACTIVE/completed identity.
 
 ### `HomeCurrentNode`
 
@@ -141,6 +142,7 @@ Example:
       "title": "Inglés A1",
       "level": "A1",
       "coverUrl": "/demo-media/a1.png",
+      "description": "Bases para comunicarte en situaciones reales.",
       "status": "PUBLISHED",
       "progress": null,
       "access": {
@@ -189,6 +191,7 @@ Example:
       "title": "Inglés A2",
       "level": "A2",
       "coverUrl": "/demo-media/a2.png",
+      "description": null,
       "status": "PUBLISHED",
       "progress": null,
       "access": {
@@ -320,6 +323,7 @@ Example:
       "title": "Inglés A2",
       "level": "A2",
       "coverUrl": "/demo-media/a2.png",
+      "description": null,
       "status": "COMING_SOON",
       "progress": null,
       "access": {

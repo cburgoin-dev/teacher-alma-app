@@ -14,7 +14,7 @@ export interface HomeFacts {
 export interface HomeRepository { read(userId: string): Promise<HomeFacts> }
 type Progress = { status: 'IN_PROGRESS' | 'COMPLETED'; completedRequiredNodes: number; totalRequiredNodes: number; percentage: number };
 type Identity = { id: string; title: string; level: string | null; coverUrl: string | null };
-export type HomeCourse = Identity & { status: 'PUBLISHED' | 'COMING_SOON'; progress: Progress | null; access: ReturnType<typeof courseAccess> };
+export type HomeCourse = Identity & { description: string | null; status: 'PUBLISHED' | 'COMING_SOON'; progress: Progress | null; access: ReturnType<typeof courseAccess> };
 export type HomeCurrentNode = { type: 'LESSON' | 'UNIT_CHALLENGE'; id: string; title: string; access: { hasAccess: boolean; lockReason: 'ACCESS' | null } };
 export type HomeHero =
   | { type: 'NEW'; beginnerCourse: HomeCourse | null }

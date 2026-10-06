@@ -24,6 +24,8 @@ test('real stack router: Detail returns to actual Home/catalog tab and learning 
     const go = (state, action) => { const next = router.getStateForAction(state, action, config); assert.ok(next); return next; };
     const detail = go(base, CommonActions.navigate('CourseDetail', { courseId: 'c' }));
     assert.deepEqual(go(detail, CommonActions.goBack()).routes[0], base.routes[0]);
+    const directRoadmap = go(base, CommonActions.navigate('Roadmap', { courseId: 'c' }));
+    assert.deepEqual(go(directRoadmap, CommonActions.goBack()).routes[0], base.routes[0]);
     for (const kind of ['Lesson', 'UnitChallenge']) {
       const route = go(origin === 'Home' ? base : detail, CommonActions.navigate('Roadmap', { courseId: 'c', focusNode: { id: 'n', type: kind === 'Lesson' ? 'LESSON' : 'UNIT_CHALLENGE' } }));
       const lesson = go(route, CommonActions.navigate(kind, { courseId: 'c', completionTicket: 9 }));

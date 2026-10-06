@@ -40,7 +40,7 @@ test('Home PostgreSQL: real read model, authenticated HTTP, no side effects', { 
     await prisma.user.createMany({ data: [userId, otherId].map(id => ({ id, email: id + '@home-test.invalid', displayName: 'Home learner' })) });
     const max = await prisma.course.aggregate({ _max: { position: true } }); const position = (max._max.position ?? 0) + 10;
     for (const [i, id] of ids.entries()) await prisma.course.create({ data: { id, slug: 'home-' + id, title: 'Home course ' + i,
-      level: 'A1', status: id === soon ? 'COMING_SOON' : 'PUBLISHED', position: position + i } });
+      level: 'A1', description: id === b ? 'Editorial Home description' : null, status: id === soon ? 'COMING_SOON' : 'PUBLISHED', position: position + i } });
     for (const [id, courseId, lessonId] of [[topicA, a, lessonA], [topicB, b, lessonB]] as const) {
       await prisma.topic.create({ data: { id, courseId, title: 'Home topic', position: 1 } });
       await prisma.lesson.create({ data: { id: lessonId, topicId: id, title: 'Home lesson', position: 1, status: 'PUBLISHED', accessType: 'PAID' } });
@@ -59,6 +59,8 @@ test('Home PostgreSQL: real read model, authenticated HTTP, no side effects', { 
       await prisma.diagnosticAttempt.create({ data: { userId, diagnosticId, status: 'IN_PROGRESS', startedAt: date(3) } });
       let r = await checkedRead(); assert.ok(r.hero.type === 'ASSESSED'); assert.equal(r.hero.diagnostic.attemptId, latest.id);
       assert.equal(r.hero.recommendedCourse?.id, b); assert.equal(r.featuredCourses[0]?.id, b);
+      assert.equal(r.hero.recommendedCourse?.description, 'Editorial Home description');
+      assert.equal(r.featuredCourses[0]?.description, 'Editorial Home description');
       await prisma.diagnosticAttempt.update({ where: { id: latest.id }, data: { recommendedCourseId: null, recommendedLevel: null } });
       r = await checkedRead(); assert.ok(r.hero.type === 'ASSESSED'); assert.equal(r.hero.recommendedCourse, null);
     });
