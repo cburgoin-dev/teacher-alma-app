@@ -1,6 +1,6 @@
 # Progress v1 semantics
 
-Status: product semantics approved for design/API work.
+Status: product semantics approved; HTTP/read-model contract frozen in `docs/progress-api-contract-v1.md`.
 
 Progress is the learner-facing place to understand advancement, unfinished reinforcement work and study consistency. It is a read-oriented composition over existing Courses/Roadmap, Review and Gamification data. It must not become a second progression, streak or mastery engine.
 
@@ -87,7 +87,7 @@ When pending Review exists:
 
 - title such as `Para reforzar`;
 - total pending count;
-- at most two compact Topic groups, ordered deterministically by meaningful Review recency/priority;
+- at most two compact Topic groups, ordered deterministically using the existing Review ordering;
 - each group may show Topic title and pending item count;
 - one dominant `Ver repaso` action routes to the existing Review flow.
 
@@ -122,6 +122,8 @@ Suggested copy:
 - `N días de aprendizaje esta semana` for the real-learning count;
 - optionally show current streak from the shared Gamification resource, clearly labeled as streak rather than learning-day count.
 
+The weekly card and Activity Calendar share semantic meanings but do not need identical icon density. The dashboard should favor a compact, quickly scannable representation; learned days may use restrained checks or small flame treatment, while Protector/Repair should remain recognizable when present.
+
 Tapping the calendar affordance opens Activity Calendar.
 
 ## 7. Activity Calendar
@@ -153,7 +155,7 @@ Historical semantic states:
 - `BROKEN` — a missed date caused a break and remains unrepaired.
 - neutral/no-event — historical date with no relevant learning/continuity event and no need for special emphasis.
 
-Presentation-only states such as `TODAY`, `FUTURE` and out-of-month cells are derived by Mobile from the requested month/current local date and are not separate persisted business states.
+Presentation-only states such as `TODAY`, `FUTURE` and out-of-month cells are derived by Mobile from the requested month and authoritative local `today`; they are not separate persisted business states.
 
 ### Final-state precedence for a date
 
@@ -171,15 +173,17 @@ Protected and repaired dates are **not** counted as learning days.
 
 ### Visual direction
 
-The LingoDeer screenshots are inspiration for clarity and habit storytelling, not a design to copy literally.
+The supplied LingoDeer screenshots are inspiration for clarity and habit storytelling, not a design to copy literally.
 
-Useful direction:
+Approved direction:
 
 - month title with compact previous/next controls;
-- strong but restrained day-state icons;
-- learned day: positive study/flame/check treatment;
-- protected day: shield treatment;
-- repaired day: repair/restore treatment;
+- Calendar is more expressive than the compact weekly Dashboard strip;
+- learned days may use a stronger streak/flame treatment;
+- visually connect consecutive continuity days when it improves streak storytelling;
+- a connected visual segment does not erase semantic differences: `PROTECTED` and `REPAIRED` remain distinguishable and never count as learned;
+- protected day: reuse the recognizable Protector/shield product language from Gamification/Shop where feasible;
+- repaired day: reuse the recognizable Repair/restore language where feasible;
 - broken day: clear X/break treatment;
 - today: subtle distinct outline/accent;
 - future: subdued/disabled;
@@ -204,57 +208,25 @@ The calendar is a read model over these sources. It does not mutate streak histo
 
 ## 9. Read-model/API direction
 
-Preferred separation:
+The exact HTTP source of truth is `docs/progress-api-contract-v1.md`.
+
+Approved separation:
 
 - `GET /me/progress` for the main dashboard;
 - `GET /me/progress/calendar?month=YYYY-MM` for one requested calendar month.
 
 Do not send unbounded calendar history with the dashboard.
 
-### Dashboard conceptual projection
+The Dashboard response contains:
 
-The dashboard read model should contain only what the screen needs, conceptually:
+- selected learner-visible in-progress/recent completed course or `null`;
+- compact Review pending count + at most two authoritative Topic groups;
+- authoritative timezone/current local date;
+- exactly one Monday-to-Sunday week of semantic day states.
 
-```ts
-type ProgressDashboard = {
-  course: ProgressCourse | null;
-  review: {
-    pendingCount: number;
-    groups: Array<{
-      topicId: string | null;
-      topicTitle: string;
-      pendingCount: number;
-    }>;
-  };
-  consistency: {
-    learningDaysThisWeek: number;
-    week: Array<{
-      date: string;
-      state: "LEARNED" | "PROTECTED" | "REPAIRED" | "BROKEN" | "NONE";
-    }>;
-  };
-};
-```
+The Calendar response contains one sparse month of meaningful historical day states plus authoritative timezone/current local date. Neutral dates are omitted from the sparse event list.
 
-Exact HTTP payload is frozen in the API-contract step, not by this illustrative shape.
-
-### Calendar conceptual projection
-
-```ts
-type ProgressCalendarMonth = {
-  month: string; // YYYY-MM
-  timezone: string;
-  learningDaysCount: number;
-  days: Array<{
-    date: string; // YYYY-MM-DD
-    state: "LEARNED" | "PROTECTED" | "REPAIRED" | "BROKEN";
-  }>;
-};
-```
-
-Dates omitted from `days` are neutral/no-event dates for that month.
-
-Gamification remains authoritative for coin balance, Daily Goal, inventory and current/longest streak. If Progress needs current streak for presentation, Mobile should consume the same shared Gamification resource rather than fork it into Progress-owned state.
+Gamification remains authoritative for coin balance, Daily Goal, inventory and current/longest streak. If Progress needs current streak for presentation, Mobile consumes the same shared Gamification resource rather than forking it into Progress-owned state.
 
 ## 10. Persistence
 
@@ -274,12 +246,12 @@ Keep last-known data during ordinary refresh when practical; do not blank the en
 
 ## 12. Mockup requirements before Mobile implementation
 
-Create/approve two primary visual references:
+Use two primary visual references:
 
-1. `progress-dashboard-primary` — based on the existing Progress mockup, adapted to approved v1 scope. Remove Strengths/Achievements from the v1 target and give more visual importance to course progress, Review and consistency.
-2. `progress-calendar-primary` — a new monthly Activity Calendar mockup inspired by the supplied LingoDeer screenshots while following Teacher Alma's light/blue/red visual language.
+1. `progress-dashboard-primary` — based on the existing Progress concept, adapted to approved v1 scope. Strengths/Achievements are excluded; course progress, Review and consistency are the core hierarchy.
+2. `progress-calendar-primary` — monthly Activity Calendar direction inspired by the supplied LingoDeer habit-history screenshots while following Teacher Alma's light/blue/red visual language and the richer continuity treatment defined above.
 
-Mockups are visual targets, not business-rule contracts.
+Mockups are visual targets, not business-rule contracts. Dashboard and Calendar may use different visual density for the same semantic states.
 
 ## 13. Deferred / follow-up work
 
