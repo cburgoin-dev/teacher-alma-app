@@ -2,7 +2,7 @@ import { recordLearningCompletion } from '../gamification/gamification.service.j
 import { createHash, randomUUID } from 'node:crypto';
 import { HttpError } from '../../shared/http-error.js';
 import { isUuid } from '../../shared/auth.js';
-import { isReviewEligible } from './review.rules.js';
+import { eligibleReviewItems, reviewGroups } from './review.rules.js';
 import { checkAnswer, publicActivity } from '../lessons/lesson.activity.js';
 import type { PrismaReviewRepository, ReviewRecord, ReviewSession } from './review.repository.js';
 import type { ReviewBatchToken } from './review.token.js';
@@ -24,20 +24,12 @@ export class ReviewService {
     private readonly clock: () => Date = () => new Date()) {}
   private async eligible(session: ReviewSession, userId: string) {
     const entitlements = await session.findEntitlements(userId), now = this.clock();
-    return (await session.findActive(userId)).filter(item => isReviewEligible(item, entitlements, now))
-    .sort((a, b) => (a.lastReviewedAt?.getTime() ?? -Infinity) - (b.lastReviewedAt?.getTime() ?? -Infinity)
-      || a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id));
+    return eligibleReviewItems(await session.findActive(userId), entitlements, now);
   }
   read(userId: string) {
     return this.repository.read(async session => {
       const items = await this.eligible(session, userId);
-      const groups = new Map<string, { topic: { id: string; title: string }; count: number }>();
-      for (const item of items) {
-        const topic = item.sourceLesson!.topic;
-        const group = groups.get(topic.id) ?? { topic: { id: topic.id, title: topic.title }, count: 0 };
-        group.count++; groups.set(topic.id, group);
-      }
-      return { state: items.length ? 'READY' : 'EMPTY', pendingCount: items.length, groups: [...groups.values()] };
+      return { state: items.length ? 'READY' : 'EMPTY', pendingCount: items.length, groups: reviewGroups(items) };
     });
   }
   batch(userId: string, preferredLessonId: unknown) {

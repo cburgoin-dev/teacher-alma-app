@@ -1,3 +1,4 @@
+import { orderedCourseCandidates } from '../courses/course.selection.js';
 import { courseProgress, roadmapNodes } from '../courses/course.progression.js';
 import { entitlementSource, isVisible } from '../courses/course.rules.js';
 import { courseAccess } from '../courses/course.service.js';
@@ -10,7 +11,6 @@ function progress(c: CourseRecord) {
   const { status, completedRequiredNodes, totalRequiredNodes, percentage } = courseProgress(c);
   return { status, completedRequiredNodes, totalRequiredNodes, percentage };
 }
-const timestamp = (date: Date | null) => date?.getTime() ?? -Infinity;
 
 export class HomeService {
   constructor(private readonly repository: HomeRepository, private readonly clock: () => Date = () => new Date()) {}
@@ -19,16 +19,8 @@ export class HomeService {
     const catalog = facts.courses.filter(isVisible).sort((a, b) => a.position - b.position || a.id.localeCompare(b.id));
     const project = (c: CourseRecord): HomeCourse => ({ ...identity(c), description: c.description, status: c.status as HomeCourse['status'],
       progress: c.courseProgress.length ? progress(c) : null, access: courseAccess(c, facts.grants, now) });
-    const latest = new Map<string, number>();
-    for (const completion of facts.completions) latest.set(completion.courseId,
-      Math.max(latest.get(completion.courseId) ?? -Infinity, completion.completedAt.getTime()));
-    const startedOrder = (a: typeof facts.progress[number], b: typeof facts.progress[number]) =>
-      b.startedAt.getTime() - a.startedAt.getTime() || a.courseId.localeCompare(b.courseId);
     const visibleIds = new Set(catalog.map(c => c.id));
-    const activeCandidates = facts.progress.filter(p => p.status === 'IN_PROGRESS').sort((a, b) =>
-      (latest.get(b.courseId) ?? -Infinity) - (latest.get(a.courseId) ?? -Infinity) || startedOrder(a, b));
-    const completedCandidates = facts.progress.filter(p => p.status === 'COMPLETED').sort((a, b) =>
-      timestamp(b.completedAt) - timestamp(a.completedAt) || startedOrder(a, b));
+    const { activeCandidates, completedCandidates } = orderedCourseCandidates(facts.progress, facts.completions);
     // Prefer visible context without changing state precedence when only hidden progress remains.
     const active = activeCandidates.find(p => visibleIds.has(p.courseId)) ?? activeCandidates[0];
     const completed = completedCandidates.find(p => visibleIds.has(p.courseId)) ?? completedCandidates[0];

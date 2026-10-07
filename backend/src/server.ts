@@ -1,3 +1,5 @@
+import { ProgressService } from './modules/progress/progress.service.js';
+import { PrismaProgressRepository } from './modules/progress/progress.repository.js';
 import { HomeService } from './modules/home/home.service.js';
 import { PrismaHomeRepository } from './modules/home/home.repository.js';
 import { GamificationService } from './modules/gamification/gamification.service.js';
@@ -22,7 +24,8 @@ const app = createApp(new CourseService(new PrismaCourseRepository(prisma)),
   new ReviewService(new PrismaReviewRepository(prisma), configuredReviewToken()),
   new UnitChallengeService(new PrismaUnitChallengeRepository(prisma)),
   new GamificationService(new PrismaGamificationRepository(prisma)),
-  new HomeService(new PrismaHomeRepository(prisma)));
+  new HomeService(new PrismaHomeRepository(prisma)),
+  new ProgressService(new PrismaProgressRepository(prisma)));
 
 const port = Number(process.env.PORT ?? 3000);
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
