@@ -9,6 +9,11 @@ Use exactly two primary visual targets:
 - `progress-dashboard-primary.png` — main Progress Dashboard.
 - `progress-calendar-primary.png` — secondary Activity Calendar screen.
 
+Secondary supporting references (never override the corresponding primary):
+
+- `progress-dashboard-secondary.png` — supporting Dashboard density and real Review copy.
+- `progress-calendar-secondary.png` — supporting Calendar navigation, layout and legend.
+
 Do not treat older combined/comparison mockups as an additional contract. If a historical combined image is available to the agent, it is secondary inspiration only. When references disagree, this README plus the semantics/API contract wins.
 
 ## Dashboard visual priority

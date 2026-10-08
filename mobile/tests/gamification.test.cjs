@@ -49,7 +49,7 @@ function component(relative, overrides = {}) {
     if (name.endsWith('/ui')) return { Button: 'Button', ProgressBar: 'ProgressBar', ResourceState: 'ResourceState', colors: {}, styles: {} };
     if (name.endsWith('/lessonStyles')) return { lessonStyles: {} };
     if (name.endsWith('/AudioButton')) return { lessonAudio: { stop() {} } };
-    const leaves = ['AlmaLogo', 'ContextualHeader', 'LearningIcon', 'ActivityStep', 'NavigationIcon', 'HomeScreen', 'CoursesScreen', 'CourseDetailScreen', 'RoadmapScreen', 'LessonScreen', 'UnitChallengeScreen', 'ReviewScreen', 'RoadmapHeader', 'ProgressScreen', 'ProfileScreen', 'GamificationShopScreen'];
+    const leaves = ['AlmaLogo', 'ContextualHeader', 'LearningIcon', 'ActivityStep', 'NavigationIcon', 'HomeScreen', 'CoursesScreen', 'CourseDetailScreen', 'RoadmapScreen', 'LessonScreen', 'UnitChallengeScreen', 'ReviewScreen', 'RoadmapHeader', 'ProgressScreen', 'ProgressCalendarScreen', 'ProfileScreen', 'GamificationShopScreen'];
     const leaf = leaves.find(leaf => name.endsWith('/' + leaf));
     if (leaf) return { [leaf]: leaf };
     if (name.endsWith('/LessonResultScreen')) return { CompletionHero: 'CompletionHero', LessonResultScreen: 'LessonResultScreen' };
@@ -311,7 +311,7 @@ test('root stack owns one learning history above unchanged MainTabs and global S
   const root = RootNavigator();
   assert.equal(root.type, 'NavigationContainer');
   const screens = nodes(root).filter(n => n.type === 'StackScreen');
-  assert.deepEqual(screens.map(n => n.props.name), ['MainTabs', 'GamificationShop', 'CourseDetail', 'Roadmap', 'Lesson', 'LessonResult', 'UnitChallenge', 'Review']); assert.equal(screens[0].props.component, MainTabs);
+  assert.deepEqual(screens.map(n => n.props.name), ['MainTabs', 'GamificationShop', 'ProgressCalendar', 'CourseDetail', 'Roadmap', 'Lesson', 'LessonResult', 'UnitChallenge', 'Review']); assert.equal(screens[0].props.component, MainTabs);
   const tabs = MainTabs(); assert.deepEqual(nodes(tabs).filter(n => n.type === 'TabScreen').map(n => n.props.name), ['Home', 'CoursesTab', 'Progress', 'Profile']);
 
 });

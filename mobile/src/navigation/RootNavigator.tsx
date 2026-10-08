@@ -11,6 +11,7 @@ import { ReviewScreen } from '../features/review/screens/ReviewScreen';
 import { ContextualHeader } from '../components/ContextualHeader';
 import { RoadmapHeader } from '../features/gamification/components/RoadmapHeader';
 import { ProgressScreen } from '../features/progress/screens/ProgressScreen';
+import { ProgressCalendarScreen } from '../features/progress/screens/ProgressCalendarScreen';
 import { ProfileScreen } from '../features/profile/screens/ProfileScreen';
 import type { RootStackParamList, RootTabParamList } from './types';
 import { useEffect } from 'react';
@@ -30,6 +31,7 @@ export function RootNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="MainTabs" component={MainTabs} />
       <Stack.Screen name="GamificationShop" component={GamificationShopScreen} />
+      <Stack.Screen name="ProgressCalendar" component={ProgressCalendarScreen} />
       <Stack.Screen name="CourseDetail" component={CourseDetailScreen} options={{ headerShown: true, header: ({ navigation }) => <ContextualHeader safeTop title="Detalle del curso" onBack={() => navigation.goBack()} /> }} />
       <Stack.Screen name="Roadmap" component={RoadmapScreen} options={{ headerShown: true, header: ({ navigation }) => <RoadmapHeader onBack={() => navigation.goBack()} onOpenShop={() => navigation.navigate('GamificationShop')} /> }} />
       <Stack.Screen name="Lesson" component={LessonScreen} options={{ gestureEnabled: false }} />
@@ -58,7 +60,7 @@ export function MainTabs() {
       })}>
         <Tabs.Screen name="Home" component={HomeScreen} options={{ title: 'Inicio', headerShown: false }} />
         <Tabs.Screen name="CoursesTab" component={CoursesScreen} options={{ title: 'Cursos', headerShown: false }} />
-        <Tabs.Screen name="Progress" component={ProgressScreen} options={{ title: 'Progreso' }} />
+        <Tabs.Screen name="Progress" component={ProgressScreen} options={{ title: 'Progreso', headerShown: false }} />
         <Tabs.Screen name="Profile" component={ProfileScreen} options={{ title: 'Perfil' }} />
       </Tabs.Navigator>
   );

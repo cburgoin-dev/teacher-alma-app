@@ -12,6 +12,7 @@ export type LearningStackParamList = {
 export type RootStackParamList = LearningStackParamList & {
   MainTabs: NavigatorScreenParams<RootTabParamList> | undefined;
   GamificationShop: undefined;
+  ProgressCalendar: undefined;
 };
 /** Existing learning screens now share the root history, regardless of entry tab. */
 export type CoursesStackParamList = RootStackParamList;
