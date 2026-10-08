@@ -4,9 +4,9 @@ import { mainHeaderTopSpacing } from '../../../components/headerLayout';
 export const s = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#FFF' },
   content: { paddingHorizontal: 18, paddingTop: mainHeaderTopSpacing, paddingBottom: 24, gap: 14, width: '100%', maxWidth: 640, alignSelf: 'center' },
-  title: { fontSize: 28, lineHeight: 34, fontWeight: '800', letterSpacing: -.7, color: colors.ink },
-  subtitle: { fontSize: 16, lineHeight: 23, color: colors.muted },
-  heading: { fontSize: 21, lineHeight: 27, fontWeight: '800', color: colors.ink },
+  title: { fontSize: 27, lineHeight: 33, fontWeight: '800', letterSpacing: -.7, color: colors.ink },
+  subtitle: { fontSize: 15, lineHeight: 21, color: colors.muted },
+  heading: { fontSize: 19, lineHeight: 25, fontWeight: '800', color: colors.ink },
   body: { fontSize: 14, lineHeight: 21, color: colors.muted },
   card: { borderRadius: 20, padding: 16, gap: 13, borderWidth: 1, borderColor: '#D6E8FF', backgroundColor: '#F0F7FF' },
   pink: { backgroundColor: '#FFF3F5', borderColor: '#FFDDE3' },

@@ -1,8 +1,11 @@
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import BookOpen from 'lucide-react-native/icons/book-open';
 import ClipboardList from 'lucide-react-native/icons/clipboard-list';
+import CircleCheck from 'lucide-react-native/icons/circle-check';
+import CalendarDays from 'lucide-react-native/icons/calendar-days';
 import { Button } from '../../courses/components/ui';
-import { CourseCover } from '../../courses/components/CourseCover';
+import { ProgressArtwork } from './ProgressArtwork';
+import { ProgressAction } from './ProgressAction';
 import { GamificationIcon } from '../../gamification/components/GamificationIcon';
 import type { ProgressCourse, ProgressResponse } from '../types';
 import { dayLabel, learningDaysLabel, weekdays } from '../presentation';
@@ -14,39 +17,51 @@ export function ProgressCourseCard({ course, onRoadmap, onCatalog }: { course: P
   const { width, fontScale } = useWindowDimensions();
   if (!course) return <View style={s.card}><Text style={s.heading}>Tu camino empieza aquí</Text><Text style={s.body}>Aún no tienes progreso de curso. Explora los cursos y empieza a aprender.</Text><Button title="Explorar cursos" tone="blue" arrow onPress={onCatalog} /></View>;
   const completed = course.progress.status === 'COMPLETED';
-  return <View style={s.card}>
-    <View style={s.row}><View style={s.copy}><Text style={c.courseTitle}>{course.title}</Text>{course.level ? <Text style={s.body}>Nivel {course.level}</Text> : null}
+  const stacked = width < 350 || fontScale > 1.3;
+  const showLevel = course.level && !course.title.toUpperCase().split(/[^A-Z0-9]+/).includes(course.level.toUpperCase());
+  return <View style={[s.card, c.hero]}>
+    <View style={[c.heroRow, stacked && c.stacked]}><View style={c.information}><Text style={c.courseTitle}>{course.title}</Text>{showLevel ? <Text style={c.level}>Nivel {course.level}</Text> : null}
       <Text style={c.percent}>{course.progress.percentage}%</Text>
-      <Text style={s.body}>{course.progress.completedRequiredNodes} de {course.progress.totalRequiredNodes} pasos completados</Text>
-    </View>{width >= 360 && fontScale <= 1.3 ? <View importantForAccessibility="no-hide-descendants"><CourseCover uri={course.coverUrl} level={course.level} hero style={c.cover} /></View> : null}</View>
-    <View accessibilityRole="progressbar" accessibilityLabel="Progreso del curso" accessibilityValue={{ min: 0, max: 100, now: course.progress.percentage }} style={c.track}><View style={[c.fill, { width: `${course.progress.percentage}%` }]} /></View>
-    <Text style={s.subtitle}>{completed ? '¡Curso completado! Revisa lo que aprendiste.' : 'Sigue avanzando, paso a paso.'}</Text>
-    <View style={c.action}><Button title="Ver ruta" tone="blue" arrow onPress={() => onRoadmap(course.id)} /></View>
+      <Text style={c.steps}>{course.progress.completedRequiredNodes} de {course.progress.totalRequiredNodes} pasos completados</Text>
+      <View accessibilityRole="progressbar" accessibilityLabel="Progreso del curso" accessibilityValue={{ min: 0, max: 100, now: course.progress.percentage }} style={c.track}><View style={[c.fill, { width: `${course.progress.percentage}%` }]} /></View>
+      <Text style={c.note}>{completed ? '¡Curso completado!' : '¡Vas muy bien! Sigue así.'}</Text>
+    </View><View style={[c.artZone, stacked && c.artZoneStacked]}>
+      <View style={[c.landscape, stacked && c.landscapeStacked]}><ProgressArtwork uri={course.coverUrl} level={course.level} /></View>
+      <ProgressAction title="Ver ruta" onPress={() => onRoadmap(course.id)} />
+    </View></View>
   </View>;
 }
 export function ProgressReviewCard({ review, onReview }: { review: ProgressResponse['review']; onReview: () => void }) {
   const pending = review.pendingCount > 0;
-  return <View style={[s.card, s.pink]}>
-    <View style={s.row}><View accessible={false} importantForAccessibility="no-hide-descendants" style={[s.badge, { backgroundColor: colors.red }]}><ClipboardList size={27} color="#FFF" /></View>
-      <View style={s.copy}><Text style={s.heading}>{pending ? 'Para reforzar' : 'Todo al día'}</Text><Text style={s.body}>{pending ? `${review.pendingCount} ${review.pendingCount === 1 ? 'ejercicio pendiente' : 'ejercicios pendientes'}. Refuerza lo aprendido con más seguridad.` : 'No tienes ejercicios pendientes de repaso.'}</Text></View></View>
+  return <View style={[s.card, pending ? s.pink : c.clear]}>
+    <View style={s.row}><View accessible={false} importantForAccessibility="no-hide-descendants" style={[s.badge, { backgroundColor: pending ? colors.red : '#D4F1E7' }]}>{pending ? <ClipboardList size={25} color="#FFF" /> : <CircleCheck size={28} color="#17856A" />}</View>
+      <View style={s.copy}><Text style={[s.heading, !pending && c.clearTitle]}>{pending ? 'Para reforzar' : 'Todo al día'}</Text><Text style={s.body}>{pending ? `${review.pendingCount} ${review.pendingCount === 1 ? 'ejercicio pendiente' : 'ejercicios pendientes'}` : 'Sin repasos pendientes. ¡Sigue así!'}</Text></View></View>
     {pending ? <>{review.groups.slice(0, 2).map(group => <View key={group.topic.id} style={c.topic}>
       <View accessible={false} importantForAccessibility="no-hide-descendants"><BookOpen size={24} color={colors.blue} /></View><Text style={c.topicTitle}>{group.topic.title}</Text><Text accessibilityLabel={`${group.pendingCount} pendientes`} style={c.count}>{group.pendingCount}</Text>
     </View>)}<Button title="Ver repaso" arrow onPress={onReview} /></> : null}
   </View>;
 }
 export function ProgressWeekCard({ week, onCalendar }: { week: ProgressResponse['consistency']; onCalendar: () => void }) {
-  return <View style={s.card}>
-    <View style={s.row}><View style={s.badge}><GamificationIcon kind="flame" size={37} /></View><View style={s.copy}><Text style={s.heading}>Tu constancia</Text><Text style={s.body}>{learningDaysLabel(week.learningDaysThisWeek)} esta semana</Text></View></View>
+  return <View style={[s.card, c.consistency]}>
+    <View style={s.row}><View style={[s.badge, c.flameBadge]}><GamificationIcon kind="flame" size={32} /></View><View style={s.copy}><Text style={s.heading}>Tu constancia</Text><Text style={c.weekCopy}>{learningDaysLabel(week.learningDaysThisWeek)} esta semana</Text></View><View accessible={false} importantForAccessibility="no-hide-descendants" style={c.calendarDetail}><CalendarDays size={23} color="#426BA5" /></View></View>
     <View style={c.week}>{week.days.map((day, index) => <View key={day.date} accessible accessibilityLabel={dayLabel(day.date, day.state, week.today)} style={c.day}>
       <Text style={c.weekday}>{weekdays[index]}</Text><View style={[c.circle, day.state === 'LEARNED' && c.learned, day.date === week.today && c.today]}><DayMark state={day.state} size={23} future={day.date > week.today} /></View>
-    </View>)}</View><Button title="Ver calendario" tone="blue" arrow onPress={onCalendar} />
+    </View>)}</View><View style={c.action}><ProgressAction title="Ver calendario" onPress={onCalendar} /></View>
   </View>;
 }
 const c = StyleSheet.create({
-  courseTitle: { color: colors.blue, fontSize: 21, lineHeight: 27, fontWeight: '800' }, percent: { color: colors.ink, fontWeight: '900', fontSize: 42, lineHeight: 49 },
-  cover: { width: 98, height: 105, borderRadius: 16 },
-  track: { height: 12, borderRadius: 8, backgroundColor: '#D9E4F2', overflow: 'hidden' }, fill: { height: '100%', backgroundColor: colors.red, borderRadius: 8 },
+  hero: { backgroundColor: '#EDF6FF', borderColor: '#CDE3FF', padding: 15, shadowColor: '#2764A5', shadowOffset: { width: 0, height: 3 }, shadowOpacity: .08, shadowRadius: 8, elevation: 2 },
+  heroRow: { flexDirection: 'row', alignItems: 'center', gap: 12 }, stacked: { flexDirection: 'column', alignItems: 'stretch' },
+  information: { flex: 1, minWidth: 0, gap: 7 }, courseTitle: { color: colors.blue, fontSize: 20, lineHeight: 25, fontWeight: '800' },
+  percent: { color: colors.ink, fontWeight: '900', fontSize: 43, lineHeight: 49, letterSpacing: -1.5 },
+  level: { color: colors.muted, fontSize: 12, lineHeight: 16 }, steps: { color: '#526F99', fontSize: 13, lineHeight: 18 }, note: { color: '#456A9F', fontSize: 13, lineHeight: 19, marginTop: 3 },
+  artZone: { width: '43%', gap: 8, alignItems: 'stretch' }, artZoneStacked: { width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' },
+  landscape: { width: '100%' }, landscapeStacked: { width: 126 },
+  track: { height: 10, borderRadius: 8, backgroundColor: '#CFDFF1', overflow: 'hidden', marginTop: 3 }, fill: { height: '100%', backgroundColor: colors.red, borderRadius: 8 },
   action: { alignSelf: 'flex-end', maxWidth: '100%' },
+  clear: { backgroundColor: '#F0FAF6', borderColor: '#D3EBE2', paddingVertical: 14 }, clearTitle: { color: '#176551' },
+  consistency: { backgroundColor: '#F7FAFF', gap: 10 }, flameBadge: { width: 42, height: 42 },
+  weekCopy: { color: colors.muted, fontSize: 13, lineHeight: 18 }, calendarDetail: { alignSelf: 'flex-start', paddingTop: 4 },
   topic: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: 16, backgroundColor: '#FFF' },
   topicTitle: { flex: 1, color: colors.ink, fontSize: 15, lineHeight: 21, fontWeight: '700' },
   count: { color: colors.red, fontSize: 19, fontWeight: '800', backgroundColor: '#FFECEF', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 },

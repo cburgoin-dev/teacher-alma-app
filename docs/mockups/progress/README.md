@@ -67,4 +67,4 @@ Mockups are visual targets, not business-rule contracts. Aim for high visual fid
 - existing Courses/Roadmap, Review and Gamification ownership boundaries;
 - no dead learner-facing controls.
 
-For implementation prompts, explicitly ask the agent to inspect these two image files in addition to the semantics/API docs rather than relying on textual recollection alone.
+For implementation prompts, explicitly ask the agent to inspect all four image files in addition to the semantics/API docs rather than relying on textual recollection alone. The two primary references take precedence; the two secondary references only complement their corresponding primary.
