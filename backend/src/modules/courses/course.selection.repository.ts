@@ -1,6 +1,6 @@
 import type { Prisma } from '../../generated/prisma/client.js';
 
-/** Completion sources shared by Home and Progress, including completed replay runs. */
+/** Completion sources shared by Home and Progress, including completed Lesson runs. */
 export async function readCourseSelection(db: Prisma.TransactionClient, userId: string) {
   const [progress, lessons, runs, challenges] = await Promise.all([
     db.courseProgress.findMany({ where: { userId }, select: { courseId: true, status: true, startedAt: true, completedAt: true } }),
