@@ -54,6 +54,7 @@ Home-specific state is derived. Do not invent `home_state`, duplicate Roadmap pr
 ### Progress
 - `docs/progress-semantics-v1.md`
 - `docs/progress-api-contract-v1.md`
+- `docs/mockups/progress/README.md`
 - `docs/screens.md`
 - `docs/design-direction.md`
 - Course/Roadmap, Review and Gamification contracts only as needed to compose the read model.
