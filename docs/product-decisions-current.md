@@ -1,6 +1,6 @@
 # Current Product Decisions
 
-Last reviewed: 2026-10-06.
+Last reviewed: 2026-10-09.
 
 This document records recent product decisions that supersede older provisional text when there is a conflict. It is intentionally concise and should be reconciled back into the larger domain/screen documents over time.
 
@@ -109,19 +109,32 @@ The development-only Home state preview remains useful for regression/design che
 
 Known post-v1 visual/product debt includes richer illustration motifs, official Alma character/avatar integration, decorative typography, brand harmonization, real Diagnosis/Practice/Notifications integration and deeper polish of ASSESSED/COURSE_COMPLETED if later justified.
 
-## Progress v1
+## Progress v1 status
 
 Canonical product semantics: `docs/progress-semantics-v1.md`.
+Canonical HTTP/read-model contract: `docs/progress-api-contract-v1.md`.
+Closure note: `docs/progress-v1-closure.md`.
 
-Progress is the next learner-facing vertical. It is a read-oriented composition over existing Course/Roadmap progress, Review and Gamification data rather than a second progression engine.
+Progress Backend v1 and Progress Mobile v1 are accepted as **closed for the current MVP pass**.
 
-Approved v1 direction includes:
+Accepted v1 includes:
 
-- current/recent course progress with `Ver ruta`;
-- pending Review/reinforcement summary;
-- weekly consistency;
+- current/recent learner-visible course progress with `Ver ruta`;
+- real pending/clear Review projection;
+- Monday-Sunday weekly consistency;
 - a separate monthly Activity Calendar;
 - calendar distinctions between real learning, Protector-covered dates, repaired dates and unrepaired breaks;
-- no Strengths/mastery, Achievements, XP, ranking/social system or fake Practice engine in v1.
+- no Strengths/mastery, Achievements, XP, ranking/social system or fake Practice engine in v1;
+- DEV-only rich-state previews for regression/design checks without production-data mutation.
 
 Gamification remains authoritative for streak, Daily Goal, coins, inventory and timezone semantics. Protected/repaired continuity dates are not counted as real learning days.
+
+Known post-v1 debt is intentionally deferred and does not block closure:
+
+- canonical Topic visual identity/icon metadata shared across Courses, Roadmap, Review, Progress and future Practice;
+- shared skeleton/stale-while-refresh loading treatment across read-heavy screens;
+- broader release/accessibility QA for large system fonts, TalkBack and very narrow devices;
+- optional future icon polish for continuity states;
+- real Practice integration and broader Gamification v2 concepts.
+
+Do not reopen Progress v1 architecture or semantics for small cosmetic experimentation; use a clearly scoped follow-up/polish task when one of these deferred items becomes valuable enough.
