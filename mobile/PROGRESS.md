@@ -223,3 +223,35 @@ V5 validation: TypeScript PASS; Progress tests 18/18 PASS; Android production
 export PASS (1102 modules, 2.5 MB Hermes); git diff --check PASS. Ten DEV-only
 markers absent in UTF-8/UTF-16LE production bundle scans. Native layout remains
 subject to physical acceptance; structural font/width tests are not screenshots.
+
+
+## Micro-v6
+
+- Weekly streak capsule uses 13sp/19sp bold text and 9dp vertical padding for
+  better balance with its CTA. The small corner calendar is retained unchanged.
+- Legend stays horizontal within each 2×2 entry: icons increase from 36 to 38dp,
+  title weight increases and description contrast is stronger. Copy distinguishes
+  real activity, protection without learning, restored continuity and interruption.
+  Typography sizes and padding otherwise stay unchanged.
+- Approved hero, Review, calendar grid/summary, navigation and DEV data are frozen.
+  Topic-specific icon meaning remains deferred; existing symbols are decorative.
+- Validation: TypeScript PASS; Progress tests 18/18 PASS; Android production export
+  PASS (1102 modules, 2.5 MB Hermes); git diff --check PASS. Ten DEV-only markers
+  absent from UTF-8/UTF-16LE bundle scans. Physical v6 acceptance remains pending
+  for footer balance and legend wrapping with DEV hidden and large fonts.
+
+
+## Final Dashboard polish
+
+- Weekly streak capsule now shares the CTA's 48dp minimum height, 24dp radius,
+  8dp vertical padding and centered content. It remains noninteractive, softer
+  and typographically secondary; width is independent and text can still wrap.
+- Pending Review heading reuses the filled bulb silhouette locally in white,
+  without its blue accent. Shared LearningIcon and Topic fallbacks are unchanged.
+- Future debt: Topic visual identity / icon metadata shared across Course,
+  Roadmap, Review, Progress and future Practice. No metadata or heuristics added.
+
+Status: **ready for final physical acceptance**. TypeScript PASS; Progress tests
+18/18 PASS; Android production export PASS; git diff --check PASS; ten DEV-only
+markers absent from UTF-8/UTF-16LE bundle scans. Final Android acceptance remains
+with the user; this is not a closure declaration.

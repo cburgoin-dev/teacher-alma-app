@@ -46,9 +46,9 @@ export function CalendarCard({ month, today, data, onPrevious, onNext }: {
   </View>;
 }
 export function CalendarLegend() {
-  const explanations: Record<HistoryState, string> = { LEARNED: 'Aprendiste ese día.', PROTECTED: 'Racha sin aprendizaje.', REPAIRED: 'Recuperó la continuidad.', BROKEN: 'Racha interrumpida.' };
+  const explanations: Record<HistoryState, string> = { LEARNED: 'Tuviste actividad real.', PROTECTED: 'Conservó la racha sin aprendizaje.', REPAIRED: 'Restauró la racha perdida.', BROKEN: 'Se interrumpió ese día.' };
   const rows: HistoryState[][] = [['LEARNED', 'PROTECTED'], ['REPAIRED', 'BROKEN']];
-  return <View style={c.legend}>{rows.map((row, index) => <View key={index} style={c.legendRow}>{row.map(state => <View key={state} style={c.legendItem}><DayMark state={state} size={36} /><View style={c.legendCopy}><Text style={c.legendText}>{stateLabels[state]}</Text><Text style={c.legendDescription}>{explanations[state]}</Text></View></View>)}</View>)}</View>;
+  return <View style={c.legend}>{rows.map((row, index) => <View key={index} style={c.legendRow}>{row.map(state => <View key={state} style={c.legendItem}><DayMark state={state} size={38} /><View style={c.legendCopy}><Text style={c.legendText}>{stateLabels[state]}</Text><Text style={c.legendDescription}>{explanations[state]}</Text></View></View>)}</View>)}</View>;
 }
 const c = StyleSheet.create({
   card: { paddingHorizontal: 12, paddingTop: 6, paddingBottom: 14, gap: 8, backgroundColor: '#F0F7FF', borderColor: '#D5E7FC' },
@@ -64,5 +64,5 @@ const c = StyleSheet.create({
   overIcon: { marginTop: 16, backgroundColor: '#FFFFFF', borderRadius: 7, color: '#172743', lineHeight: 18, minWidth: 20, textAlign: 'center' },
   brokenNumber: { paddingTop: 19 }, cross: { position: 'absolute', top: -3, color: '#DE294C', fontSize: 29, lineHeight: 30, fontWeight: '700' }, faint: { color: '#95A8C3', fontWeight: '400' },
   legend: { gap: 12, padding: 12, borderRadius: 18, backgroundColor: '#F1F7FF' }, legendRow: { flexDirection: 'row', gap: 8 },
-  legendItem: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'flex-start', gap: 6 }, legendCopy: { flex: 1, minWidth: 0, gap: 3 }, legendDescription: { color: '#637A9A', fontSize: 12, lineHeight: 17 }, legendText: { color: '#233D65', fontSize: 14, lineHeight: 19, fontWeight: '700' }, pending: { minHeight: 258, justifyContent: 'center', alignItems: 'center' },
+  legendItem: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'flex-start', gap: 6 }, legendCopy: { flex: 1, minWidth: 0, gap: 3 }, legendDescription: { color: '#526B8D', fontSize: 12, lineHeight: 17 }, legendText: { color: '#233D65', fontSize: 14, lineHeight: 19, fontWeight: '800' }, pending: { minHeight: 258, justifyContent: 'center', alignItems: 'center' },
 });

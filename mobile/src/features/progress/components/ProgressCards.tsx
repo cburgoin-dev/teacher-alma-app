@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { LearningIcon } from '../../lessons/components/LearningIcon';
+import Svg, { Path } from 'react-native-svg';
 import Check from 'lucide-react-native/icons/check';
 import CalendarDays from 'lucide-react-native/icons/calendar-days';
 import { Button } from '../../courses/components/ui';
@@ -33,7 +34,7 @@ export function ProgressCourseCard({ course, onRoadmap, onCatalog }: { course: P
 export function ProgressReviewCard({ review, onReview }: { review: ProgressResponse['review']; onReview: () => void }) {
   const pending = review.pendingCount > 0;
   return <View style={[s.card, pending ? s.pink : c.clear]}>
-    <View style={s.row}><View accessible={false} importantForAccessibility="no-hide-descendants" style={[s.badge, { backgroundColor: pending ? colors.red : '#D4F1E7' }, !pending && c.clearBadge]}>{pending ? <LearningIcon kind="bulb" rose size={29} /> : <View style={c.checkSeal}><Check size={27} strokeWidth={3} color="#FFF" /><View style={c.sealGleam} /></View>}</View>
+    <View style={s.row}><View accessible={false} importantForAccessibility="no-hide-descendants" style={[s.badge, { backgroundColor: pending ? colors.red : '#D4F1E7' }, !pending && c.clearBadge]}>{pending ? <Svg width={29} height={29} viewBox="0 0 24 24" accessible={false}><Path d="M12 2a7 7 0 0 0-4.7 12.2C9 15.7 9 17 9 18h6c0-1 .1-2.3 1.7-3.8A7 7 0 0 0 12 2Z M9 20h6l-1.2 2h-3.6Z" fill="#FFF" /></Svg> : <View style={c.checkSeal}><Check size={27} strokeWidth={3} color="#FFF" /><View style={c.sealGleam} /></View>}</View>
       <View style={s.copy}><Text style={[s.heading, !pending && c.clearTitle]}>{pending ? 'Para reforzar' : 'Todo al día'}</Text><Text style={s.body}>{pending ? `${review.pendingCount} ${review.pendingCount === 1 ? 'ejercicio pendiente' : 'ejercicios pendientes'}` : 'Sin repasos pendientes. ¡Sigue así!'}</Text></View></View>
     {pending ? <>{review.groups.slice(0, 2).map((group, index) => <View key={group.topic.id} style={c.topic}>
       <View accessible={false} importantForAccessibility="no-hide-descendants" style={c.topicBadge}><LearningIcon kind={index === 0 ? 'chat' : 'bulb'} size={25} /></View><Text style={c.topicTitle}>{group.topic.title}</Text><Text accessibilityLabel={`${group.pendingCount} pendientes`} style={c.count}>{group.pendingCount}</Text>
@@ -58,7 +59,7 @@ const c = StyleSheet.create({
   landscape: { width: '100%', marginBottom: 2 }, landscapeStacked: { width: 126 },
   track: { height: 10, borderRadius: 8, backgroundColor: '#CFDFF1', overflow: 'hidden', marginTop: 3 }, fill: { height: '100%', backgroundColor: colors.red, borderRadius: 8 },
   action: { alignSelf: 'flex-end', maxWidth: '100%' },
-  weekAction: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 6 }, streakChip: { backgroundColor: '#E1EDFC', borderRadius: 18, paddingHorizontal: 10, paddingVertical: 8, flexShrink: 1, maxWidth: '100%' }, streakLabel: { color: '#345F98', fontSize: 12, lineHeight: 18, fontWeight: '600' }, activeWeekday: { color: '#0062E9', fontWeight: '700' },
+  weekAction: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 6 }, streakChip: { backgroundColor: '#E1EDFC', minHeight: 48, justifyContent: 'center', alignItems: 'center', borderRadius: 24, paddingHorizontal: 10, paddingVertical: 8, flexShrink: 1, maxWidth: '100%' }, streakLabel: { color: '#2D578B', fontSize: 13, lineHeight: 19, fontWeight: '700' }, activeWeekday: { color: '#0062E9', fontWeight: '700' },
   clearBadge: { width: 54, height: 54, borderRadius: 20, borderWidth: 1, borderColor: '#BDE6D8' },
   checkSeal: { width: 37, height: 37, borderRadius: 13, backgroundColor: '#219574', alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-8deg' }], borderWidth: 2, borderColor: '#FFF', elevation: 2 },
   sealGleam: { position: 'absolute', top: 3, right: 4, width: 5, height: 5, borderRadius: 3, backgroundColor: '#B6EAD8' },
