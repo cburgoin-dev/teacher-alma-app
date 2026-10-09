@@ -165,13 +165,13 @@ test('v2 course uses a left progress block, discreet level, meaningful artwork a
   assert.doesNotMatch(text(tree), /Nivel A2/);
   assert.match(text(ProgressCourseCard({ ...props, course: { ...course, title: 'Conversaciones' } })), /Nivel A2/);
   const artwork = nodes(tree).find(n => n.type === 'HomeCourseArtwork');
-  assert.equal(artwork.props.level, 'A2'); assert.deepEqual(artwork.props.box, { x: 0, y: 0, width: 156, height: 146 });
+  assert.equal(artwork.props.level, 'A2'); assert.deepEqual(artwork.props.box, { x: 0, y: 0, width: 150, height: 113 });
   const action = buttons(tree)[0]; assert.equal(action.props.style({ pressed: false })[0].minHeight, 48);
   const clear = ProgressReviewCard({ review: { pendingCount: 0, groups: [] }, onReview() {} });
   const pending = ProgressReviewCard({ review, onReview() {} });
   assert.equal(clear.props.style[1].backgroundColor, '#F0FAF6');
   assert.notEqual(clear.props.style[1], pending.props.style[1]);
-  assert.ok(nodes(clear).find(n => n.type === 'lucide-react-native/icons/circle-check'));
+  assert.ok(nodes(clear).find(n => n.type === 'lucide-react-native/icons/check'));
   const weekly = ProgressWeekCard({ week, onCalendar() {} });
   assert.ok(nodes(weekly).find(n => n.type === 'lucide-react-native/icons/calendar-days'));
   assert.equal(buttons(weekly)[0].props.style({ pressed: false })[0].minHeight, 48);
@@ -195,7 +195,9 @@ test('v2 calendar renders exact seven-column rows at narrow/large-font layouts a
     assert.deepEqual(icons, ['flame', 'protector', 'repair']);
     const legend = CalendarLegend(); assert.doesNotMatch(text(legend), /Los días protegidos/);
     assert.equal(nodes(legend).filter(n => n.props?.children === 'Aprendiste').length, 1);
-    assert.ok(legend.props.style.rowGap <= 2);
+    assert.equal(legend.props.children.length, 2);
+    for (const row of legend.props.children) assert.equal(row.props.children.length, 2);
+    for (const label of nodes(legend).filter(n => n.type === 'Text' && ['Aprendiste', 'Protegido', 'Reparado', 'Racha rota'].includes(n.props.children))) assert.ok(label.props.style.fontSize >= 13);
   }
 });
 
@@ -266,4 +268,25 @@ test('DEV is gated off in production; fixture navigation cannot enter learning o
     buttons(tree).find(b => b.props.accessibilityLabel === 'Ver calendario').props.onPress();
     assert.deepEqual(routes, [['ProgressCalendar']]); // Safe secondary screen only; no synthetic IDs.
   } finally { if (previous === undefined) delete global.__DEV__; else global.__DEV__ = previous; }
+});
+
+
+test('DEV calendar summary uses authored streak fixtures without borrowing or mutating shared Gamification', () => {
+  const preview = component('../src/features/progress/devPreview.ts');
+  const { CalendarPreview } = component('../src/features/progress/components/ProgressPreviewControl.tsx', { '../devPreview': preview });
+  const { calendarPreview, calendarPreviewPresentation } = preview;
+  const expected = { EMPTY_MONTH: 0, WEEK_STREAK: 7, MIXED_MONTH: 10, PROTECTED: 4, REPAIRED: 4, BROKEN: 0, MULTI_WEEK_STREAK: 21 };
+  for (const [mode, days] of Object.entries(expected)) {
+    assert.equal(calendarPreviewPresentation[mode].currentStreakDays, days);
+    const tree = CalendarPreview({ mode });
+    assert.ok(text(tree).includes(days + ' días'));
+    const data = calendarPreview(mode);
+    assert.ok(data.days.every(day => day.date <= data.today));
+    assert.doesNotThrow(() => parseCalendar(data, data.month));
+  }
+  const { CalendarSummary } = component('../src/features/progress/components/CalendarSummary.tsx');
+  const shared = Object.freeze({ streak: Object.freeze({ currentDays: 37 }) });
+  assert.match(text(CalendarSummary({ gamification: shared, calendar: calendarPreview('MULTI_WEEK_STREAK') })), /37 días/);
+  assert.equal(shared.streak.currentDays, 37);
+  assert.match(text(CalendarSummary({ gamification: null, calendar: null })), /Sin datos/);
 });

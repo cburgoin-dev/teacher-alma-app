@@ -30,6 +30,16 @@ export function dashboardPreview(real: ProgressResponse | null, mode: DashboardM
   }
   return data;
 }
+// Explicit authored presentation facts; never a production streak calculation.
+export const calendarPreviewPresentation: Record<Exclude<CalendarMode, 'REAL'>, { currentStreakDays: number; todayDay: number }> = {
+  EMPTY_MONTH: { currentStreakDays: 0, todayDay: 22 },
+  WEEK_STREAK: { currentStreakDays: 7, todayDay: 12 },
+  MIXED_MONTH: { currentStreakDays: 10, todayDay: 22 },
+  PROTECTED: { currentStreakDays: 4, todayDay: 9 },
+  REPAIRED: { currentStreakDays: 4, todayDay: 9 },
+  BROKEN: { currentStreakDays: 0, todayDay: 9 },
+  MULTI_WEEK_STREAK: { currentStreakDays: 21, todayDay: 22 },
+};
 export function calendarPreview(mode: Exclude<CalendarMode, 'REAL'>, month = '2026-10'): CalendarResponse {
   const days: CalendarResponse['days'] = [];
   const add = (day: number, state: CalendarResponse['days'][number]['state']) => days.push({ date: `${month}-${String(day).padStart(2, '0')}`, state });
@@ -40,7 +50,7 @@ export function calendarPreview(mode: Exclude<CalendarMode, 'REAL'>, month = '20
     learned(1, 8); add(9, 'PROTECTED'); add(11, 'BROKEN'); add(12, 'REPAIRED'); learned(13, 21);
   }
   if (mode === 'PROTECTED' || mode === 'REPAIRED' || mode === 'BROKEN') { learned(5, 7); add(8, mode); }
-  return { month, today: '2026-10-22', timezone: 'America/Mazatlan', learningDaysCount: days.filter(day => day.state === 'LEARNED').length, days };
+  return { month, today: `2026-10-${String(calendarPreviewPresentation[mode].todayDay).padStart(2, '0')}`, timezone: 'America/Mazatlan', learningDaysCount: days.filter(day => day.state === 'LEARNED').length, days };
 }
 export function blockPreviewNavigation() {
   Alert.alert('DEV · Progress preview', 'Selecciona REAL para abrir cursos, repaso o tienda. Los datos de muestra no modifican tu aprendizaje.');

@@ -53,7 +53,7 @@ export function ProgressCalendarScreen({ navigation }: NativeStackScreenProps<Ro
     }} tintColor={colors.blue} />}>
       {previewTools && previewVisible ? <previewTools.ProgressPreviewControl mode={mode} modes={previewTools.calendarModes} onSelect={setMode} onHide={() => setPreviewVisible(false)} /> : null}
       {!isPreview && context.error ? <View style={s.error}><Text style={s.body}>{context.error}</Text><Button title="Reintentar" tone="blue" onPress={() => { void contextResource.refresh(); }} /></View> : null}
-      {isPreview && previewTools ? <previewTools.CalendarPreview key={mode} mode={mode as Exclude<CalendarMode, 'REAL'>} gamification={gamification.data} /> : month && today ? <CalendarMonth month={month} today={today} cache={cache} onChange={setMonth} gamification={gamification.data} /> : <>
+      {isPreview && previewTools ? <previewTools.CalendarPreview key={mode} mode={mode as Exclude<CalendarMode, 'REAL'>} /> : month && today ? <CalendarMonth month={month} today={today} cache={cache} onChange={setMonth} gamification={gamification.data} /> : <>
         <CalendarSummary gamification={gamification.data} calendar={null} />
         {!context.error ? <View style={s.loading}><ActivityIndicator color={colors.blue} /><Text style={s.body}>Cargando tu calendario…</Text></View> : null}
       </>}

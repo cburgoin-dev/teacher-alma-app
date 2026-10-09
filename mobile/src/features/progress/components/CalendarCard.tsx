@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import ChevronLeft from 'lucide-react-native/icons/chevron-left';
 import ChevronRight from 'lucide-react-native/icons/chevron-right';
 import { calendarGrid, dayLabel, monthTitle, stateLabels, weekdays } from '../presentation';
@@ -14,7 +15,11 @@ export function CalendarDay({ day, today }: { day: Day; today: string }) {
   const { fontScale } = useWindowDimensions();
   const large = fontScale > 1.3;
   return <View style={[c.cell, large && { minHeight: 60 }]} accessible accessibilityLabel={day.inMonth ? dayLabel(day.date, day.state, today) : `${day.date}, fuera del mes`}>
-    {day.state === 'LEARNED' ? <View testID="learned-band" style={[c.band, !day.joinLeft && c.bandStart, !day.joinRight && c.bandEnd]} /> : null}
+    {day.state === 'LEARNED' ? <View testID="learned-band" style={[c.band, !day.joinLeft && c.bandStart, !day.joinRight && c.bandEnd]}><Svg width="100%" height="100%" viewBox="0 0 44 40" preserveAspectRatio="none"><Path fill="#FFE1E5" d={
+      (day.joinLeft ? 'M0 7' : 'M0 20 Q0 7 11 4') + ' Q22 -2 33 4 ' +
+      (day.joinRight ? 'Q39 7 44 7 L44 33' : 'Q44 7 44 20 Q44 33 33 36') +
+      ' Q22 42 11 36 ' + (day.joinLeft ? 'Q5 33 0 33 Z' : 'Q0 33 0 20 Z')
+    } /></Svg></View> : null}
     <View style={[c.date, day.today && c.today, day.state === 'PROTECTED' && c.protected, day.state === 'REPAIRED' && c.repaired, day.state === 'BROKEN' && c.broken]}>
       {day.state !== 'NONE' && day.state !== 'BROKEN' ? <View style={c.stateArt} accessible={false} importantForAccessibility="no-hide-descendants">
         <GamificationIcon kind={day.state === 'LEARNED' ? 'flame' : day.state === 'PROTECTED' ? 'protector' : 'repair'} size={38} />
@@ -41,7 +46,8 @@ export function CalendarCard({ month, today, data, onPrevious, onNext }: {
   </View>;
 }
 export function CalendarLegend() {
-  return <View style={c.legend}>{(['LEARNED', 'PROTECTED', 'REPAIRED', 'BROKEN'] as HistoryState[]).map(state => <View key={state} style={c.legendItem}><DayMark state={state} size={17} /><Text style={c.legendText}>{stateLabels[state]}</Text></View>)}</View>;
+  const rows: HistoryState[][] = [['LEARNED', 'PROTECTED'], ['REPAIRED', 'BROKEN']];
+  return <View style={c.legend}>{rows.map((row, index) => <View key={index} style={c.legendRow}>{row.map(state => <View key={state} style={c.legendItem}><DayMark state={state} size={27} /><Text style={c.legendText}>{stateLabels[state]}</Text></View>)}</View>)}</View>;
 }
 const c = StyleSheet.create({
   card: { paddingHorizontal: 12, paddingTop: 6, paddingBottom: 14, gap: 8, backgroundColor: '#F0F7FF', borderColor: '#D5E7FC' },
@@ -50,12 +56,12 @@ const c = StyleSheet.create({
   week: { flexDirection: 'row' }, weekday: { flex: 1, textAlign: 'center', color: '#637DA4', fontSize: 12, fontWeight: '600', paddingVertical: 4 },
   grid: { gap: 2 }, cell: { flex: 1, minWidth: 0, minHeight: 50, alignItems: 'center', justifyContent: 'center' },
   date: { width: '100%', maxWidth: 44, minHeight: 44, borderRadius: 22, borderWidth: 1.5, borderColor: 'transparent', justifyContent: 'center', alignItems: 'center' },
-  band: { position: 'absolute', left: 0, right: 0, height: 32, backgroundColor: '#FFDBDF' }, bandStart: { borderTopLeftRadius: 18, borderBottomLeftRadius: 18 }, bandEnd: { borderTopRightRadius: 18, borderBottomRightRadius: 18 },
+  band: { position: 'absolute', left: 0, right: 0, height: 40 }, bandStart: { borderTopLeftRadius: 18, borderBottomLeftRadius: 18 }, bandEnd: { borderTopRightRadius: 18, borderBottomRightRadius: 18 },
   protected: { backgroundColor: '#DEEDFF' }, repaired: { backgroundColor: '#FFF0D0' }, broken: { backgroundColor: '#FFE7EC' }, today: { borderColor: '#E74C67' },
   stateArt: { position: 'absolute', top: -1, alignSelf: 'center' },
   number: { color: colors.ink, fontSize: 14, lineHeight: 20, fontWeight: '700', paddingHorizontal: 2 },
-  overIcon: { marginTop: 16, backgroundColor: '#FFFC', borderRadius: 6, color: '#172743', lineHeight: 18, minWidth: 20, textAlign: 'center' },
+  overIcon: { marginTop: 16, backgroundColor: '#FFFFFF', borderRadius: 7, color: '#172743', lineHeight: 18, minWidth: 20, textAlign: 'center' },
   brokenNumber: { paddingTop: 7 }, cross: { position: 'absolute', top: -4, right: 3, color: '#DE294C', fontSize: 18, lineHeight: 20 }, faint: { color: '#95A8C3', fontWeight: '400' },
-  legend: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', columnGap: 10, rowGap: 2, paddingHorizontal: 2, paddingVertical: 2 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 2 }, legendText: { color: '#526A90', fontSize: 10, lineHeight: 15 }, pending: { minHeight: 258, justifyContent: 'center', alignItems: 'center' },
+  legend: { gap: 6, padding: 12, borderRadius: 18, backgroundColor: '#F1F7FF' }, legendRow: { flexDirection: 'row', gap: 8 },
+  legendItem: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 6 }, legendText: { color: '#526A90', fontSize: 13, lineHeight: 18, flexShrink: 1 }, pending: { minHeight: 258, justifyContent: 'center', alignItems: 'center' },
 });

@@ -47,7 +47,7 @@ root-stack Calendar without bottom tabs; no optional inventory summary.
 
 A DEV-only selector now covers rich, empty and completed states without changing
 the database (see v2 below). The first implementation was physically tested on
-Android; the v2 visual changes still need physical acceptance: review narrow devices, large system fonts,
+Android; the v3 visual changes still need physical acceptance: review narrow devices, large system fonts,
 TalkBack, card spacing, month transitions and back/refresh after learning.
 Use the existing local backend/Expo setup documented in `HOME.md` and repository
 Android acceptance docs; open Progreso, then Ver calendario. Verify Roadmap and
@@ -58,7 +58,7 @@ Review return to Progreso and future-month navigation is disabled.
 ```powershell
 npm run typecheck
 node --test tests/progress.test.cjs tests/home-navigation.test.cjs tests/home.test.cjs
-node node_modules/expo/bin/cli export --platform android --output-dir dist/progress-v2-check --max-workers 2
+node node_modules/expo/bin/cli export --platform android --output-dir dist/progress-v3-check --max-workers 2
 git diff --check
 ```
 
@@ -105,10 +105,10 @@ Dashboard: ACTIVE_COURSE, COMPLETED_COURSE, NO_COURSE, REVIEW_PENDING,
 REVIEW_CLEAR, MIXED_WEEK. Calendar: EMPTY_MONTH, WEEK_STREAK, MIXED_MONTH,
 PROTECTED, REPAIRED, BROKEN, MULTI_WEEK_STREAK. Start with MIXED_MONTH for bands,
 long learned sequences, each continuity state, today and future dates.
-Calendar previews use a fixed 2026-10-22 today and in-memory month navigation.
+Calendar previews use an authored October 2026 today per preset and in-memory month navigation.
 No fixture is sent to APIs or saved into live resources. Course/Review/Shop
 navigation is blocked while Dashboard fixtures are displayed; Calendar navigation
-is safe and permitted. Shared Gamification remains real even during preview.
+is safe and permitted. Shared Gamification is never mutated. REAL uses its streak exclusively; Calendar presets supply a separate presentation-only streak value.
 
 ### Remaining acceptance and transversal loading debt
 
@@ -118,12 +118,43 @@ git diff --check PASS. Export required local execution after the sandbox denied
 Hermes temporary-file writes. Eight preview-specific identifiers/labels were
 checked in the production Hermes bundle (UTF-8 and UTF-16LE); none were present.
 
-Validate v2 on physical narrow Android and with large fonts/TalkBack, especially
+Validate v3 on physical narrow Android and with large fonts/TalkBack, especially
 artwork framing, number-over-icon clarity, seven-column alignment and continuity
-bands. The supplied screenshots demonstrate v1 issues, not v2 acceptance.
+bands. The latest supplied screenshots demonstrate the v2 seven-column fix and identify the polish addressed in v3; they are not v3 acceptance.
 No final visual-fidelity claim is made from component tests or export alone.
 
 Cold loads can still show the shared header with unavailable coin/streak values
 and a spinner/text for content. Future transversal work should provide skeleton
 layouts, preserve the shared header's last snapshot on refresh and avoid visually
 inconsistent partial loading. No global loading refactor is included here.
+
+
+## Visual iteration v3
+
+- Retains the existing landscape asset (no alternative course illustration in the
+  asset inventory); a lower layered print treatment gives Progress its own frame.
+  The artwork column is narrower, with tighter title/percentage/count rhythm and
+  an adjacent compact action. Narrow/large-font reflow remains.
+- Review clear uses a raised check seal in a mint badge; pending Review keeps real
+  groups/counts and the coral action. Weekly marks sit in a light inset strip,
+  with a framed corner calendar and a separated trailing action.
+- Calendar summary uses a larger flame/halo, dominant shared streak value and a
+  contextual encouragement. Month learning count remains independent. The summary
+  wraps when space is insufficient; it does not constrain large text to one line.
+- Seven-cell rows are preserved. Scalloped SVG bands connect LEARNED only and
+  stop at week boundaries; opaque number backplates improve icon contrast.
+  Legend is now two explicit rows of two items, 27dp icons and 13sp labels.
+- Calendar DEV presets use explicit presentation facts: EMPTY_MONTH/BROKEN 0,
+  WEEK_STREAK 7, PROTECTED/REPAIRED 4, MIXED_MONTH 10, MULTI_WEEK_STREAK 21.
+  Today is October 12 for WEEK_STREAK, October 9 for the isolated continuity
+  presets, and October 22 otherwise, so the shown streak is temporally coherent.
+  REAL continues through the shared-resource adapter; no fixture enters it.
+- Physical v3 acceptance remains pending: balance/crop, seal, weekly density,
+  summary wrapping, scalloped joins, number contrast and legend at large fonts.
+  Existing landscape/shared icon adaptations and transversal loading debt remain.
+
+V3 validation: TypeScript PASS; focused Progress tests 16/16 PASS (including real
+router return behavior and isolated DEV summary facts); Android production export
+PASS (1104 modules, 2.5 MB Hermes); git diff --check PASS. Nine DEV-only markers,
+including calendarPreviewPresentation, absent in UTF-8/UTF-16LE bundle scans.
+Home/shared navigation source was not changed; no broader Home suite was needed.
