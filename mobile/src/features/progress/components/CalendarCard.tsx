@@ -46,8 +46,9 @@ export function CalendarCard({ month, today, data, onPrevious, onNext }: {
   </View>;
 }
 export function CalendarLegend() {
+  const explanations: Record<HistoryState, string> = { LEARNED: 'Aprendiste ese día.', PROTECTED: 'Conservó tu racha sin sumar aprendizaje.', REPAIRED: 'Reconectó un día perdido.', BROKEN: 'Se interrumpió tu racha.' };
   const rows: HistoryState[][] = [['LEARNED', 'PROTECTED'], ['REPAIRED', 'BROKEN']];
-  return <View style={c.legend}>{rows.map((row, index) => <View key={index} style={c.legendRow}>{row.map(state => <View key={state} style={c.legendItem}><DayMark state={state} size={27} /><Text style={c.legendText}>{stateLabels[state]}</Text></View>)}</View>)}</View>;
+  return <View style={c.legend}>{rows.map((row, index) => <View key={index} style={c.legendRow}>{row.map(state => <View key={state} style={c.legendItem}><DayMark state={state} size={36} /><View style={c.legendCopy}><Text style={c.legendText}>{stateLabels[state]}</Text><Text style={c.legendDescription}>{explanations[state]}</Text></View></View>)}</View>)}</View>;
 }
 const c = StyleSheet.create({
   card: { paddingHorizontal: 12, paddingTop: 6, paddingBottom: 14, gap: 8, backgroundColor: '#F0F7FF', borderColor: '#D5E7FC' },
@@ -57,11 +58,11 @@ const c = StyleSheet.create({
   grid: { gap: 2 }, cell: { flex: 1, minWidth: 0, minHeight: 50, alignItems: 'center', justifyContent: 'center' },
   date: { width: '100%', maxWidth: 44, minHeight: 44, borderRadius: 22, borderWidth: 1.5, borderColor: 'transparent', justifyContent: 'center', alignItems: 'center' },
   band: { position: 'absolute', left: 0, right: 0, height: 40 }, bandStart: { borderTopLeftRadius: 18, borderBottomLeftRadius: 18 }, bandEnd: { borderTopRightRadius: 18, borderBottomRightRadius: 18 },
-  protected: { backgroundColor: '#DEEDFF' }, repaired: { backgroundColor: '#FFF0D0' }, broken: { backgroundColor: '#FFE7EC' }, today: { borderColor: '#E74C67' },
+  protected: { backgroundColor: '#DEEDFF' }, repaired: { backgroundColor: '#FFF0D0' }, broken: { backgroundColor: '#FFE7EC' }, today: { borderColor: colors.blue, borderWidth: 2 },
   stateArt: { position: 'absolute', top: -1, alignSelf: 'center' },
   number: { color: colors.ink, fontSize: 14, lineHeight: 20, fontWeight: '700', paddingHorizontal: 2 },
   overIcon: { marginTop: 16, backgroundColor: '#FFFFFF', borderRadius: 7, color: '#172743', lineHeight: 18, minWidth: 20, textAlign: 'center' },
-  brokenNumber: { paddingTop: 7 }, cross: { position: 'absolute', top: -4, right: 3, color: '#DE294C', fontSize: 18, lineHeight: 20 }, faint: { color: '#95A8C3', fontWeight: '400' },
-  legend: { gap: 6, padding: 12, borderRadius: 18, backgroundColor: '#F1F7FF' }, legendRow: { flexDirection: 'row', gap: 8 },
-  legendItem: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 6 }, legendText: { color: '#526A90', fontSize: 13, lineHeight: 18, flexShrink: 1 }, pending: { minHeight: 258, justifyContent: 'center', alignItems: 'center' },
+  brokenNumber: { paddingTop: 19 }, cross: { position: 'absolute', top: -3, color: '#DE294C', fontSize: 29, lineHeight: 30, fontWeight: '700' }, faint: { color: '#95A8C3', fontWeight: '400' },
+  legend: { gap: 16, padding: 16, borderRadius: 18, backgroundColor: '#F1F7FF' }, legendRow: { flexDirection: 'row', gap: 8 },
+  legendItem: { flex: 1, minWidth: 0, alignItems: 'flex-start', gap: 4 }, legendCopy: { gap: 3, alignSelf: 'stretch' }, legendDescription: { color: '#637A9A', fontSize: 12, lineHeight: 17 }, legendText: { color: '#233D65', fontSize: 14, lineHeight: 19, fontWeight: '700' }, pending: { minHeight: 258, justifyContent: 'center', alignItems: 'center' },
 });

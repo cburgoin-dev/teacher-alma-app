@@ -1,6 +1,5 @@
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import BookOpen from 'lucide-react-native/icons/book-open';
-import ClipboardList from 'lucide-react-native/icons/clipboard-list';
+import { LearningIcon } from '../../lessons/components/LearningIcon';
 import Check from 'lucide-react-native/icons/check';
 import CalendarDays from 'lucide-react-native/icons/calendar-days';
 import { Button } from '../../courses/components/ui';
@@ -26,7 +25,7 @@ export function ProgressCourseCard({ course, onRoadmap, onCatalog }: { course: P
       <View accessibilityRole="progressbar" accessibilityLabel="Progreso del curso" accessibilityValue={{ min: 0, max: 100, now: course.progress.percentage }} style={c.track}><View style={[c.fill, { width: `${course.progress.percentage}%` }]} /></View>
       <Text style={c.note}>{completed ? '¡Curso completado!' : '¡Vas muy bien! Sigue así.'}</Text>
     </View><View style={[c.artZone, stacked && c.artZoneStacked]}>
-      <View style={[c.landscape, stacked && c.landscapeStacked]}><ProgressArtwork uri={course.coverUrl} level={course.level} /></View>
+      <View style={[c.landscape, stacked && c.landscapeStacked]}><ProgressArtwork level={course.level} /></View>
       <ProgressAction title="Ver ruta" onPress={() => onRoadmap(course.id)} />
     </View></View>
   </View>;
@@ -34,19 +33,19 @@ export function ProgressCourseCard({ course, onRoadmap, onCatalog }: { course: P
 export function ProgressReviewCard({ review, onReview }: { review: ProgressResponse['review']; onReview: () => void }) {
   const pending = review.pendingCount > 0;
   return <View style={[s.card, pending ? s.pink : c.clear]}>
-    <View style={s.row}><View accessible={false} importantForAccessibility="no-hide-descendants" style={[s.badge, { backgroundColor: pending ? colors.red : '#D4F1E7' }, !pending && c.clearBadge]}>{pending ? <ClipboardList size={25} color="#FFF" /> : <View style={c.checkSeal}><Check size={27} strokeWidth={3} color="#FFF" /><View style={c.sealGleam} /></View>}</View>
+    <View style={s.row}><View accessible={false} importantForAccessibility="no-hide-descendants" style={[s.badge, { backgroundColor: pending ? colors.red : '#D4F1E7' }, !pending && c.clearBadge]}>{pending ? <LearningIcon kind="bulb" rose size={29} /> : <View style={c.checkSeal}><Check size={27} strokeWidth={3} color="#FFF" /><View style={c.sealGleam} /></View>}</View>
       <View style={s.copy}><Text style={[s.heading, !pending && c.clearTitle]}>{pending ? 'Para reforzar' : 'Todo al día'}</Text><Text style={s.body}>{pending ? `${review.pendingCount} ${review.pendingCount === 1 ? 'ejercicio pendiente' : 'ejercicios pendientes'}` : 'Sin repasos pendientes. ¡Sigue así!'}</Text></View></View>
-    {pending ? <>{review.groups.slice(0, 2).map(group => <View key={group.topic.id} style={c.topic}>
-      <View accessible={false} importantForAccessibility="no-hide-descendants"><BookOpen size={24} color={colors.blue} /></View><Text style={c.topicTitle}>{group.topic.title}</Text><Text accessibilityLabel={`${group.pendingCount} pendientes`} style={c.count}>{group.pendingCount}</Text>
+    {pending ? <>{review.groups.slice(0, 2).map((group, index) => <View key={group.topic.id} style={c.topic}>
+      <View accessible={false} importantForAccessibility="no-hide-descendants" style={[c.topicBadge, index === 1 && c.topicBadgeSecond]}><LearningIcon kind="chat" plain size={25} color={index === 1 ? '#6551AC' : '#076ADB'} /></View><Text style={c.topicTitle}>{group.topic.title}</Text><Text accessibilityLabel={`${group.pendingCount} pendientes`} style={c.count}>{group.pendingCount}</Text>
     </View>)}<Button title="Ver repaso" arrow onPress={onReview} /></> : null}
   </View>;
 }
-export function ProgressWeekCard({ week, onCalendar }: { week: ProgressResponse['consistency']; onCalendar: () => void }) {
+export function ProgressWeekCard({ week, currentStreakDays = null, onCalendar }: { currentStreakDays?: number | null; week: ProgressResponse['consistency']; onCalendar: () => void }) {
   return <View style={[s.card, c.consistency]}>
     <View style={s.row}><View style={[s.badge, c.flameBadge]}><GamificationIcon kind="flame" size={32} /></View><View style={s.copy}><Text style={s.heading}>Tu constancia</Text><Text style={c.weekCopy}>{learningDaysLabel(week.learningDaysThisWeek)} esta semana</Text></View><View accessible={false} importantForAccessibility="no-hide-descendants" style={c.calendarDetail}><CalendarDays size={23} color="#426BA5" /></View></View>
     <View style={c.week}>{week.days.map((day, index) => <View key={day.date} accessible accessibilityLabel={dayLabel(day.date, day.state, week.today)} style={c.day}>
-      <Text style={c.weekday}>{weekdays[index]}</Text><View style={[c.circle, day.state === 'LEARNED' && c.learned, day.date === week.today && c.today]}><DayMark state={day.state} size={23} future={day.date > week.today} /></View>
-    </View>)}</View><View style={c.weekAction}><ProgressAction title="Ver calendario" onPress={onCalendar} /></View>
+      <Text style={[c.weekday, day.state === 'LEARNED' && c.activeWeekday]}>{weekdays[index]}</Text><View style={[c.circle, day.state === 'LEARNED' && c.learned, day.date === week.today && c.today]}><DayMark state={day.state} size={23} future={day.date > week.today} /></View>
+    </View>)}</View><View style={c.weekAction}><Text style={c.streakLabel}>{currentStreakDays === null ? 'Racha actual: sin datos' : `Racha actual: ${currentStreakDays} ${currentStreakDays === 1 ? 'día' : 'días'}`}</Text><ProgressAction title="Ver calendario" onPress={onCalendar} /></View>
   </View>;
 }
 const c = StyleSheet.create({
@@ -59,16 +58,17 @@ const c = StyleSheet.create({
   landscape: { width: '100%', marginBottom: 2 }, landscapeStacked: { width: 126 },
   track: { height: 10, borderRadius: 8, backgroundColor: '#CFDFF1', overflow: 'hidden', marginTop: 3 }, fill: { height: '100%', backgroundColor: colors.red, borderRadius: 8 },
   action: { alignSelf: 'flex-end', maxWidth: '100%' },
-  weekAction: { alignItems: 'flex-end', borderTopWidth: 1, borderTopColor: '#DEEAFA', paddingTop: 4 },
+  weekAction: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 6 }, streakLabel: { color: '#436A9D', fontSize: 12, lineHeight: 18, flexShrink: 1 }, activeWeekday: { color: '#0062E9', fontWeight: '700' },
   clearBadge: { width: 54, height: 54, borderRadius: 20, borderWidth: 1, borderColor: '#BDE6D8' },
   checkSeal: { width: 37, height: 37, borderRadius: 13, backgroundColor: '#219574', alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-8deg' }], borderWidth: 2, borderColor: '#FFF', elevation: 2 },
   sealGleam: { position: 'absolute', top: 3, right: 4, width: 5, height: 5, borderRadius: 3, backgroundColor: '#B6EAD8' },
   clear: { backgroundColor: '#F0FAF6', borderColor: '#D3EBE2', paddingVertical: 14 }, clearTitle: { color: '#176551' },
   consistency: { backgroundColor: '#F1F7FF', gap: 12 }, flameBadge: { width: 42, height: 42 },
   weekCopy: { color: colors.muted, fontSize: 13, lineHeight: 18 }, calendarDetail: { alignSelf: 'flex-start', padding: 8, borderRadius: 16, backgroundColor: '#E2EEFF' },
+  topicBadge: { width: 38, height: 38, borderRadius: 13, backgroundColor: '#E6F1FF', alignItems: 'center', justifyContent: 'center' }, topicBadgeSecond: { backgroundColor: '#F0EBFF' },
   topic: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: 16, backgroundColor: '#FFF' },
   topicTitle: { flex: 1, color: colors.ink, fontSize: 15, lineHeight: 21, fontWeight: '700' },
   count: { color: colors.red, fontSize: 19, fontWeight: '800', backgroundColor: '#FFECEF', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 },
-  week: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: '#FFFFFFA6', borderRadius: 18, paddingVertical: 10 }, day: { flex: 1, alignItems: 'center', gap: 6 }, weekday: { color: colors.muted, fontSize: 13 },
+  week: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }, day: { flex: 1, alignItems: 'center', gap: 6 }, weekday: { color: colors.muted, fontSize: 13 },
   circle: { borderWidth: 1.5, borderColor: 'transparent', borderRadius: 24, padding: 1, backgroundColor: '#E4EDF7' }, learned: { backgroundColor: '#FFE4E7' }, today: { borderColor: colors.blue },
 });

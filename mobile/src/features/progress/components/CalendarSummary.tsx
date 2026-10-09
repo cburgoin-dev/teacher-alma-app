@@ -17,7 +17,7 @@ export function CalendarSummaryView({ currentStreakDays, calendar }: { currentSt
     </View></View>
     <View style={s.month} accessible accessibilityLabel={calendar ? `${calendar.learningDaysCount} días de aprendizaje en ${monthTitle(calendar.month)}` : 'Días de aprendizaje: cargando'}>
       <Text style={s.monthValue}>{calendar ? `${calendar.learningDaysCount} ${calendar.learningDaysCount === 1 ? 'día' : 'días'}` : '…'}</Text>
-      <Text style={s.monthLabel}>de aprendizaje{calendar ? ` en ${monthTitle(calendar.month).toLowerCase()}` : ' este mes'}</Text>
+      <Text style={s.monthLabel}>de aprendizaje este mes</Text>
     </View>
   </View>;
 }

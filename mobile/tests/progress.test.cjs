@@ -23,9 +23,9 @@ function component(relative, overrides = {}) {
     if (name === '@react-navigation/native') return { useFocusEffect() {} };
     if (name === 'react-native') return { Alert: { alert: (...args) => overrides.alerts?.push(args) }, StyleSheet: { create: x => x }, useWindowDimensions: () => overrides.dimensions ?? { width: 390, fontScale: 1 }, ...Object.fromEntries(['View', 'Text', 'Pressable', 'ScrollView', 'RefreshControl', 'ActivityIndicator'].map(x => [x, x])) };
     if (name === 'react-native-safe-area-context') return { SafeAreaView: 'SafeAreaView' };
-    if (name === 'react-native-svg') return { __esModule: true, default: 'Svg', ClipPath: 'ClipPath', Defs: 'Defs', Path: 'Path' };
+    if (name === 'react-native-svg') return { __esModule: true, default: 'Svg', ClipPath: 'ClipPath', Defs: 'Defs', Path: 'Path', LinearGradient: 'LinearGradient', Stop: 'Stop', Ellipse: 'Ellipse', Text: 'SvgText' };
     if (name.startsWith('lucide-react-native/icons/')) return { __esModule: true, default: name };
-    for (const stub of ['Button', 'CourseCover', 'HomeCourseArtwork', 'GamificationIcon', 'MainAppHeader', 'ContextualHeader']) {
+    for (const stub of ['Button', 'CourseCover', 'HomeCourseArtwork', 'LearningIcon', 'GamificationIcon', 'MainAppHeader', 'ContextualHeader']) {
       if (name.endsWith('/' + (stub === 'Button' ? 'ui' : stub))) return { [stub]: stub };
     }
     if (name.endsWith('/theme')) return { colors: { blue: 'blue', red: 'red', ink: 'navy' } };
@@ -136,6 +136,7 @@ test('Dashboard real CTAs navigate from Progress; shared Gamification passed to 
   for (const title of ['Ver ruta', 'Ver repaso', 'Ver calendario']) buttons(tree).find(b => (b.props.title ?? b.props.accessibilityLabel) === title).props.onPress();
   assert.deepEqual(routes, [['Roadmap', { courseId: 'course' }], ['Review', {}], ['ProgressCalendar']]);
   assert.equal(nodes(tree).find(n => n.type === 'MainAppHeader').props.data, aggregate);
+  assert.match(text(tree), /Racha actual: 12 días/);
   assert.doesNotMatch(text(tree), /fortalezas|logros|Ver práctica|XP/i);
 });
 test('Calendar current streak comes from shared resource and Back calls goBack', () => {
@@ -164,8 +165,9 @@ test('v2 course uses a left progress block, discreet level, meaningful artwork a
   const tree = ProgressCourseCard(props);
   assert.doesNotMatch(text(tree), /Nivel A2/);
   assert.match(text(ProgressCourseCard({ ...props, course: { ...course, title: 'Conversaciones' } })), /Nivel A2/);
-  const artwork = nodes(tree).find(n => n.type === 'HomeCourseArtwork');
-  assert.equal(artwork.props.level, 'A2'); assert.deepEqual(artwork.props.box, { x: 0, y: 0, width: 150, height: 113 });
+  assert.equal(nodes(tree).some(n => n.type === 'HomeCourseArtwork'), false);
+  assert.ok(nodes(tree).some(n => n.type === 'SvgText' && n.props.children === 'A2'));
+  assert.ok(nodes(tree).some(n => n.type === 'Svg' && n.props.viewBox === '0 0 170 132'));
   const action = buttons(tree)[0]; assert.equal(action.props.style({ pressed: false })[0].minHeight, 48);
   const clear = ProgressReviewCard({ review: { pendingCount: 0, groups: [] }, onReview() {} });
   const pending = ProgressReviewCard({ review, onReview() {} });
@@ -210,7 +212,7 @@ test('v2 summary sits before grid, uses API month count/shared streak, without d
   const tree = CalendarMonth({ month: '2026-10', today: calendar.today, cache, onChange: month => { selected = month; }, gamification: { streak: { currentDays: 19 } } });
   const copy = text(tree); assert.ok(copy.indexOf('Racha actual') < copy.indexOf('Octubre 2026'));
   assert.equal((copy.match(/Racha actual/g) ?? []).length, 1);
-  assert.match(copy, /19 días/); assert.match(copy, /1 día de aprendizaje en octubre 2026/);
+  assert.match(copy, /19 días/); assert.match(copy, /1 día de aprendizaje este mes/);
   assert.doesNotMatch(copy, /Los días protegidos/);
   const actions = buttons(tree); actions.find(b => b.props.accessibilityLabel === 'Mes anterior').props.onPress(); assert.equal(selected, '2026-09');
   actions.find(b => b.props.accessibilityLabel === 'Mes siguiente').props.onPress(); assert.equal(selected, '2026-09'); // handler also guards future
@@ -289,4 +291,44 @@ test('DEV calendar summary uses authored streak fixtures without borrowing or mu
   assert.match(text(CalendarSummary({ gamification: shared, calendar: calendarPreview('MULTI_WEEK_STREAK') })), /37 días/);
   assert.equal(shared.streak.currentDays, 37);
   assert.match(text(CalendarSummary({ gamification: null, calendar: null })), /Sin datos/);
+});
+
+
+test('v4 current streak stays global while selected month supplies its own learned count, REAL and DEV', async () => {
+  const preview = component('../src/features/progress/devPreview.ts');
+  const { CalendarSummary } = component('../src/features/progress/components/CalendarSummary.tsx');
+  const { CalendarPreview } = component('../src/features/progress/components/ProgressPreviewControl.tsx', {
+    '../devPreview': preview, react: { useState: () => ['2026-09', () => {}] },
+  });
+  for (const mode of ['MIXED_MONTH', 'MULTI_WEEK_STREAK', 'EMPTY_MONTH', 'PROTECTED', 'REPAIRED', 'BROKEN']) {
+    const current = preview.calendarPreview(mode), previous = preview.calendarPreview(mode, '2026-09');
+    assert.doesNotThrow(() => parseCalendar(previous, '2026-09'));
+    assert.equal(previous.today, current.today);
+    assert.equal(previous.learningDaysCount, previous.days.filter(d => d.state === 'LEARNED').length);
+    if (mode !== 'EMPTY_MONTH') assert.notEqual(current.learningDaysCount, previous.learningDaysCount);
+    const rendered = text(CalendarPreview({ mode }));
+    assert.match(rendered, new RegExp(preview.calendarPreviewPresentation[mode].currentStreakDays + ' días'));
+    assert.ok(rendered.includes(previous.learningDaysCount + ' días de aprendizaje este mes'));
+    assert.match(rendered, /Septiembre 2026/);
+    for (const data of [current, previous]) {
+      const summary = text(CalendarSummary({ gamification: { streak: { currentDays: 23 } }, calendar: data }));
+      assert.match(summary, /23 días/); assert.doesNotMatch(summary, /septiembre|octubre/i);
+    }
+  }
+});
+
+test('v4 weekly footer preserves unknown/zero streak and narrow large-font cards retain all controls', () => {
+  for (const dimensions of [{ width: 320, fontScale: 1 }, { width: 360, fontScale: 2 }]) {
+    const { ProgressCourseCard, ProgressWeekCard, ProgressReviewCard } = component('../src/features/progress/components/ProgressCards.tsx', { dimensions });
+    const weekly = ProgressWeekCard({ week, currentStreakDays: 0, onCalendar() {} });
+    assert.match(text(weekly), /Racha actual: 0 días/);
+    assert.match(text(ProgressWeekCard({ week, onCalendar() {} })), /Racha actual: sin datos/);
+    assert.equal(buttons(weekly).length, 1);
+    const hero = ProgressCourseCard({ course, onRoadmap() {}, onCatalog() {} });
+    assert.ok(buttons(hero).some(b => b.props.accessibilityLabel === 'Ver ruta'));
+    const pending = ProgressReviewCard({ review, onReview() {} });
+    const groupIcons = nodes(pending).filter(n => n.type === 'LearningIcon' && n.props.kind === 'chat');
+    assert.equal(groupIcons.length, 2); assert.notEqual(groupIcons[0].props.color, groupIcons[1].props.color);
+    assert.equal(buttons(ProgressReviewCard({ review: { pendingCount: 0, groups: [] }, onReview() {} })).length, 0);
+  }
 });

@@ -30,6 +30,7 @@ export function dashboardPreview(real: ProgressResponse | null, mode: DashboardM
   }
   return data;
 }
+export const dashboardPreviewStreak: Record<Exclude<DashboardMode, 'REAL'>, number> = { ACTIVE_COURSE: 0, COMPLETED_COURSE: 0, NO_COURSE: 0, REVIEW_PENDING: 0, REVIEW_CLEAR: 0, MIXED_WEEK: 1 };
 // Explicit authored presentation facts; never a production streak calculation.
 export const calendarPreviewPresentation: Record<Exclude<CalendarMode, 'REAL'>, { currentStreakDays: number; todayDay: number }> = {
   EMPTY_MONTH: { currentStreakDays: 0, todayDay: 22 },
@@ -44,12 +45,20 @@ export function calendarPreview(mode: Exclude<CalendarMode, 'REAL'>, month = '20
   const days: CalendarResponse['days'] = [];
   const add = (day: number, state: CalendarResponse['days'][number]['state']) => days.push({ date: `${month}-${String(day).padStart(2, '0')}`, state });
   const learned = (start: number, end: number) => { for (let day = start; day <= end; day++) add(day, 'LEARNED'); };
+  // Historical fixtures are intentionally different from the current month.
+  const historical = month < '2026-10';
+  if (historical) {
+    if (mode !== 'EMPTY_MONTH') { learned(2, 4); learned(16, 17); }
+    if (mode === 'MIXED_MONTH') { add(9, 'PROTECTED'); add(11, 'BROKEN'); add(12, 'REPAIRED'); }
+  } else {
   if (mode === 'WEEK_STREAK') learned(5, 11);
   if (mode === 'MULTI_WEEK_STREAK') learned(1, 21);
   if (mode === 'MIXED_MONTH') {
     learned(1, 8); add(9, 'PROTECTED'); add(11, 'BROKEN'); add(12, 'REPAIRED'); learned(13, 21);
   }
   if (mode === 'PROTECTED' || mode === 'REPAIRED' || mode === 'BROKEN') { learned(5, 7); add(8, mode); }
+  }
+  days.sort((a, b) => a.date.localeCompare(b.date));
   return { month, today: `2026-10-${String(calendarPreviewPresentation[mode].todayDay).padStart(2, '0')}`, timezone: 'America/Mazatlan', learningDaysCount: days.filter(day => day.state === 'LEARNED').length, days };
 }
 export function blockPreviewNavigation() {

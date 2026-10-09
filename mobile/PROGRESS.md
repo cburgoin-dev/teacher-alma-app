@@ -41,13 +41,13 @@ The four references are saved in `docs/mockups/progress/`. Dashboard/calendar
 Contracts override fictitious mockup counts/copy.
 
 Intentional adaptations: shared header without fake notifications; existing
-Courses landscape artwork instead of mockup books; no fabricated avatar;
-existing Gamification shield/repair/flame vectors; compact wrapping legend;
+Progress-owned vector study books instead of course photography; no fabricated avatar;
+existing Gamification shield/repair/flame vectors; informational 2×2 legend;
 root-stack Calendar without bottom tabs; no optional inventory summary.
 
 A DEV-only selector now covers rich, empty and completed states without changing
 the database (see v2 below). The first implementation was physically tested on
-Android; the v3 visual changes still need physical acceptance: review narrow devices, large system fonts,
+Android; the v4 visual changes still need physical acceptance: review narrow devices, large system fonts,
 TalkBack, card spacing, month transitions and back/refresh after learning.
 Use the existing local backend/Expo setup documented in `HOME.md` and repository
 Android acceptance docs; open Progreso, then Ver calendario. Verify Roadmap and
@@ -58,7 +58,7 @@ Review return to Progreso and future-month navigation is disabled.
 ```powershell
 npm run typecheck
 node --test tests/progress.test.cjs tests/home-navigation.test.cjs tests/home.test.cjs
-node node_modules/expo/bin/cli export --platform android --output-dir dist/progress-v3-check --max-workers 2
+node node_modules/expo/bin/cli export --platform android --output-dir dist/progress-v4-check --max-workers 2
 git diff --check
 ```
 
@@ -158,3 +158,40 @@ router return behavior and isolated DEV summary facts); Android production expor
 PASS (1104 modules, 2.5 MB Hermes); git diff --check PASS. Nine DEV-only markers,
 including calendarPreviewPresentation, absent in UTF-8/UTF-16LE bundle scans.
 Home/shared navigation source was not changed; no broader Home suite was needed.
+
+
+## Visual iteration v4
+
+- Course artwork is now a Progress-owned SVG stack of blue/coral study books,
+  page edges and bookmark, with the real level as a decorative detail. It uses
+  existing react-native-svg, adds no raster asset and never loads a course cover.
+- Review pending reuses Review's filled LearningIcon bulb with a coral treatment.
+  Topic rows reuse its filled chat symbol; two index-based blue/lilac palettes
+  differentiate rows without inferring subject metadata. The green check seal,
+  real counts, maximum two groups and Ver repaso remain.
+- Weekly history is directly on one blue surface, without an inner white panel
+  or divider. LEARNED weekday labels are blue; neutral dots are solid shapes.
+  Footer pairs shared current streak with Ver calendario, wrapping on narrow or
+  large-font layouts. Unknown streak is not displayed as zero.
+- Summary keeps global current streak independent of month navigation. Visible
+  monthly copy is simply 'de aprendizaje este mes'; TalkBack still identifies
+  the selected month. Today is blue; BROKEN uses a larger centered coral cross.
+  Existing seven-column rows, learned-only bands and canonical Gamification
+  flame/protector/repair assets remain unchanged in meaning.
+- Legend has two explicit rows of two informational entries, 36dp canonical
+  icons, names and short explanations. No Shop links or inventory controls.
+- DEV Calendar historical months now have independent sample facts (five learned
+  days in nonempty presets), rather than replaying October's exact count. Current
+  streak and authoritative today stay fixed per preset. Dashboard's sample streak
+  is explicit (0, or 1 in MIXED_WEEK), never calculated into the shared resource;
+  its header uses a display-only copy for consistency. REAL keeps shared data.
+- V3 Android captures are evidence of the previous iteration. V4 still requires
+  physical acceptance: vector book balance, footer wrapping, summary, larger X,
+  2×2 legend density, large fonts/TalkBack. No final fidelity claim. Remaining
+  differences are the app's shared header, canonical icons, root-stack Calendar
+  without tabs and no invented avatar. Transversal loading debt stays deferred.
+
+V4 validation: TypeScript PASS; 18 Progress + 2 navigation tests PASS; Android
+production export PASS (1102 modules, 2.5 MB Hermes); git diff --check PASS. Ten
+DEV-exclusive markers absent from UTF-8/UTF-16LE production bundle scans.
+Narrow/large-font checks are component structure checks, not native layout proof.
