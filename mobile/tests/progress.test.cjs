@@ -198,7 +198,13 @@ test('v2 calendar renders exact seven-column rows at narrow/large-font layouts a
     const legend = CalendarLegend(); assert.doesNotMatch(text(legend), /Los días protegidos/);
     assert.equal(nodes(legend).filter(n => n.props?.children === 'Aprendiste').length, 1);
     assert.equal(legend.props.children.length, 2);
-    for (const row of legend.props.children) assert.equal(row.props.children.length, 2);
+    for (const row of legend.props.children) {
+      assert.equal(row.props.children.length, 2);
+      for (const item of row.props.children) {
+        assert.equal(item.props.style.flexDirection, 'row');
+        assert.equal(item.props.children[1].props.style.flex, 1);
+      }
+    }
     for (const label of nodes(legend).filter(n => n.type === 'Text' && ['Aprendiste', 'Protegido', 'Reparado', 'Racha rota'].includes(n.props.children))) assert.ok(label.props.style.fontSize >= 13);
   }
 });
@@ -327,8 +333,9 @@ test('v4 weekly footer preserves unknown/zero streak and narrow large-font cards
     const hero = ProgressCourseCard({ course, onRoadmap() {}, onCatalog() {} });
     assert.ok(buttons(hero).some(b => b.props.accessibilityLabel === 'Ver ruta'));
     const pending = ProgressReviewCard({ review, onReview() {} });
-    const groupIcons = nodes(pending).filter(n => n.type === 'LearningIcon' && n.props.kind === 'chat');
-    assert.equal(groupIcons.length, 2); assert.notEqual(groupIcons[0].props.color, groupIcons[1].props.color);
+    const groupIcons = nodes(pending).filter(n => n.type === 'LearningIcon' && n.props.size === 25);
+    assert.deepEqual(groupIcons.map(n => n.props.kind), ['chat', 'bulb']);
+    assert.ok(groupIcons.every(n => !n.props.plain && !n.props.color));
     assert.equal(buttons(ProgressReviewCard({ review: { pendingCount: 0, groups: [] }, onReview() {} })).length, 0);
   }
 });

@@ -58,7 +58,7 @@ Review return to Progreso and future-month navigation is disabled.
 ```powershell
 npm run typecheck
 node --test tests/progress.test.cjs tests/home-navigation.test.cjs tests/home.test.cjs
-node node_modules/expo/bin/cli export --platform android --output-dir dist/progress-v4-check --max-workers 2
+node node_modules/expo/bin/cli export --platform android --output-dir dist/progress-v5-check --max-workers 2
 git diff --check
 ```
 
@@ -195,3 +195,31 @@ V4 validation: TypeScript PASS; 18 Progress + 2 navigation tests PASS; Android
 production export PASS (1102 modules, 2.5 MB Hermes); git diff --check PASS. Ten
 DEV-exclusive markers absent from UTF-8/UTF-16LE production bundle scans.
 Narrow/large-font checks are component structure checks, not native layout proof.
+
+
+## Micro-v5
+
+- The approved book hero and green clear-Review card are unchanged.
+- Review groups use the existing filled chat and bulb LearningIcon symbols in
+  the canonical blue treatment, replacing the duplicate chat/lilac pair. Slot
+  zero uses chat, slot one bulb: this is a small deterministic decorative fallback,
+  not topic classification. The API has no topic icon metadata; no text guessing,
+  persisted taxonomy or changes to group order/counts were added.
+- Current weekly streak has a compact blue capsule with stronger text weight,
+  paired with the existing CTA. The corner calendar has a subtle border and a
+  consistent stroke. Seven days stay directly on the main blue surface.
+- Calendar legend keeps two explicit rows of two entries, placing its unchanged
+  36dp canonical icon left of a flexible text column. Padding/gaps and descriptions
+  are shorter; titles remain 14sp and descriptions 12sp. Large fonts may increase
+  height deliberately rather than clipping or reducing text size.
+- Summary, month navigation, states and DEV fixtures are unchanged. Tests cover
+  October/September for MIXED_MONTH and MULTI_WEEK_STREAK, with fixed current
+  streak and selected-month learning counts. Month stays in accessibility copy.
+- Physical acceptance still needed for the capsule/CTA balance and horizontal
+  legend on narrow Android and large fonts. V4 captures approve the existing
+  hero/clear state but do not verify the new v5 layout. No closure claim.
+
+V5 validation: TypeScript PASS; Progress tests 18/18 PASS; Android production
+export PASS (1102 modules, 2.5 MB Hermes); git diff --check PASS. Ten DEV-only
+markers absent in UTF-8/UTF-16LE production bundle scans. Native layout remains
+subject to physical acceptance; structural font/width tests are not screenshots.
