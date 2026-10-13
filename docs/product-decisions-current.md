@@ -1,6 +1,6 @@
 # Current Product Decisions
 
-Last reviewed: 2026-10-09.
+Last reviewed: 2026-10-13.
 
 This document records recent product decisions that supersede older provisional text when there is a conflict. It is intentionally concise and should be reconciled back into the larger domain/screen documents over time.
 
@@ -45,19 +45,40 @@ Current planning may evaluate Mux or another dedicated video platform. The provi
 
 Current lesson completion semantics remain intentionally simple: advancing beyond a video-containing content step can count as traversal for MVP; 100% playback is not required unless Alma later asks for an explicit configurable viewing rule.
 
-## Diagnostic v1: build the engine before final pedagogical content is fixed
+## Diagnostic v1: design frozen for Backend implementation
 
-Diagnostic should be implemented as a complete reusable flow even if Alma has not yet finalized every question, threshold or wording choice.
+Canonical product semantics: `docs/diagnostic-semantics-v1.md`.
+Canonical learner HTTP contract: `docs/diagnostic-api-contract-v1.md`.
+Final freeze/review clarifications: `docs/diagnostic-v1-freeze.md`.
 
-Direction:
+Diagnostic should be implemented as a complete reusable flow even if Alma has not yet finalized every production question, threshold, weight, estimated duration or wording choice.
 
-- reuse the existing activity/exercise rendering and answer-validation concepts where appropriate;
-- keep question content, ordering, weights, thresholds and recommendation mapping configurable/data-driven;
-- support the complete start -> answer -> submit -> result/recommendation lifecycle;
-- do not block implementation on final production questions;
-- treat final questions, exact count, difficulty progression, recommendation thresholds and pedagogical wording as content/configuration that can be replaced after Alma validates them.
+Frozen direction:
 
-The diagnostic remains optional and recommends a starting level/course; it does not hard-restrict course choice.
+- Diagnostic is optional placement/recommendation, not formal CEFR certification.
+- Reuse/extract the existing shared Activity rendering and answer-validation engine; do not build a second Diagnostic-specific evaluator.
+- Keep question content, ordering, weights, thresholds and recommendation mapping configurable/data-driven.
+- Use the complete configured question set in deterministic position order for v1; no random subset or adaptive/IRT engine.
+- There is no learner-facing Resume in v1. Confirmed exit abandons the ACTIVE attempt; a genuine later start begins a fresh attempt.
+- Network retries are still idempotent. A request key is a transport boundary, not a Resume token.
+- Retakes are supported with no v1 cooldown. Each retake creates a new attempt; the latest COMPLETED attempt is the current result.
+- Starting/abandoning a retake does not erase the prior COMPLETED result.
+- No correctness feedback, answer editing, pedagogical retry, Skip or `No sé` while the attempt is active.
+- Diagnostic does not create Review debt, LearningDays, coins/streak/Daily Goal progress or normal course/lesson progression.
+- Diagnostic never auto-starts a course. Recommendation routes into existing Course Detail/Courses/Roadmap ownership.
+- `estimatedMinutes` is optional editorial metadata so Mobile/demo states can render production-like duration copy before Alma fixes the final value; it is not a timer.
+- Diagnostic availability is backend-authoritative and should be exposed only when the current published definition can make a useful choice between at least two learner-facing `PUBLISHED` entry levels.
+- Every recommendation level reachable by a learner-facing published Diagnostic must resolve to a current learner-facing `PUBLISHED` course at publication/availability time. Premium access does not invalidate an academic destination; `COMING_SOON` does.
+- At most one Diagnostic definition is current `PUBLISHED` for new starts. Material academic changes require a new version; historical/published academic meaning is immutable.
+- An ACTIVE attempt remains bound to its original Diagnostic version and may finish against it even if a newer version becomes current while the learner is taking the test.
+- Weighted scores and threshold comparisons use exact decimal arithmetic. Recommendation rules compare against unrounded scores; storage/display rounding happens afterwards.
+- A completed attempt preserves historical `recommendedLevel` and `recommendedCourseId`; current result rendering hydrates current Courses progress/access/visibility without inventing a parallel Diagnostic course state.
+- Courses already referenced by completed Diagnostic history should be retired by status/visibility rather than physically deleted; Backend v1 should use restrictive FK deletion behavior instead of clearing historical `recommendedCourseId`.
+- Home keeps `ACTIVE > COURSE_COMPLETED > ASSESSED > NEW` precedence. Home NEW must receive backend-authoritative `diagnosticAvailable` rather than making Mobile infer eligibility.
+
+Final production questions, exact count, difficulty progression, weights, thresholds and pedagogical wording remain replaceable/configurable after Alma validates them. Do not block Backend v1 on final content authoring.
+
+Older provisional `docs/data-model.md` wording that models `diagnostic_answers.activity_id` directly is obsolete for v1. Current/canonical persistence is `DiagnosticAnswer -> DiagnosticQuestion -> Activity`, matching Prisma/database schema and the frozen Diagnostic documents.
 
 ## Monetization v1: subscription-first MVP
 
@@ -107,7 +128,9 @@ Home Backend v1 and Home Mobile v1 are accepted as closed for the current MVP pa
 
 The development-only Home state preview remains useful for regression/design checks and must not affect production data or behavior.
 
-Known post-v1 visual/product debt includes richer illustration motifs, official Alma character/avatar integration, decorative typography, brand harmonization, real Diagnosis/Practice/Notifications integration and deeper polish of ASSESSED/COURSE_COMPLETED if later justified.
+Diagnostic Backend v1 is allowed to make the narrowly required Home integration change for backend-authoritative Diagnostic availability and recommendation truth. This is integration with a newly implemented domain, not a reopening of Home visual/product architecture.
+
+Known post-v1 visual/product debt includes richer illustration motifs, official Alma character/avatar integration, decorative typography, brand harmonization, real Practice/Notifications integration and deeper polish of ASSESSED/COURSE_COMPLETED if later justified.
 
 ## Progress v1 status
 
