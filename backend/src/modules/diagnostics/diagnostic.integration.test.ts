@@ -7,7 +7,7 @@ import { Client } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient, Prisma } from '../../generated/prisma/client.js';
 import { DiagnosticService } from './diagnostic.service.js';
-import { PrismaDiagnosticRepository } from './diagnostic.repository.js';
+import { DiagnosticSession, PrismaDiagnosticRepository } from './diagnostic.repository.js';
 import { definition, correctAnswers } from './diagnostic.test-fixtures.js';
 import { CourseService } from '../courses/course.service.js';
 import { PrismaCourseRepository } from '../courses/course.repository.js';
@@ -92,6 +92,20 @@ test('Diagnostic HTTP, PostgreSQL constraints, atomicity and concurrency', { ski
       protection: await prisma.streakProtectionEvent.count(), repairs: await prisma.streakRepair.count(),
     });
     const before = await boundaries();
+    await t.test('empty PUBLISHED A1 plus usable Premium A2 is unavailable until A1 has a published node', async () => {
+      assert.equal((await service.metadata()).available, false);
+      assert.equal((await http('/me/home')).body.hero.diagnosticAvailable, false);
+      await assert.rejects(service.start(userId, randomUUID()), { code: 'DIAGNOSTIC_UNAVAILABLE' });
+      await assert.rejects(courses.start(a1, userId), { code: 'COURSE_HAS_NO_CONTENT' });
+      const a1Topic = await prisma.topic.create({ data: { courseId: a1, title: 'A1 topic', position: 1 } });
+      const a1Lesson = await prisma.lesson.create({ data: { topicId: a1Topic.id, title: 'A1 lesson', position: 1, status: 'DRAFT' } });
+      assert.equal((await service.metadata()).available, false);
+      await prisma.lesson.update({ where: { id: a1Lesson.id }, data: { status: 'PUBLISHED' } });
+      assert.equal((await service.metadata()).available, true);
+      assert.equal((await http('/me/home')).body.hero.diagnosticAvailable, true);
+      // Academic validity does not require commercial access to the PAID A2 node.
+      await assert.rejects(courses.start(a2, userId), { code: 'COURSE_ACCESS_REQUIRED' });
+    });
     await t.test('availability: Premium counts, missing/COMING_SOON/DRAFT destinations do not; Home shares truth', async () => {
       assert.equal((await http('/diagnostic')).body.available, true);
       assert.equal((await http('/me/home')).body.hero.diagnosticAvailable, true);
@@ -198,6 +212,19 @@ test('Diagnostic HTTP, PostgreSQL constraints, atomicity and concurrency', { ski
       const fresh = await Promise.all([start(), start()]); assert.notEqual(fresh[0].attempt.id, fresh[1].attempt.id);
       assert.equal(await prisma.diagnosticAttempt.count({ where: { userId, status: 'ACTIVE' } }), 1);
     });
+    await t.test('foreign attempt locks do not wait on the owner row lock', async () => {
+      const run = await start();
+      await admin.query('BEGIN');
+      try {
+        await admin.query('SELECT id FROM diagnostic_attempts WHERE id = $1 FOR UPDATE', [run.attempt.id]);
+        const ownershipRepository = new DiagnosticService({ read: work => repository.read(work), write: (_user, work) => prisma.$transaction(async tx => {
+          await tx.$executeRaw`SET LOCAL lock_timeout = '100ms'`;
+          return work(new DiagnosticSession(tx));
+        }) });
+        await assert.rejects(ownershipRepository.submit(otherId, run.attempt.id, d.diagnosticQuestions[0]!.id, randomUUID(), correctAnswers[0]), { code: 'DIAGNOSTIC_ATTEMPT_NOT_FOUND' });
+        await assert.rejects(ownershipRepository.abandon(otherId, run.attempt.id), { code: 'DIAGNOSTIC_ATTEMPT_NOT_FOUND' });
+      } finally { await admin.query('ROLLBACK'); }
+    });
     await t.test('new start versus delayed submit; submit versus abandon; no resurrection', async () => {
       for (let i = 0; i < 4; i++) {
         const old = await start();
@@ -223,6 +250,19 @@ test('Diagnostic HTTP, PostgreSQL constraints, atomicity and concurrency', { ski
       const saved = await prisma.diagnosticAttempt.findUniqueOrThrow({ where: { id: run.attempt.id }, include: { diagnosticAnswers: true } });
       assert.equal(saved.status, 'ACTIVE'); assert.equal(saved.internalScore, null); assert.equal(saved.diagnosticAnswers.length, 3);
       await submit(run.attempt.id, 3);
+    });
+    await t.test('completion skips empty earlier destinations and preserves level with null course if content is retired', async () => {
+      await prisma.course.update({ where: { id: alternate }, data: { status: 'PUBLISHED', position: 0 } });
+      const first = await start(); await finish(first.attempt.id);
+      assert.equal((await prisma.diagnosticAttempt.findUniqueOrThrow({ where: { id: first.attempt.id } })).recommendedCourseId, a2);
+      const second = await start();
+      await prisma.lesson.update({ where: { id: lesson.id }, data: { status: 'DRAFT' } });
+      assert.equal((await service.metadata()).available, false);
+      await finish(second.attempt.id);
+      const saved = await prisma.diagnosticAttempt.findUniqueOrThrow({ where: { id: second.attempt.id } });
+      assert.equal(saved.status, 'COMPLETED'); assert.equal(saved.recommendedLevel, 'A2'); assert.equal(saved.recommendedCourseId, null);
+      await prisma.lesson.update({ where: { id: lesson.id }, data: { status: 'PUBLISHED' } });
+      await prisma.course.update({ where: { id: alternate }, data: { position: 3 } });
     });
     await t.test('archived in-flight version completes, new starts bind v2, missing destination preserves level', async () => {
       const old = await start();

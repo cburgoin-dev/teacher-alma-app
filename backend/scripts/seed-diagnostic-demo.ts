@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { diagnosticDemoData } from './diagnostic-demo-data.js';
-import { availableDiagnostic, validDefinition } from '../src/modules/diagnostics/diagnostic.availability.js';
+import { availableDiagnostic, usefulDestinations, validDefinition } from '../src/modules/diagnostics/diagnostic.availability.js';
 import { DiagnosticSession, definitionInclude } from '../src/modules/diagnostics/diagnostic.repository.js';
 
 async function main() {
@@ -23,7 +23,7 @@ async function main() {
         await tx.activity.createMany({ data: data.activities });
         await tx.diagnosticQuestion.createMany({ data: data.questions });
         const definition = await tx.diagnostic.findUniqueOrThrow({ where: { id: data.diagnostic.id }, include: definitionInclude });
-        const destinations = await new DiagnosticSession(tx).destinations();
+        const destinations = usefulDestinations(await new DiagnosticSession(tx).destinations());
         if (!validDefinition(definition, destinations)) throw new Error('Requires valid PUBLISHED A1 and A2 courses. Apply the Courses demo first.');
         await tx.diagnostic.update({ where: { id: data.diagnostic.id }, data: { status: 'PUBLISHED' } });
       }

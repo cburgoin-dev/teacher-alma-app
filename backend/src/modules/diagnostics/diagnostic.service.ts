@@ -5,7 +5,7 @@ import { checkAnswer, publicActivity } from '../activities/activity.engine.js';
 import { courseProgress } from '../courses/course.progression.js';
 import { isVisible } from '../courses/course.rules.js';
 import { courseAccess } from '../courses/course.service.js';
-import { availableDiagnostic } from './diagnostic.availability.js';
+import { availableDiagnostic, usefulDestinations } from './diagnostic.availability.js';
 import { scoreDiagnostic } from './diagnostic.scoring.js';
 import type { DiagnosticDefinition, DiagnosticRepository, DiagnosticRun, DiagnosticSession } from './diagnostic.repository.js';
 
@@ -80,7 +80,7 @@ export class DiagnosticService {
   submit(userId: string, attemptId: string, questionId: string, key: unknown, input: unknown) {
     const validatedKey = requestKey(key, 'INVALID_DIAGNOSTIC_SUBMISSION_REQUEST_KEY');
     return this.repository.write(userId, async session => {
-      await session.lockAttempt(attemptId);
+      await session.lockAttempt(attemptId, userId);
       const run = await this.owned(session, userId, attemptId);
       const previous = run.diagnosticAnswers.find(a => a.submissionRequestKey === validatedKey);
       if (previous && previous.diagnosticQuestionId !== questionId) fail(409, 'DIAGNOSTIC_SUBMISSION_CONFLICT');
@@ -108,7 +108,7 @@ export class DiagnosticService {
         const correct = new Set(run.diagnosticAnswers.filter(a => a.isCorrect).map(a => a.diagnosticQuestionId));
         if (checked.isCorrect) correct.add(questionId);
         const score = scoreDiagnostic(run.diagnostic.scoringConfig, run.diagnostic.diagnosticQuestions, correct);
-        const destination = (await session.destinations()).find(c => c.level === score.recommendedLevel);
+        const destination = usefulDestinations(await session.destinations()).find(c => c.level === score.recommendedLevel);
         const completed = await session.update(run.id, { ...score, recommendedCourseId: destination?.id ?? null,
           status: 'COMPLETED', completedAt: this.clock() });
         response = receipt({ attempt: { id: run.id, status: 'COMPLETED', answeredQuestions: answered, totalQuestions: total,
@@ -122,7 +122,7 @@ export class DiagnosticService {
   }
   abandon(userId: string, attemptId: string) {
     return this.repository.write(userId, async session => {
-      await session.lockAttempt(attemptId);
+      await session.lockAttempt(attemptId, userId);
       const run = await this.owned(session, userId, attemptId);
       if (run.status === 'COMPLETED') fail(409, 'DIAGNOSTIC_ATTEMPT_NOT_ACTIVE');
       if (run.status === 'ACTIVE') await session.update(run.id, { status: 'ABANDONED', abandonedAt: this.clock() });

@@ -1,6 +1,17 @@
 import { publicActivity, canAnswerIncorrectly } from '../activities/activity.engine.js';
+import { progressionPath } from '../courses/course.progression.js';
 import { reachableLevels } from './diagnostic.scoring.js';
 import type { DiagnosticDefinition, DiagnosticSession } from './diagnostic.repository.js';
+
+/** Academic destinations use the same curricular path as CourseService.start.
+ * Empty learner state keeps this independent of progress and commercial access. */
+export function usefulDestinations(courses: Awaited<ReturnType<DiagnosticSession['destinations']>>) {
+  return courses.filter(c => c.status === 'PUBLISHED' && c.level !== null && c.level.trim().length > 0 && c.level === c.level.trim()
+    && progressionPath({ courseProgress: [], topics: c.topics.map(t => ({ ...t,
+      lessons: t.lessons.map(l => ({ ...l, lessonProgress: [] })),
+      unitChallenge: t.unitChallenge ? { ...t.unitChallenge, progress: [], runs: [] } : null,
+    })) }).length > 0).map(({ id, level, position }) => ({ id, level, position }));
+}
 
 export function validDefinition(definition: DiagnosticDefinition, destinations: { level: string | null }[]) {
   try {
@@ -19,5 +30,5 @@ export function validDefinition(definition: DiagnosticDefinition, destinations: 
 export async function availableDiagnostic(session: DiagnosticSession) {
   const [definitions, destinations] = await Promise.all([session.published(), session.destinations()]);
   const definition = definitions.length === 1 ? definitions[0]! : null;
-  return definition && validDefinition(definition, destinations) ? definition : null;
+  return definition && validDefinition(definition, usefulDestinations(destinations)) ? definition : null;
 }

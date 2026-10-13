@@ -9,7 +9,15 @@ export class DiagnosticSession {
   constructor(private readonly db: Prisma.TransactionClient) {}
   courses() { return new PrismaCourseRepository(this.db); }
   published() { return this.db.diagnostic.findMany({ where: { status: 'PUBLISHED' }, include: definitionInclude }); }
-  destinations() { return this.db.course.findMany({ where: { status: 'PUBLISHED' }, select: { id: true, level: true, position: true }, orderBy: [{ position: 'asc' }, { id: 'asc' }] }); }
+  destinations() {
+    return this.db.course.findMany({ where: { status: 'PUBLISHED' }, select: {
+      id: true, level: true, position: true, status: true,
+      topics: { select: { id: true, title: true, position: true,
+        lessons: { select: { id: true, title: true, position: true, status: true, isRequired: true, accessType: true } },
+        unitChallenge: { select: { id: true, title: true, status: true, accessType: true } },
+      } },
+    }, orderBy: [{ position: 'asc' }, { id: 'asc' }] });
+  }
   findKey(userId: string, requestKey: string) { return this.db.diagnosticAttempt.findUnique({ where: { userId_requestKey: { userId, requestKey } }, include: attemptInclude }); }
   findAttempt(userId: string, id: string) { return this.db.diagnosticAttempt.findFirst({ where: { userId, id }, include: attemptInclude }); }
   latest(userId: string) { return this.db.diagnosticAttempt.findFirst({ where: { userId, status: 'COMPLETED' }, orderBy: [{ completedAt: 'desc' }, { startedAt: 'desc' }, { id: 'asc' }], include: attemptInclude }); }
@@ -17,7 +25,9 @@ export class DiagnosticSession {
   create(data: Prisma.DiagnosticAttemptUncheckedCreateInput) { return this.db.diagnosticAttempt.create({ data, include: attemptInclude }); }
   update(id: string, data: Prisma.DiagnosticAttemptUncheckedUpdateInput) { return this.db.diagnosticAttempt.update({ where: { id }, data, include: attemptInclude }); }
   answer(data: Prisma.DiagnosticAnswerUncheckedCreateInput) { return this.db.diagnosticAnswer.create({ data }); }
-  async lockAttempt(id: string) { await this.db.$queryRaw`SELECT id FROM diagnostic_attempts WHERE id = ${id}::uuid FOR UPDATE`; }
+  async lockAttempt(id: string, userId: string) {
+    await this.db.$queryRaw`SELECT id FROM diagnostic_attempts WHERE id = ${id}::uuid AND user_id = ${userId}::uuid FOR UPDATE`;
+  }
   async lockPublication() {
     // Shared table locks keep the current publication and catalog stable through start.
     // Publication/configuration writes use PostgreSQL's conflicting table lock.
