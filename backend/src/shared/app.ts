@@ -1,3 +1,5 @@
+import { diagnosticRoutes } from '../modules/diagnostics/diagnostic.routes.js';
+import type { DiagnosticService } from '../modules/diagnostics/diagnostic.service.js';
 import { progressRoutes } from '../modules/progress/progress.routes.js';
 import type { ProgressService } from '../modules/progress/progress.service.js';
 import { homeRoutes } from '../modules/home/home.routes.js';
@@ -19,7 +21,7 @@ import { reviewRoutes } from '../modules/review/review.routes.js';
 import type { ReviewService } from '../modules/review/review.service.js';
 
 /** Composition boundary permits HTTP tests without loading secrets or a database. */
-export function createApp(courses: CourseService, auth: RequestHandler, lessons?: LessonService, review?: ReviewService, challenges?: UnitChallengeService, gamification?: GamificationService, home?: HomeService, progress?: ProgressService) {
+export function createApp(courses: CourseService, auth: RequestHandler, lessons?: LessonService, review?: ReviewService, challenges?: UnitChallengeService, gamification?: GamificationService, home?: HomeService, progress?: ProgressService, diagnostic?: DiagnosticService) {
   const app = express();
   app.use(cors());
   app.use(express.json());
@@ -32,6 +34,7 @@ export function createApp(courses: CourseService, auth: RequestHandler, lessons?
   if (gamification) app.use('/me/gamification', auth, gamificationRoutes(gamification));
   if (home) app.use('/me/home', auth, homeRoutes(home));
   if (progress) app.use('/me/progress', auth, progressRoutes(progress));
+  if (diagnostic) app.use('/diagnostic', auth, diagnosticRoutes(diagnostic));
   app.use(errorHandler);
   return app;
 }

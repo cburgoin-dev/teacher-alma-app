@@ -4,7 +4,7 @@ import { publicContent } from './lesson.content.js';
 import { HttpError } from '../../shared/http-error.js';
 import { entitlementSource } from '../courses/course.rules.js';
 import { courseProgress, progressionPath, nextNode } from '../courses/course.progression.js';
-import { checkAnswer, publicActivity } from './lesson.activity.js';
+import { checkAnswer, publicActivity } from '../activities/activity.engine.js';
 import { deriveSteps, nextRequiredStep, requireStep, requireStepAvailable, stepCompleted } from './lesson.steps.js';
 import type { LessonBlockRecord, LessonRecord, LessonSession, PrismaLessonRepository, RunRecord } from './lesson.repository.js';
 

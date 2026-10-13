@@ -411,6 +411,8 @@ model Diagnostic {
   title     String   @db.Text
   version   Int
   status    String   @default("DRAFT") @db.Text
+  estimatedMinutes Int? @map("estimated_minutes")
+  scoringConfig Json @default("{}") @map("scoring_config") @db.JsonB
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -446,6 +448,8 @@ model DiagnosticAttempt {
   userId              String    @map("user_id") @db.Uuid
   diagnosticId        String    @map("diagnostic_id") @db.Uuid
   status              String    @db.Text
+  requestKey          String    @map("request_key") @db.Text
+  abandonedAt         DateTime? @map("abandoned_at") @db.Timestamptz(6)
   internalScore       Decimal?  @map("internal_score") @db.Decimal(8, 3)
   recommendedLevel    String?   @map("recommended_level") @db.Text
   recommendedCourseId String?   @map("recommended_course_id") @db.Uuid
@@ -456,9 +460,11 @@ model DiagnosticAttempt {
 
   user              User               @relation("DiagnosticAttempt_userId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   diagnostic        Diagnostic         @relation("DiagnosticAttempt_diagnosticId", fields: [diagnosticId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  recommendedCourse Course?            @relation("DiagnosticAttempt_recommendedCourseId", fields: [recommendedCourseId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  recommendedCourse Course?            @relation("DiagnosticAttempt_recommendedCourseId", fields: [recommendedCourseId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   diagnosticAnswers DiagnosticAnswer[] @relation("DiagnosticAnswer_diagnosticAttemptId")
 
+  @@unique([userId, requestKey])
+  @@index([userId, completedAt(sort: Desc)])
   @@index([userId, startedAt(sort: Desc)])
   @@index([diagnosticId])
   @@index([recommendedCourseId])
@@ -471,12 +477,16 @@ model DiagnosticAnswer {
   diagnosticQuestionId String   @map("diagnostic_question_id") @db.Uuid
   answerData           Json     @map("answer_data") @db.JsonB
   isCorrect            Boolean  @map("is_correct")
+  submissionRequestKey String @map("submission_request_key") @db.Text
+  submissionRequestHash String @map("submission_request_hash") @db.Text
+  submissionResponse Json @map("submission_response") @db.JsonB
   createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   diagnosticAttempt  DiagnosticAttempt  @relation("DiagnosticAnswer_diagnosticAttemptId", fields: [diagnosticAttemptId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   diagnosticQuestion DiagnosticQuestion @relation("DiagnosticAnswer_diagnosticQuestionId", fields: [diagnosticQuestionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([diagnosticAttemptId, diagnosticQuestionId])
+  @@unique([diagnosticAttemptId, submissionRequestKey], map: "diagnostic_answers_attempt_submission_key")
   @@index([diagnosticAttemptId])
   @@index([diagnosticQuestionId])
   @@map("diagnostic_answers")

@@ -54,9 +54,9 @@ test('Home PostgreSQL: real read model, authenticated HTTP, no side effects', { 
       assert.deepEqual(r.review, { pendingCount: 0 });
     });
     await t.test('latest completed Diagnostic; ignore newer incomplete; nullable recommendation', async () => {
-      await prisma.diagnosticAttempt.create({ data: { userId, diagnosticId, status: 'COMPLETED', completedAt: date(1), recommendedCourseId: a } });
-      const latest = await prisma.diagnosticAttempt.create({ data: { userId, diagnosticId, status: 'COMPLETED', completedAt: date(2), recommendedCourseId: b, recommendedLevel: 'A2' } });
-      await prisma.diagnosticAttempt.create({ data: { userId, diagnosticId, status: 'IN_PROGRESS', startedAt: date(3) } });
+      await prisma.diagnosticAttempt.create({ data: { userId, diagnosticId, requestKey: randomUUID(), status: 'COMPLETED', completedAt: date(1), recommendedCourseId: a } });
+      const latest = await prisma.diagnosticAttempt.create({ data: { userId, diagnosticId, requestKey: randomUUID(), status: 'COMPLETED', completedAt: date(2), recommendedCourseId: b, recommendedLevel: 'A2' } });
+      await prisma.diagnosticAttempt.create({ data: { userId, diagnosticId, requestKey: randomUUID(), status: 'ACTIVE', startedAt: date(3) } });
       let r = await checkedRead(); assert.ok(r.hero.type === 'ASSESSED'); assert.equal(r.hero.diagnostic.attemptId, latest.id);
       assert.equal(r.hero.recommendedCourse?.id, b); assert.equal(r.featuredCourses[0]?.id, b);
       assert.equal(r.hero.recommendedCourse?.description, 'Editorial Home description');

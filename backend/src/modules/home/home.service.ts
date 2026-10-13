@@ -47,7 +47,7 @@ export class HomeService {
         recommendedLevel: d.recommendedLevel }, recommendedCourse: recommended ? project(recommended) : null };
     } else {
       const beginner = catalog.find(c => c.status === 'PUBLISHED' && c.level === 'A1');
-      hero = { type: 'NEW', beginnerCourse: beginner ? project(beginner) : null };
+      hero = { type: 'NEW', diagnosticAvailable: facts.diagnosticAvailable, beginnerCourse: beginner ? project(beginner) : null };
     }
     const featured = recommended ? [recommended, ...catalog.filter(c => c.id !== recommended.id)] : catalog;
     return { state: hero.type, learner: facts.learner, hero,

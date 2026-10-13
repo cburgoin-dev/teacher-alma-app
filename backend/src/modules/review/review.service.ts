@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { HttpError } from '../../shared/http-error.js';
 import { isUuid } from '../../shared/auth.js';
 import { eligibleReviewItems, reviewGroups } from './review.rules.js';
-import { checkAnswer, publicActivity } from '../lessons/lesson.activity.js';
+import { checkAnswer, publicActivity } from '../activities/activity.engine.js';
 import type { PrismaReviewRepository, ReviewRecord, ReviewSession } from './review.repository.js';
 import type { ReviewBatchToken } from './review.token.js';
 

@@ -1,3 +1,5 @@
+import { availableDiagnostic } from '../diagnostics/diagnostic.availability.js';
+import { DiagnosticSession } from '../diagnostics/diagnostic.repository.js';
 import { readCourseSelection } from '../courses/course.selection.repository.js';
 import type { PrismaClient } from '../../generated/prisma/client.js';
 import { PrismaCourseRepository } from '../courses/course.repository.js';
@@ -21,7 +23,8 @@ export class PrismaHomeRepository implements HomeRepository {
             topic: { select: { courseId: true, course: { select: { status: true } } } } } },
         } }),
       ]);
-      return { learner, courses: catalog, grants, ...selection, diagnostic, reviewItems };
+      const diagnosticAvailable = (await availableDiagnostic(new DiagnosticSession(tx))) !== null;
+      return { diagnosticAvailable, learner, courses: catalog, grants, ...selection, diagnostic, reviewItems };
     }, { isolationLevel: 'RepeatableRead' });
   }
 }

@@ -4,9 +4,17 @@ import { HomeService } from './home.service.js';
 import type { HomeFacts } from './home.types.js';
 import { course, lesson } from '../courses/course.test-fixtures.js';
 const date = (n: number) => new Date(n * 1000);
-const facts = (): HomeFacts => ({ learner: { displayName: 'Alma' }, courses: [course()], grants: [], progress: [], completions: [], diagnostic: null, reviewItems: [] });
+const facts = (): HomeFacts => ({ diagnosticAvailable: false, learner: { displayName: 'Alma' }, courses: [course()], grants: [], progress: [], completions: [], diagnostic: null, reviewItems: [] });
 const read = (f: HomeFacts) => new HomeService({ read: async () => f }, () => date(100)).read('user');
 const start = (courseId: string, n = 1, status = 'IN_PROGRESS', completedAt: Date | null = null) => ({ courseId, status, startedAt: date(n), completedAt });
+
+test('NEW exposes authoritative Diagnostic availability without deriving it from catalog', async () => {
+  for (const diagnosticAvailable of [false, true]) {
+    const f = facts(); f.diagnosticAvailable = diagnosticAvailable;
+    const result = await read(f); assert.ok(result.hero.type === 'NEW');
+    assert.equal(result.hero.diagnosticAvailable, diagnosticAvailable);
+  }
+});
 
 test('HomeCourse projects exact editorial description and null without manufacturing copy', async () => {
   for (const description of ['Bases para comunicarte en situaciones reales.', null]) {
@@ -25,7 +33,7 @@ test('NEW, empty catalog, real beginner and deterministic featured cap', async (
   assert.equal(result.state, 'NEW'); assert.equal(result.review.pendingCount, 0);
   assert.deepEqual(result.featuredCourses.map(c => c.id), ['a', 'b']);
   assert.equal(result.hero.type === 'NEW' && result.hero.beginnerCourse?.id, 'a');
-  f.courses = []; assert.deepEqual((await read(f)).hero, { type: 'NEW', beginnerCourse: null });
+  f.courses = []; assert.deepEqual((await read(f)).hero, { type: 'NEW', diagnosticAvailable: false, beginnerCourse: null });
   f.courses = [course({ level: 'B2' })]; assert.equal((await read(f)).hero.type === 'NEW', true);
 });
 

@@ -3,6 +3,7 @@ import type { ReviewEligibilityRecord } from '../review/review.rules.js';
 import type { courseAccess } from '../courses/course.service.js';
 
 export interface HomeFacts {
+  diagnosticAvailable: boolean;
   learner: { displayName: string | null };
   courses: CourseRecord[];
   grants: EntitlementRecord[];
@@ -17,7 +18,7 @@ type Identity = { id: string; title: string; level: string | null; coverUrl: str
 export type HomeCourse = Identity & { description: string | null; status: 'PUBLISHED' | 'COMING_SOON'; progress: Progress | null; access: ReturnType<typeof courseAccess> };
 export type HomeCurrentNode = { type: 'LESSON' | 'UNIT_CHALLENGE'; id: string; title: string; access: { hasAccess: boolean; lockReason: 'ACCESS' | null } };
 export type HomeHero =
-  | { type: 'NEW'; beginnerCourse: HomeCourse | null }
+  | { type: 'NEW'; diagnosticAvailable: boolean; beginnerCourse: HomeCourse | null }
   | { type: 'ASSESSED'; diagnostic: { attemptId: string; completedAt: string | null; recommendedLevel: string | null }; recommendedCourse: HomeCourse | null }
   | { type: 'ACTIVE'; course: (Identity & { progress: Progress }) | null; topic: { id: string; title: string } | null; currentNode: HomeCurrentNode | null }
   | { type: 'COURSE_COMPLETED'; completedCourse: (Identity & { completedAt: string | null; progress: Progress }) | null; recommendedCourse: HomeCourse | null };
