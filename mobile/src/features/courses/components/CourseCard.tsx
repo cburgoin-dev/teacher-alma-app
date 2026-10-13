@@ -2,11 +2,11 @@ import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-na
 import { colors, radius, shadows } from '../../../theme';
 import { NavigationIcon } from '../../../components/NavigationIcon';
 import { catalogLabel } from '../presentation';
-import type { CatalogCourse } from '../types';
+import type { Course } from '../types';
 import { Cover, ProgressBar } from './ui';
 import { CourseVisualIcon } from './CourseVisualIcon';
 
-export function CourseCard({ course, onPress }: { course: CatalogCourse; onPress: () => void }) {
+export function CourseCard({ course, onPress, actionLabel }: { course: Omit<Course, 'slug'>; onPress: () => void; actionLabel?: string }) {
   const { fontScale } = useWindowDimensions();
   const scale = Math.max(1, Math.min(fontScale, 1.5));
   const soon = course.status === 'COMING_SOON';
@@ -18,7 +18,7 @@ export function CourseCard({ course, onPress }: { course: CatalogCourse; onPress
     ? `${course.progress.completedRequiredNodes} de ${course.progress.totalRequiredNodes} pasos`
     : soon ? 'Próximamente' : course.access.hasFullAccess ? 'Acceso completo' : course.access.hasFreeContent ? 'Incluye contenido gratuito' : 'Acceso requerido';
 
-  return <Pressable accessibilityRole="button" accessibilityLabel={course.title + '. ' + catalogLabel(course)}
+  return <Pressable accessibilityRole="button" accessibilityLabel={course.title + '. ' + (actionLabel ?? catalogLabel(course))}
     onPress={onPress} style={({ pressed }) => [s.shadow, { opacity: pressed ? .82 : 1 }]}>
     <View style={[s.card, { minHeight: (course.progress ? 170 : 148) + 70 * (scale - 1) }, locked && s.locked]}>
       <Cover uri={course.coverUrl} level={course.level} style={s.cover} badge={soon ? 'soon' : locked ? 'premium' : undefined} />
@@ -34,7 +34,7 @@ export function CourseCard({ course, onPress }: { course: CatalogCourse; onPress
         </View>
         {course.progress ? <View style={s.progressSlot}><ProgressBar percentage={course.progress.percentage} red compact /></View> : null}
         <View style={[s.cta, { backgroundColor: background }]}>
-          <Text maxFontSizeMultiplier={1.5} numberOfLines={1} style={[s.ctaLabel, { color: tint }]}>{catalogLabel(course)}</Text>
+          <Text maxFontSizeMultiplier={1.5} numberOfLines={1} style={[s.ctaLabel, { color: tint }]}>{(actionLabel ?? catalogLabel(course))}</Text>
           {!soon ? <CourseVisualIcon name="arrow" color={tint} size={19} /> : null}
         </View>
       </View>

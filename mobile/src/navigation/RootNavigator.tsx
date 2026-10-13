@@ -1,3 +1,4 @@
+import { DiagnosticScreen } from '../features/diagnostic/DiagnosticScreen';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { HomeScreen } from '../features/home/screens/HomeScreen';
@@ -37,6 +38,7 @@ export function RootNavigator() {
       <Stack.Screen name="Lesson" component={LessonScreen} options={{ gestureEnabled: false }} />
       <Stack.Screen name="LessonResult" component={LessonResultScreen} />
       <Stack.Screen name="UnitChallenge" component={UnitChallengeScreen} options={{ gestureEnabled: false }} />
+      <Stack.Screen name="Diagnostic" component={DiagnosticScreen} options={{ gestureEnabled: false }} />
       <Stack.Screen name="Review" component={ReviewScreen} options={{ gestureEnabled: false }} />
     </Stack.Navigator>
   </NavigationContainer>;

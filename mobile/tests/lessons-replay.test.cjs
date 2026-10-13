@@ -143,6 +143,50 @@ function nodes(node) {
   return typeof node === 'object' ? [node, ...nodes(node.props?.children)] : [node];
 }
 
+test('Diagnostic reuses all Activity types without hints, correctness, explanation or pedagogical retry', () => {
+  const { ActivityStep } = component('../src/features/lessons/components/ActivityStep.tsx');
+  const activities = [
+    { type: 'MULTIPLE_CHOICE', options: [{ id: 'a', text: 'Hello' }] },
+    { type: 'FILL_BLANK_OPTIONS', options: [{ id: 'a', text: 'Hello' }] },
+    { type: 'FILL_BLANK_TEXT', caseSensitive: false },
+    { type: 'MATCH_WORD_IMAGE', words: [{ id: 'w', text: 'Book' }], images: [{ id: 'i', url: 'book.png', alt: 'Book' }] },
+  ];
+  for (const activity of activities) {
+    const tree = nodes(ActivityStep({ mode: 'DIAGNOSTIC', activity: { id: 'a', prompt: 'Hello ____', hint: 'PRIVATE_HINT', ...activity },
+      feedback: { attempt: { isCorrect: false }, feedback: { message: 'PRIVATE_FEEDBACK', explanation: 'PRIVATE_EXPLANATION', correctAnswer: 'a' } },
+      busy: false, answerLocked: true, initialAnswer: { selectedOptionId: 'a' }, submitLabel: 'Reintentar envío', onSubmit() {}, onContinue() {}, onRetry() {} }));
+    const text = tree.filter(n => typeof n === 'string').join(' ');
+    assert.doesNotMatch(text, /PRIVATE_|Pista|Intentar de nuevo|Correcto|Incorrecto|Saltar|No sé/);
+    const button = tree.find(n => n.type === 'Button'); assert.equal(button.props.title, 'Reintentar envío');
+    if (activity.type === 'MATCH_WORD_IMAGE') assert.equal(tree.find(n => n.type === 'MatchingPairs').props.disabled, true);
+    if (activity.type === 'FILL_BLANK_TEXT') assert.equal(tree.find(n => n.type === 'TextInput').props.editable, false);
+  }
+});
+
+test('Diagnostic Result has no empty strengths sections, nullable course stays useful, course CTA replaces the flow', () => {
+  const result = { attemptId: 'a', completedAt: '2026-10-13T12:00:00Z', recommendedLevel: 'A2', recommendedCourse: null, strengths: null, reinforcementAreas: null };
+  let state = { phase: 'result', result, busy: false, active: null, startKey: null, error: null };
+  const flow = { snapshot: () => state, subscribe() {}, load() {}, dispose() {}, back: () => false, retake() {} };
+  const { DiagnosticScreen } = component('../src/features/diagnostic/DiagnosticScreen.tsx', {
+    react: { useMemo: fn => fn(), useSyncExternalStore: (_, snapshot) => snapshot(), useEffect() {}, useCallback: fn => fn },
+    'react-native': { View: 'View', Text: 'Text', ScrollView: 'ScrollView', KeyboardAvoidingView: 'KeyboardAvoidingView', Platform: { OS: 'android' }, StyleSheet: { create: v => v } },
+    '@react-navigation/native': { useFocusEffect() {}, usePreventRemove() {} },
+    './flow': { DiagnosticFlow: function () { return flow; } },
+    '../../components/AlmaLogo': { AlmaLogo: 'AlmaLogo' },
+    '../courses/components/CourseCard': { CourseCard: 'CourseCard' },
+  });
+  let destination; const navigation = { replace: (...args) => { destination = args; }, popTo: (...args) => { destination = args; } };
+  const render = () => nodes(DiagnosticScreen({ route: { key: 'diagnostic' }, navigation }));
+  let tree = render(); const text = tree.filter(n => typeof n === 'string').join(' ');
+  assert.match(text, /A2/); assert.doesNotMatch(text, /Fortalezas|Para reforzar|score/i);
+  assert.equal(tree.filter(n => n.type === 'CourseCard').length, 0);
+  tree.find(n => n.type === 'Button' && n.props.title === 'Explorar cursos').props.onPress();
+  assert.deepEqual(destination, ['MainTabs', { screen: 'CoursesTab' }]);
+  state = { ...state, result: { ...result, recommendedCourse: { id: 'course', status: 'PUBLISHED', progress: { status: 'IN_PROGRESS' } } } };
+  tree = render(); tree.find(n => n.type === 'Button' && n.props.title === 'Continuar curso').props.onPress();
+  assert.deepEqual(destination, ['Roadmap', { courseId: 'course' }]);
+});
+
 test('shared CTA owns the full painted touch surface; busy preserves its label layout and blocks repeat taps', () => {
   const { Button } = component('../src/features/courses/components/ui.tsx', {
     '../../../theme': { colors: { red: '#F52A46', blue: '#0062E9' }, radius: { pill: 999 }, type: {} },

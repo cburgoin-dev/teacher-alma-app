@@ -15,7 +15,7 @@ const node = { type: 'LESSON', id: 'lesson', title: 'Lección real', access: { h
 const active = { type: 'ACTIVE', course: { ...course, progress }, topic: { id: 't', title: 'Tema real' }, currentNode: node };
 const assessed = { type: 'ASSESSED', diagnostic: { attemptId: 'd', completedAt: null, recommendedLevel: 'A2' }, recommendedCourse: course };
 const completed = { type: 'COURSE_COMPLETED', completedCourse: { ...course, completedAt: null, progress: { ...progress, status: 'COMPLETED', percentage: 100 } }, recommendedCourse: course };
-const fresh = { type: 'NEW', beginnerCourse: course };
+const fresh = { type: 'NEW', diagnosticAvailable: true, beginnerCourse: course };
 const response = hero => ({ state: hero.type, hero, learner: { displayName: 'Ana' }, review: { pendingCount: 0 }, featuredCourses: [course] });
 const aggregate = { coins: { balance: 37 }, streak: { currentDays: 3 }, dailyGoal: { preset: 'NORMAL', target: 2, progress: 1, completed: false } };
 function component(relative, overrides = {}) {
@@ -69,17 +69,24 @@ test('Home resource coalesces requests, retains last known data and error, refre
   fail = false; await resource.refresh(); assert.equal(resource.snapshot().error, null); assert.equal(calls, 3);
   assert.deepEqual(Object.keys(resource.snapshot()).sort(), ['data', 'error', 'loading']);
 });
-test('NEW has honest disabled diagnosis and real beginner navigation', () => {
-  const tree = heroCard(fresh); assert.match(text(tree), /Descubre tu nivel/);
-  assert.equal(buttons(tree)[0].props.disabled, true); assert.equal(buttons(tree)[0].props.onPress, undefined);
-  let route; const { HomeSecondaryCards } = component('../src/features/home/components/HomeSecondaryCards.tsx');
+test('NEW uses backend Diagnostic availability and retains beginner navigation', () => {
+  let route; const tree = heroCard(fresh, r => { route = r; }); assert.match(text(tree), /Descubre tu nivel/);
+  buttons(tree)[0].props.onPress(); assert.deepEqual(route, { screen: 'Diagnostic', params: { view: 'intro' } });
+  const unavailable = heroCard({ ...fresh, diagnosticAvailable: false }, r => { route = r; });
+  assert.doesNotMatch(text(unavailable), /diagnóstico|Descubre tu nivel|your level/i);
+  buttons(unavailable)[0].props.onPress(); assert.equal(route.screen, 'CourseDetail');
+  const empty = heroCard({ ...fresh, diagnosticAvailable: false, beginnerCourse: null }, r => { route = r; });
+  buttons(empty)[0].props.onPress(); assert.equal(route.screen, 'Courses');
+  assert.throws(() => parseHome(response({ ...fresh, diagnosticAvailable: undefined })));
+  const { HomeSecondaryCards } = component('../src/features/home/components/HomeSecondaryCards.tsx');
   const secondary = HomeSecondaryCards({ data: response(fresh), gamification: aggregate, onNavigate: r => { route = r; } });
   buttons(secondary)[0].props.onPress(); assert.deepEqual(route, { screen: 'CourseDetail', params: { courseId: 'c' } });
   assert.doesNotMatch(text(HomeSecondaryCards({ data: response({ ...fresh, beginnerCourse: null }), gamification: null, onNavigate() {} })), /A1/);
 });
 test('ASSESSED shows real level and course; null recommendation never invents a route', () => {
-  let route; const tree = heroCard(assessed, r => { route = r; }); assert.match(text(tree), /A2/); buttons(tree)[0].props.onPress(); assert.equal(route.screen, 'CourseDetail');
-  assert.equal(buttons(heroCard({ ...assessed, recommendedCourse: null })).length, 0);
+  let route; const tree = heroCard(assessed, r => { route = r; }); assert.match(text(tree), /A2/); buttons(tree)[0].props.onPress(); assert.deepEqual(route, { screen: 'Diagnostic', params: { view: 'result' } });
+  buttons(tree)[1].props.onPress(); assert.equal(route.screen, 'CourseDetail');
+  assert.equal(buttons(heroCard({ ...assessed, recommendedCourse: null })).length, 1);
 });
 for (const type of ['LESSON', 'UNIT_CHALLENGE']) test(`ACTIVE ${type} opens Roadmap with exact backend anchor and renders exact progress`, () => {
   const hero = { ...active, currentNode: { ...node, type } }; let route;
@@ -224,12 +231,12 @@ test('V5 goal arrow enters the target; NEW, ASSESSED and completion use safe rea
   assert.equal(nodes(secondary).filter(n => n.type === 'lucide-react-native/icons/arrow-up-right').length, 0);
   const newTree = heroCard(fresh);
   assert.match(text(newTree), /TU PRIMER PASO/); assert.doesNotMatch(text(newTree), /Próximamente|no disponible|DEV|placeholder/); assert.equal(buttons(newTree)[0].props.title, 'Hacer diagnóstico');
-  assert.equal(buttons(newTree).length, 1); assert.equal(buttons(newTree)[0].props.disabled, true);
-  assert.equal(buttons(newTree)[0].props.onPress, undefined);
+  assert.equal(buttons(newTree).length, 1); assert.notEqual(buttons(newTree)[0].props.disabled, true);
+  assert.equal(typeof buttons(newTree)[0].props.onPress, 'function');
   const paid = heroCard({ ...assessed, recommendedCourse: { ...course, access: { ...course.access, hasFreeContent: false } } });
   assert.match(text(paid), /Requiere acceso/); assert.match(text(paid), /RECOMENDADO PARA TI/);
   const noRecommendation = heroCard({ ...assessed, diagnostic: { ...assessed.diagnostic, recommendedLevel: null }, recommendedCourse: null });
-  assert.equal(buttons(noRecommendation).length, 0); assert.match(text(noRecommendation), /Explora los cursos/);
+  assert.equal(buttons(noRecommendation).length, 1); assert.match(text(noRecommendation), /Explora los cursos/);
   const done = heroCard({ ...completed, recommendedCourse: null });
   assert.equal(nodes(done).filter(n => n.type === 'lucide-react-native/icons/trophy').length, 1);
   assert.equal(buttons(done).length, 0); assert.match(text(done), /100 %/);

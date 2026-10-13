@@ -17,8 +17,16 @@ export function HomeHeroCard({ hero, onNavigate }: { hero: HomeHero; onNavigate:
   let recommendation: HomeCourse | null = null;
   switch (hero.type) {
     case 'NEW':
-      eyebrow = 'TU PRIMER PASO'; title = 'Descubre tu nivel';
-      detail = 'Un diagnóstico corto te ayudará a encontrar por dónde empezar.';
+      eyebrow = 'TU PRIMER PASO';
+      if (hero.diagnosticAvailable) {
+        title = 'Descubre tu nivel'; detail = 'Un diagnóstico corto te ayudará a encontrar por dónde empezar.';
+        destination = { screen: 'Diagnostic', params: { view: 'intro' } }; cta = 'Hacer diagnóstico';
+      } else {
+        course = hero.beginnerCourse; title = course ? `Empieza con ${course.title}` : 'Comienza tu camino';
+        detail = 'Explora los cursos y elige por dónde empezar.';
+        destination = hero.beginnerCourse ? courseDestination(hero.beginnerCourse) : { screen: 'Courses' };
+        cta = hero.beginnerCourse ? 'Ver curso' : 'Explorar cursos';
+      }
       break;
     case 'ASSESSED':
       eyebrow = 'TU PUNTO DE PARTIDA'; title = hero.diagnostic.recommendedLevel ? `Tu nivel recomendado: ${hero.diagnostic.recommendedLevel}` : 'Tu diagnóstico está listo';
@@ -55,7 +63,7 @@ export function HomeHeroCard({ hero, onNavigate }: { hero: HomeHero; onNavigate:
             <Path d="M65 0 L67 5 L72 7 L67 9 L65 14 L63 9 L58 7 L63 5 Z M5 45 L7 49 L11 51 L7 53 L5 57 L3 53 L0 51 L3 49 Z" fill="#FFF1C3" />
           </Svg><Trophy color="#805018" size={30} strokeWidth={2.2} />
         </View> : course ? <CourseCover uri={course.coverUrl} level={course.level} hero style={s.cover} />
-        : hero.type === 'NEW' ? <View accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={s.levelSign}><Text style={s.signText}>{"What's\nyour level?"}</Text><View style={s.signRule} /></View> : null : null}
+        : hero.type === 'NEW' && hero.diagnosticAvailable ? <View accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={s.levelSign}><Text style={s.signText}>{"What's\nyour level?"}</Text><View style={s.signRule} /></View> : null : null}
     </View> : null}
     {percentage !== null ? <View style={s.progress} accessibilityRole="progressbar" accessibilityLabel="Progreso del curso" accessibilityValue={{ min: 0, max: 100, now: percentage }}>
       <View style={s.track}><View style={[s.fill, { width: `${Math.max(0, Math.min(100, percentage))}%` }]} /></View><Text style={s.percent}>{percentage}%</Text>
@@ -67,7 +75,7 @@ export function HomeHeroCard({ hero, onNavigate }: { hero: HomeHero; onNavigate:
       </View>
       {artVisible && hero.type === 'ASSESSED' ? <CourseCover uri={recommendation.coverUrl} level={recommendation.level} hero style={s.cover} /> : null}
     </View> : null}
-    {hero.type === 'NEW' ? <Button title="Hacer diagnóstico" disabled /> : null}
+    {hero.type === 'ASSESSED' ? <Button title="Ver mi resultado" tone="blue" onPress={() => onNavigate({ screen: 'Diagnostic', params: { view: 'result' } })} /> : null}
     {destination && cta ? <Button title={cta} arrow onPress={() => onNavigate(destination!)} /> : null}
   </View>;
 }

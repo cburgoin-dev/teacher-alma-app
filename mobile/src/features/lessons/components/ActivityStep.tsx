@@ -14,12 +14,13 @@ import { AudioButton, DialogueRow } from './RichContent';
 import { activityPresentation } from '../contentPresentation';
 import { lessonStyles as s } from './lessonStyles';
 
-export function ActivityStep({ activity, feedback, busy, onSubmit, onRetry, onContinue, initialAnswer, onAnswerChange, bottomInset = 0, error, mode = 'LESSON', answerLocked = false, submitLabel = 'Comprobar' }: {
-  mode?: 'LESSON' | 'REVIEW'; answerLocked?: boolean; submitLabel?: string;
+export function ActivityStep({ activity, feedback: suppliedFeedback, busy, onSubmit, onRetry, onContinue, initialAnswer, onAnswerChange, bottomInset = 0, error, mode = 'LESSON', answerLocked = false, submitLabel = 'Comprobar' }: {
+  mode?: 'LESSON' | 'REVIEW' | 'DIAGNOSTIC'; answerLocked?: boolean; submitLabel?: string;
   bottomInset?: number; error?: string;
   activity: Activity; feedback: ActivityFeedback | null; busy: boolean;
   onSubmit: (answer: Answer) => void; onRetry?: () => void; onContinue: () => void; initialAnswer?: Answer | null; onAnswerChange?: (answer: Answer) => void;
 }) {
+  const feedback = mode === 'DIAGNOSTIC' ? null : suppliedFeedback;
   const { width, fontScale } = useWindowDimensions();
   const scroll = useRef<ScrollView>(null);
   const input = useRef<TextInput>(null);
@@ -120,19 +121,19 @@ export function ActivityStep({ activity, feedback, busy, onSubmit, onRetry, onCo
       placeholderTextColor={colors.muted} value={text} onChangeText={value => { const bounded = value.replace(/[\r\n]/g, " ").slice(0, FILL_MAX_LENGTH); setText(bounded); onAnswerChange?.({ text: bounded }); }} editable={!disabled} autoCapitalize="none" autoCorrect={false}
       style={[local.option, s.body, { color: colors.ink, minHeight: 68, fontSize: 19, textAlign: 'center', borderColor: text ? colors.blue : colors.border }]} returnKeyType="done" onSubmitEditing={() => Keyboard.dismiss()} /> : null}
     {matching ? <MatchingPairs activity={activity} pairs={pairs} word={draft.word} image={draft.image} feedback={feedback} disabled={disabled} onSelect={word => { const next = matchingDraft(draft, { type: 'select', word }); dispatch({ type: 'select', word }); onAnswerChange?.({ pairs: next.pairs }); }} onConnect={image => { const next = matchingDraft(draft, { type: 'connect', image }); dispatch({ type: 'connect', image }); onAnswerChange?.({ pairs: next.pairs }); }} /> : null}
-    {mode !== 'REVIEW' && hint && activity.hint && !feedback ? <Text accessibilityLiveRegion="polite" style={[s.body, local.hint]}>{activity.hint}</Text> : null}
+    {mode === 'LESSON' && hint && activity.hint && !feedback ? <Text accessibilityLiveRegion="polite" style={[s.body, local.hint]}>{activity.hint}</Text> : null}
     </View>
     {feedback ? <View onLayout={event => { feedbackBox.current = event.nativeEvent.layout; revealFeedback(); }} accessibilityLiveRegion="polite" style={[local.feedback, { backgroundColor: feedbackCorrect(feedback) ? '#EDF9F2' : '#FFF3F1', borderColor: feedbackCorrect(feedback) ? '#D8EFE2' : '#F4DDD9' }]}>
         <View style={local.contextText}><LearningIcon kind={feedbackCorrect(feedback) ? 'completion' : 'pencil'} rose={!feedbackCorrect(feedback)} /><Text style={[s.heading, { flex: 1, fontSize: 21, lineHeight: 28, color: feedbackCorrect(feedback) ? '#13874C' : '#A33C25' }]}>{feedbackTitle(feedback)}</Text></View>
         {matchingCorrection ? <Text style={s.body}>Revisa las conexiones marcadas en rojo.</Text> : feedback.feedback.explanation ? <Text style={s.body}>{feedback.feedback.explanation}</Text> : null}
         {!feedbackCorrect(feedback) && correctAnswer ? <Text style={s.body}>{matching ? 'Respuesta correcta:\n' : 'Respuesta esperada: '}{correctAnswer}</Text> : null}
         {reinforcementOnCompletion(feedback) ? <Text style={s.caption}>{'completion' in feedback && feedback.completion ? 'Guardamos este ejercicio para reforzarlo. Tu primer intento sigue contando para la precisión.' : feedbackCorrect(feedback) ? 'Lo resolviste. El primer intento cuenta para la precisión de esta sesión; al terminar guardaremos este ejercicio para reforzarlo.' : 'Al terminar la lección guardaremos este ejercicio para reforzarlo.'}</Text> : null}
-        {mode !== 'REVIEW' && onRetry && !feedbackCorrect(feedback) ? <Pressable accessibilityRole="button" disabled={busy} onPress={() => { if (busy) return; if (matching) dispatch({ type: 'retry' }); if (fill) { setOption(null); setText(''); } setHint(false); onRetry(); }}><Text style={s.link}>Intentar de nuevo</Text></Pressable> : null}
+        {mode === 'LESSON' && onRetry && !feedbackCorrect(feedback) ? <Pressable accessibilityRole="button" disabled={busy} onPress={() => { if (busy) return; if (matching) dispatch({ type: 'retry' }); if (fill) { setOption(null); setText(''); } setHint(false); onRetry(); }}><Text style={s.link}>Intentar de nuevo</Text></Pressable> : null}
       </View> : null}
     </ScrollView>
     <View style={[local.footer, { paddingBottom: Math.max(12, bottomInset) }]}>
       {feedback ? <Button title="Continuar" arrow onPress={onContinue} busy={busy} /> : <View style={[local.actions, stackedActions && { flexDirection: 'column', alignItems: 'stretch' }]}>
-        {mode !== 'REVIEW' && activity.hint ? <Pressable accessibilityRole="button" accessibilityState={{ expanded: hint, disabled: busy }} disabled={busy} style={[local.hintButton, stackedActions && { maxWidth: '100%', alignSelf: 'flex-start' }]} onPress={() => setHint(!hint)}><LearningIcon kind="bulb" plain size={21} /><Text style={[s.link, { paddingVertical: 0, flexShrink: 1 }]}>{hint ? 'Ocultar pista' : 'Pista'}</Text></Pressable> : null}
+        {mode === 'LESSON' && activity.hint ? <Pressable accessibilityRole="button" accessibilityState={{ expanded: hint, disabled: busy }} disabled={busy} style={[local.hintButton, stackedActions && { maxWidth: '100%', alignSelf: 'flex-start' }]} onPress={() => setHint(!hint)}><LearningIcon kind="bulb" plain size={21} /><Text style={[s.link, { paddingVertical: 0, flexShrink: 1 }]}>{hint ? 'Ocultar pista' : 'Pista'}</Text></Pressable> : null}
         <View style={!stackedActions && { flex: 1 }}><Button title={submitLabel} arrow busy={busy} disabled={!answer} onPress={() => { Keyboard.dismiss(); if (answer) onSubmit(answer); }} /></View>
       </View>}
     </View>

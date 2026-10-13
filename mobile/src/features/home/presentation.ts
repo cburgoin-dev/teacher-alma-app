@@ -1,7 +1,7 @@
 import type { LearningStackParamList } from '../../navigation/types';
 import { catalogDestination } from '../courses/presentation';
 import type { ActiveHero, HomeCourse, HomeHero } from './types';
-export type HomeDestination = { screen: 'Courses' } | {
+export type HomeDestination = { screen: 'Courses' } | { screen: 'Diagnostic'; params: { view: 'intro' | 'result' } } | {
   [K in 'CourseDetail' | 'Roadmap' | 'Review']: { screen: K; params: LearningStackParamList[K] }
 }['CourseDetail' | 'Roadmap' | 'Review'];
 export const courseDestination = (course: HomeCourse): HomeDestination => ({ screen: catalogDestination(course), params: { courseId: course.id } });

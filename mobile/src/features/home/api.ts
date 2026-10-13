@@ -9,6 +9,7 @@ export function parseHome(value: unknown): HomeResponse {
     || !Number.isInteger(data.review?.pendingCount) || data.review.pendingCount < 0 || !Array.isArray(data.featuredCourses)) {
     throw new Error('Invalid Home response');
   }
+  if (data.hero.type === 'NEW' && typeof data.hero.diagnosticAvailable !== 'boolean') throw new Error('Invalid Diagnostic availability');
   return data;
 }
 export const homeApi = { read: async () => parseHome(await apiRequest<unknown>('/me/home')) };

@@ -33,6 +33,7 @@ export function HomeScreen({ navigation }: CompositeScreenProps<BottomTabScreenP
   const onNavigate = (destination: HomeDestination) => {
     if (isPreview) { Alert.alert('DEV · Vista previa', 'Los cursos de muestra no abren aprendizaje real. Selecciona REAL para navegar.'); return; }
     switch (destination.screen) {
+      case 'Diagnostic': navigation.navigate('Diagnostic', destination.params); break;
       case 'Courses': navigation.navigate('CoursesTab'); break;
       case 'CourseDetail': navigation.navigate('CourseDetail', destination.params); break;
       case 'Roadmap': navigation.navigate('Roadmap', destination.params); break;

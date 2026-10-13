@@ -6,7 +6,7 @@ export function catalogDestination(course: Pick<Course, 'status'> & { progress: 
   if (course.progress?.status === 'IN_PROGRESS' || course.progress?.status === 'COMPLETED') return 'Roadmap';
   return 'CourseDetail';
 }
-export function catalogLabel(course: Course): string {
+export function catalogLabel(course: Pick<Course, 'status' | 'progress' | 'access'>): string {
   if (course.status === 'COMING_SOON') return 'Próximamente';
   if (course.progress?.status === 'COMPLETED') return 'Repasar';
   if (course.progress?.status === 'IN_PROGRESS') return 'Continuar';
