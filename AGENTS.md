@@ -51,6 +51,8 @@ If `docs/product-decisions-current.md` explicitly conflicts with older provision
 
 Home-specific state is derived. Do not invent `home_state`, duplicate Roadmap progression logic or fork Gamification into a Home-owned resource. `GET /me/home` is read-only and Gamification remains authoritative under its existing shared contract.
 
+When Diagnostic v1 is present, Home NEW must consume backend-authoritative Diagnostic availability. Do not make Mobile or Home independently reconstruct publication/scoring/catalog validity rules.
+
 ### Progress
 - `docs/progress-semantics-v1.md`
 - `docs/progress-api-contract-v1.md`
@@ -84,6 +86,33 @@ For incomplete normal lessons, `lesson-session-semantics-v1.md` is canonical: th
 - `docs/design-direction.md`
 - `docs/mockups/courses/`
 
+### Diagnostic / Placement
+- `docs/diagnostic-semantics-v1.md`
+- `docs/diagnostic-api-contract-v1.md`
+- `docs/diagnostic-v1-freeze.md`
+- `docs/product-decisions-current.md`
+- `docs/database-schema.md` / `backend/prisma/schema.prisma` for current physical persistence truth.
+- Courses/Home contracts only where Diagnostic availability/result projections cross those domains.
+
+Diagnostic v1 design is frozen for Backend v1. Final production questions, thresholds, weights, duration and pedagogical wording remain configurable content; do not block the engine on Alma finalizing those values.
+
+Important Diagnostic rules:
+- optional placement/recommendation, not CEFR certification;
+- non-resumable learner UX; ACTIVE attempts finish or become ABANDONED;
+- transport retries are still idempotent and are not pedagogical retries;
+- retakes create new attempts; latest COMPLETED is current result;
+- no immediate correctness feedback, answer editing, retry or Skip/`No sé` in v1;
+- all configured questions run in deterministic position order; no random/adaptive selection;
+- no Review, Gamification, LearningDay or progression mutation;
+- Diagnostic never starts a course; Course Detail/Courses own course start/access;
+- backend-authoritative availability requires at least two useful reachable levels and every reachable recommendation level backed by a current learner-facing `PUBLISHED` course;
+- an in-flight ACTIVE attempt remains bound to and may complete against its original Diagnostic version even after a newer version is published;
+- recommendation thresholds use exact decimal scoring before storage/display rounding;
+- completed attempt historical `recommendedCourseId` must be preserved; retire referenced courses by visibility/status rather than physical deletion;
+- reuse/extract the shared Activity engine; do not copy a second evaluator into `diagnostics`.
+
+`docs/data-model.md` contains older Diagnostic wording (`diagnostic_answers.activity_id`) that is superseded for this vertical. The current relation is `DiagnosticAnswer -> DiagnosticQuestion -> Activity` as represented by Prisma/database schema and the frozen Diagnostic docs.
+
 ### Unit Challenge / Assessment
 - `docs/unit-challenge-semantics-v1.md`
 - `docs/unit-challenge-assessment-concept-v0.md` for historical/product rationale only
@@ -114,6 +143,8 @@ Do not change these unless the user explicitly asks to change product behavior.
 - TAP is the required Matching interaction; DRAG may be deferred.
 - Optional lesson steps must not block required progression.
 - Diagnostic should be implemented as a complete configurable flow without waiting for Alma to finalize every production question/threshold.
+- Diagnostic v1 is non-resumable, supports retakes, does not expose correctness while ACTIVE and does not mutate normal learning/gamification systems.
+- Diagnostic availability is a backend decision and should disappear from learner entry surfaces when it cannot distinguish at least two useful current published entry levels.
 - Current MVP monetization is freemium + Premium subscription. Permanent individual-course purchase is deferred, but the access layer should remain extensible to support another entitlement source in a future version.
 - Commercial access and progression are backend decisions and remain separate concepts.
 - Do not invent learner-facing data that the API/content contract does not provide.
@@ -190,6 +221,15 @@ For backend Lessons work, validate:
 - Lessons-specific unit/integration tests;
 - PostgreSQL integration when persistence/HTTP behavior changed;
 - seed/check scripts when demo data changed;
+- `git diff --check`.
+
+For backend Diagnostic work, normally validate:
+- TypeScript;
+- Diagnostic unit/HTTP tests;
+- shared Activity regression tests when extracting/refactoring the evaluator;
+- PostgreSQL integration/concurrency tests when persistence, locks, partial indexes or idempotency changed;
+- Home regression tests when `diagnosticAvailable` integration changes the Home read model;
+- demo seed/check scripts when Diagnostic demo configuration changes;
 - `git diff --check`.
 
 Do not rerun full backend suites for purely visual mobile changes.
