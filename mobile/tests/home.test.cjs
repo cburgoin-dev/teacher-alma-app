@@ -22,6 +22,7 @@ function component(relative, overrides = {}) {
   const filename = path.resolve(__dirname, relative), localRequire = require('node:module').createRequire(filename), output = { exports: {} };
   const load = name => {
     if (name in overrides) return overrides[name];
+    if (name.endsWith('/DiagnosticDevPanel')) return { DiagnosticDevPanel: 'DiagnosticDevPanel' };
     if (name === 'react') return { useEffect() {}, useState: value => [value, () => {}], useCallback: fn => fn, useSyncExternalStore: (_, snapshot) => snapshot() };
     if (name === 'react-native') return { Alert: { alert: (...args) => overrides.alerts?.push(args) }, StyleSheet: { create: v => v }, useWindowDimensions: () => overrides.dimensions ?? { width: 390, fontScale: 1 }, ...Object.fromEntries(['View', 'Text', 'Pressable', 'ScrollView', 'RefreshControl', 'ActivityIndicator'].map(n => [n, n])) };
     if (name === 'react-native-safe-area-context') return { SafeAreaView: 'SafeAreaView' };
@@ -281,6 +282,7 @@ test('DEV screen selection/hiding is in memory; fixture routes cannot reach real
     const { HomeScreen } = component('../src/features/home/screens/HomeScreen.tsx', overrides);
     const render = () => { index = 0; return HomeScreen({ navigation: { navigate: (...args) => routes.push(args) } }); };
     let tree = render();
+    assert.equal(nodes(tree).filter(n => n.type === 'DiagnosticDevPanel').length, 1);
     const control = nodes(tree).find(n => n.type === 'PreviewControl');
     assert.equal(control.props.mode, 'REAL'); control.props.onSelect('ACTIVE'); tree = render();
     buttons(tree).find(n => n.props.accessibilityLabel === 'Continuar en la ruta del curso').props.onPress();
@@ -294,6 +296,7 @@ test('DEV screen selection/hiding is in memory; fixture routes cannot reach real
     assert.deepEqual(routes[0], ['Roadmap', { courseId: 'c', focusNode: { id: 'lesson', type: 'LESSON' } }]);
     global.__DEV__ = false; states[1] = 'NEW'; index = 0;
     const production = component('../src/features/home/screens/HomeScreen.tsx', overrides).HomeScreen({ navigation: { navigate() {} } });
+    assert.equal(nodes(production).filter(n => n.type === 'DiagnosticDevPanel').length, 0);
     assert.equal(nodes(production).filter(n => n.type === 'PreviewControl').length, 0); assert.match(text(production), /Lección real/);
     assert.equal(calls, 0); assert.equal(JSON.stringify(real), before);
   } finally { global.__DEV__ = originalDev; global.fetch = originalFetch; }

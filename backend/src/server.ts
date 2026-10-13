@@ -1,3 +1,4 @@
+import { diagnosticDevEnabled } from './dev/diagnostic-gate.js';
 import { DiagnosticService } from './modules/diagnostics/diagnostic.service.js';
 import { PrismaDiagnosticRepository } from './modules/diagnostics/diagnostic.repository.js';
 import { ProgressService } from './modules/progress/progress.service.js';
@@ -20,6 +21,9 @@ import { PrismaReviewRepository } from './modules/review/review.repository.js';
 import { ReviewService } from './modules/review/review.service.js';
 import { configuredReviewToken } from './modules/review/review.token.js';
 
+const devTools = diagnosticDevEnabled(process.env.NODE_ENV, process.env.DATABASE_URL)
+  ? (await import('./dev/diagnostic-tools.js')).diagnosticDevTools(prisma, process.env.NODE_ENV, process.env.DATABASE_URL) : undefined;
+
 const app = createApp(new CourseService(new PrismaCourseRepository(prisma)),
   developmentAuth(process.env.NODE_ENV, process.env.DEV_AUTH_USER_ID),
   new LessonService(new PrismaLessonRepository(prisma)),
@@ -28,7 +32,7 @@ const app = createApp(new CourseService(new PrismaCourseRepository(prisma)),
   new GamificationService(new PrismaGamificationRepository(prisma)),
   new HomeService(new PrismaHomeRepository(prisma)),
   new ProgressService(new PrismaProgressRepository(prisma)),
-  new DiagnosticService(new PrismaDiagnosticRepository(prisma)));
+  new DiagnosticService(new PrismaDiagnosticRepository(prisma)), devTools);
 
 const port = Number(process.env.PORT ?? 3000);
 if (!Number.isInteger(port) || port < 1 || port > 65535) {

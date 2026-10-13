@@ -18,6 +18,8 @@ import { HomeFeaturedCourses } from '../components/HomeFeaturedCourses';
 import { colors } from '../../../theme';
 import type { HomePreviewMode } from '../devPreview';
 // Metro excludes these modules from production through the __DEV__ branch.
+const DiagnosticDevPanel = typeof __DEV__ !== 'undefined' && __DEV__
+  ? (require('../../../dev/DiagnosticDevPanel') as typeof import('../../../dev/DiagnosticDevPanel')).DiagnosticDevPanel : null;
 const previewTools = typeof __DEV__ !== 'undefined' && __DEV__ ? {
   ...require('../devPreview') as typeof import('../devPreview'),
   ...require('../components/HomePreviewControl') as typeof import('../components/HomePreviewControl'),
@@ -45,6 +47,7 @@ export function HomeScreen({ navigation }: CompositeScreenProps<BottomTabScreenP
     <ScrollView contentContainerStyle={s.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { void refresh(); }} tintColor={colors.blue} />}>
       <MainAppHeader data={gamification.data} loading={gamification.loading} error={gamification.error} onOpenShop={() => navigation.navigate('GamificationShop')} />
       {previewTools && previewVisible ? <previewTools.HomePreviewControl mode={previewMode} onSelect={setPreviewMode} onHide={() => setPreviewVisible(false)} /> : null}
+      {DiagnosticDevPanel ? <DiagnosticDevPanel onReal={() => setPreviewMode('REAL')} /> : null}
       {!isPreview && home.error ? <View style={s.error} accessibilityLiveRegion="polite"><Text style={s.body}>{home.error}{data ? ' Mostramos tu última información disponible.' : ''}</Text><Button title="Reintentar" tone="blue" onPress={() => { void refresh(); }} /></View> : null}
       {!isPreview && !data && home.loading ? <View style={s.loading}><ActivityIndicator color={colors.blue} size="large" /><Text style={s.body}>Cargando tu inicio…</Text></View> : null}
       {data ? <>

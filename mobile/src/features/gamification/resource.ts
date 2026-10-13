@@ -78,7 +78,11 @@ export class GamificationResource {
     } finally { this.set({ busy: false }); }
   }
 }
-export const gamificationResource = new GamificationResource();
+export let gamificationResource = new GamificationResource();
+/** DEV identity changes discard the old cache; late requests remain on the old instance. */
+export function resetDevIdentityResource() {
+  if (typeof __DEV__ !== 'undefined' && __DEV__) gamificationResource = new GamificationResource();
+}
 
 /** Learning can finish from several endpoints; wait for timezone before any of them. */
 export async function withLearningTimezone<T>(action: () => Promise<T>): Promise<T> {

@@ -8,7 +8,7 @@ Una sola ruta raíz `Diagnostic` presenta Intro, Questions y Result, sin tabs. E
 
 Intro consume `GET /diagnostic`, muestra título, preguntas y duración opcional reales. No crea intentos al entrar o al pulsar Ahora no. La disponibilidad es exclusivamente backend. Questions consume start y submit; Result recibe directamente el receipt final. `GET /diagnostic/result` se usa al consultar posteriormente desde Home ASSESSED y excepcionalmente para resolver una finalización cuya respuesta se perdió mientras se intentaba abandonar.
 
-API usada: `GET /diagnostic`, `POST /diagnostic/attempts`, `POST /diagnostic/attempts/:attemptId/questions/:questionId/submit`, `POST /diagnostic/attempts/:attemptId/abandon`, `GET /diagnostic/result`. No se añadieron endpoints, dependencias ni cambios Backend.
+API usada: `GET /diagnostic`, `POST /diagnostic/attempts`, `POST /diagnostic/attempts/:attemptId/questions/:questionId/submit`, `POST /diagnostic/attempts/:attemptId/abandon`, `GET /diagnostic/result`. La API pública no cambia. El tooling DEV separado descrito abajo añade únicamente rutas de preparación locales; no añade dependencias.
 
 Cada intención de start conserva su key; cada submit conserva key y copia exacta de answer mientras la confirmación sea incierta. El flujo bloquea solicitudes simultáneas. Después de un fallo de transporte, los inputs quedan bloqueados y **Reintentar envío** repite el mismo payload. `INVALID_ANSWER` permite corregir. Timeout de 15 segundos permite ofrecer retry si la conexión queda colgada. Una nueva intención/retake genera nuevas keys. Los conflictos no se presentan como éxitos ni reabren preguntas anteriores.
 
@@ -27,6 +27,28 @@ Result ofrece **Repetir diagnóstico**, vuelve a cargar Intro y crea un intento 
 Los cinco originales están en `docs/mockups/diagnostic/`, con precedencia en su README: Intro/Question/Result A1 primarios; Home sólo integración; Result comercial secundario. Sin Skip, chip privado, compra única, paywall ni start directo. Se usa el logo oficial actual porque no existe una ilustración oficial equivalente a los mockups. Quedan la ilustración definitiva y aceptación visual física (tamaños de fuente grandes, Android estrecho, teclado y lector de pantalla); exportar no sustituye esa aceptación.
 
 ## Aceptación física Android
+
+### Flujo habitual: DEV · Diagnostic, sin comandos por escenario
+
+Con Backend development y Expo ya funcionando contra PostgreSQL local `teacher_alma_dev`, abrir **Inicio → DEV · Diagnostic** (junto a los controles DEV de Home). No seleccionar el preview visual NEW; el panel prepara datos reales y vuelve automáticamente a Home REAL.
+
+1. **Preparar NEW / Restablecer Diagnostic NEW**: selecciona al usuario fijo `diagnostic-dev`, elimina sólo sus CourseProgress y attempts Diagnostic (con sus answers) y refresca Home. El panel se cierra al cambiar el escenario. Tocar normalmente **Hacer diagnóstico** → Intro → Comenzar.
+2. **Preparar ASSESSED · A1** o **A2**: restablece esos mismos datos personales y contesta las cuatro preguntas demo a través del servicio real. Scoring, evaluación, receipts, COMPLETED y recomendación se guardan realmente. Home muestra ASSESSED; **Ver mi resultado** abre el Result real. **Repetir diagnóstico** sigue creando un intento normal.
+3. **Limpiar intento activo**: marca ACTIVE como ABANDONED para el usuario dedicado; conserva COMPLETED y CourseProgress. No promete NEW si hay un curso activo o un resultado previo.
+4. **Volver al usuario habitual**: vuelve a la identidad configurada originalmente en Backend, sin cambiar `DEV_AUTH_USER_ID` ni reiniciar procesos. El estado del usuario habitual se conserva.
+5. Si el demo no está publicado o faltan los cursos con contenido, muestra error y revierte la preparación. No recrea catálogo. Si se pierde la conexión, consultar el escenario al reabrir el panel antes de reintentar; no se muestra éxito sin confirmación.
+
+La selección es local a la sesión de la app, mediante el alias cerrado `diagnostic-dev` en `X-Teacher-Alma-Dev-Learner`. Al recargar Expo vuelve al usuario habitual; basta preparar/seleccionar otra vez desde el panel. No se crean usuarios nuevos por pulsación. Sólo el backend resuelve el alias al UUID reservado `6ac0de00-0000-4000-8000-000000090001`; no acepta UUID arbitrarios del cliente.
+
+Las únicas rutas nuevas son **GET/POST `/dev/diagnostic`**, separadas de `/diagnostic`, con acciones cerradas NEW, ASSESSED_A1, ASSESSED_A2 y CLEAR_ACTIVE. El módulo operativo sólo se carga/registra si `NODE_ENV=development` y DATABASE_URL apunta a localhost/127.0.0.1/::1 con nombre `teacher_alma_dev`. Fuera de ese entorno no hay registro en server; el router además rechaza acceso si se monta accidentalmente deshabilitado. Son herramientas para un servidor local de confianza, no autenticación para un servidor expuesto a Internet.
+
+Mobile carga panel, controlador e identidad sólo bajo `__DEV__`. El cliente de producción nunca añade el header. Cambiar escenario reemplaza cachés Home/Progress/Gamification y remonta la navegación, descartando estados locales de pantallas anteriores. Las respuestas tardías quedan en instancias antiguas y no pueden sobrescribir la identidad nueva. Home se consulta de nuevo; Diagnostic no tiene caché persistente que invalidar. Una operación de tienda pendiente bloquea el cambio de identidad para no trasladar un retry entre usuarios.
+
+No se borran usuarios, contenido compartido, Lessons, Activities, definiciones ni datos de Gamification/Review/LearningDay. Tampoco se borra el historial personal de Lessons/Unit Challenge: esta herramienta restablece exclusivamente la entrada Diagnostic/Home solicitada, no todo el aprendizaje del usuario dedicado.
+
+### Fallback técnico opcional y arranque inicial
+
+Los comandos siguientes siguen disponibles para depuración o primera instalación. **Crear usuarios manualmente/cambiar DEV_AUTH_USER_ID ya no es el procedimiento normal para cambiar escenarios.** La matriz física de Activities, A1/A2, red, abandono y retakes de abajo sigue aplicando usando el panel.
 
 Precondición: PostgreSQL local `teacher_alma_dev`, migraciones y Courses demo existentes con A1/A2 PUBLISHED y contenido. **No ejecutar reset de Courses/Lessons para esta prueba**. Si el check falla, resolver esa precondición sin borrar progreso.
 
@@ -96,4 +118,11 @@ git diff --check
 
 Tests de flow y navegación usan API inyectable/StackRouter real; los checks de UI reutilizan el harness ligero existente, sin snapshots. No se añaden renderers alternativos ni un Diagnostic fake accesible desde producción.
 
-Validación de esta entrega: TypeScript correcto; 116 tests pasaron, sin fallos ni skips; export Android/Hermes correcto (1106 módulos); `git diff --check` limpio. El primer export falló por permisos al escribir el temporal Hermes dentro del sandbox; el mismo comando pasó fuera del sandbox sin cambiar código. El check de PostgreSQL del seed existente confirmó available=true, 4 preguntas y 5 minutos, sin modificar datos. No se ejecutó aceptación en dispositivo físico ni suites Backend completas; Backend no cambió.
+Validación de la entrega Mobile original: TypeScript correcto; 116 tests pasaron, sin fallos ni skips; export Android/Hermes correcto (1106 módulos); `git diff --check` limpio. El primer export falló por permisos al escribir el temporal Hermes dentro del sandbox; el mismo comando pasó fuera del sandbox sin cambiar código. El check de PostgreSQL del seed existente confirmó available=true, 4 preguntas y 5 minutos, sin modificar datos. No se ejecutó aceptación en dispositivo físico ni suites Backend completas; Backend no cambió.
+
+
+### Validación Diagnostic DEV Tools
+
+Backend TypeScript y 50 tests DEV/Diagnostic/Home correctos, incluidos HTTP, PostgreSQL aislado, concurrencia y ausencia de acceso DEV fuera de development. Mobile TypeScript y 171 tests correctos (incluyen los 116 anteriores y regresiones Gamification/Progress por el cambio de caché de identidad). Se corrigió el harness de navegación de Gamification, que todavía no reconocía la ruta Diagnostic existente.
+
+Export de producción Android con `--no-bytecode` para inspeccionar JavaScript: sin `/dev/diagnostic`, `X-Teacher-Alma-Dev-Learner`, alias `diagnostic-dev` ni marcadores del panel operativo en el bundle. El flag sólo se usó para esta inspección, no modifica la configuración Hermes del proyecto. `git diff --check` correcto. La aceptación física del panel queda pendiente en el dispositivo. No se modificó el seed/catalogo local ni el usuario habitual durante esta validación; las pruebas de escritura usaron esquemas aislados.

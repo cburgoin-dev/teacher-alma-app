@@ -33,6 +33,7 @@ function component(relative, overrides = {}) {
   const output = { exports: {} };
   const load = name => {
     if (name in overrides) return overrides[name];
+    if (name.endsWith('/diagnostic/DiagnosticScreen')) return { DiagnosticScreen: 'DiagnosticScreen' };
     if (name.endsWith('.png')) return name;
     if (name === 'react/jsx-runtime') return require(name);
     if (name === 'react') return { useEffect() {}, useRef: value => ({ current: value }), useCallback: fn => fn, useMemo: fn => fn(), useSyncExternalStore: (_, snapshot) => snapshot() };
@@ -311,7 +312,7 @@ test('root stack owns one learning history above unchanged MainTabs and global S
   const root = RootNavigator();
   assert.equal(root.type, 'NavigationContainer');
   const screens = nodes(root).filter(n => n.type === 'StackScreen');
-  assert.deepEqual(screens.map(n => n.props.name), ['MainTabs', 'GamificationShop', 'ProgressCalendar', 'CourseDetail', 'Roadmap', 'Lesson', 'LessonResult', 'UnitChallenge', 'Review']); assert.equal(screens[0].props.component, MainTabs);
+  assert.deepEqual(screens.map(n => n.props.name), ['MainTabs', 'GamificationShop', 'ProgressCalendar', 'CourseDetail', 'Roadmap', 'Lesson', 'LessonResult', 'UnitChallenge', 'Diagnostic', 'Review']); assert.equal(screens[0].props.component, MainTabs);
   const tabs = MainTabs(); assert.deepEqual(nodes(tabs).filter(n => n.type === 'TabScreen').map(n => n.props.name), ['Home', 'CoursesTab', 'Progress', 'Profile']);
 
 });

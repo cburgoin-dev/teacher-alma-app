@@ -23,4 +23,8 @@ export class HomeResource {
     return this.reading;
   };
 }
-export const homeResource = new HomeResource();
+export let homeResource = new HomeResource();
+/** DEV identity changes discard the old cache; late requests remain on the old instance. */
+export function resetDevIdentityResource() {
+  if (typeof __DEV__ !== 'undefined' && __DEV__) homeResource = new HomeResource();
+}

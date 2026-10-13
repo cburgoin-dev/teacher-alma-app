@@ -13,6 +13,10 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
 
   const headers = new Headers(options.headers);
   headers.set('Accept', 'application/json');
+  if (typeof __DEV__ !== 'undefined' && __DEV__) {
+    const identity = require('../../dev/diagnosticIdentity') as typeof import('../../dev/diagnosticIdentity');
+    if (identity.diagnosticIdentity.selected()) headers.set('X-Teacher-Alma-Dev-Learner', 'diagnostic-dev');
+  }
   if (options.body !== undefined && typeof options.body === 'string' && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }

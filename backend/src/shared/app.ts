@@ -21,20 +21,22 @@ import { reviewRoutes } from '../modules/review/review.routes.js';
 import type { ReviewService } from '../modules/review/review.service.js';
 
 /** Composition boundary permits HTTP tests without loading secrets or a database. */
-export function createApp(courses: CourseService, auth: RequestHandler, lessons?: LessonService, review?: ReviewService, challenges?: UnitChallengeService, gamification?: GamificationService, home?: HomeService, progress?: ProgressService, diagnostic?: DiagnosticService) {
+export function createApp(courses: CourseService, auth: RequestHandler, lessons?: LessonService, review?: ReviewService, challenges?: UnitChallengeService, gamification?: GamificationService, home?: HomeService, progress?: ProgressService, diagnostic?: DiagnosticService, devTools?: { router: express.Router; selectIdentity: RequestHandler }) {
   const app = express();
   app.use(cors());
   app.use(express.json());
   app.use('/demo-media', demoMedia(process.env.NODE_ENV));
   app.get('/health', (_request, response) => { response.json({ status: 'ok' }); });
-  app.use('/courses', auth, courseRoutes(courses));
-  if (lessons) app.use('/lessons', auth, lessonRoutes(lessons));
-  if (review) app.use('/review', auth, reviewRoutes(review));
-  if (challenges) app.use('/unit-challenges', auth, unitChallengeRoutes(challenges));
-  if (gamification) app.use('/me/gamification', auth, gamificationRoutes(gamification));
-  if (home) app.use('/me/home', auth, homeRoutes(home));
-  if (progress) app.use('/me/progress', auth, progressRoutes(progress));
-  if (diagnostic) app.use('/diagnostic', auth, diagnosticRoutes(diagnostic));
+  if (devTools) app.use('/dev/diagnostic', devTools.router);
+  const learnerAuth: RequestHandler[] = devTools ? [auth, devTools.selectIdentity] : [auth];
+  app.use('/courses', learnerAuth, courseRoutes(courses));
+  if (lessons) app.use('/lessons', learnerAuth, lessonRoutes(lessons));
+  if (review) app.use('/review', learnerAuth, reviewRoutes(review));
+  if (challenges) app.use('/unit-challenges', learnerAuth, unitChallengeRoutes(challenges));
+  if (gamification) app.use('/me/gamification', learnerAuth, gamificationRoutes(gamification));
+  if (home) app.use('/me/home', learnerAuth, homeRoutes(home));
+  if (progress) app.use('/me/progress', learnerAuth, progressRoutes(progress));
+  if (diagnostic) app.use('/diagnostic', learnerAuth, diagnosticRoutes(diagnostic));
   app.use(errorHandler);
   return app;
 }

@@ -23,7 +23,11 @@ export class ProgressResource<T> {
     return this.reading;
   };
 }
-export const progressResource = new ProgressResource<ProgressResponse>(progressApi.read);
+export let progressResource = new ProgressResource<ProgressResponse>(progressApi.read);
+/** DEV identity changes discard the old cache; late requests remain on the old instance. */
+export function resetDevIdentityResource() {
+  if (typeof __DEV__ !== 'undefined' && __DEV__) progressResource = new ProgressResource<ProgressResponse>(progressApi.read);
+}
 /** Screen-local month cache: each key has independent requests, so late responses cannot replace another month. */
 export class CalendarResources {
   private months = new Map<string, ProgressResource<CalendarResponse>>();
