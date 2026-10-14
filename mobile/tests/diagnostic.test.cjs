@@ -7,7 +7,7 @@ require.extensions['.ts'] = (module, filename) => module._compile(ts.transpileMo
 }).outputText, filename);
 const { DiagnosticFlow } = require('../src/features/diagnostic/flow.ts');
 const { diagnosticApi } = require('../src/features/diagnostic/api.ts');
-const { questionProgress, resultCourseAction } = require('../src/features/diagnostic/presentation.ts');
+const { introHeading, questionProgress, resultCourseAction } = require('../src/features/diagnostic/presentation.ts');
 const { ApiError } = require('../src/services/api/client.ts');
 const metadata = { available: true, diagnostic: { id: 'd', title: 'Diagnostic', version: 1, questionCount: 4, estimatedMinutes: 5 } };
 const active = position => ({ attempt: { id: 'attempt', status: 'ACTIVE', answeredQuestions: position - 1, totalQuestions: 4 },
@@ -84,7 +84,7 @@ test('invalid answers unlock the draft; active conflicts require abandon, termin
 });
 test('later result lookup reads current result and visual progress is not an academic score', async () => {
   const { flow, calls } = fixture({}, 'result'); await flow.load(); assert.deepEqual(calls, [['result']]); assert.equal(flow.snapshot().result, result);
-  assert.equal(questionProgress(active(1).question), 0); assert.equal(questionProgress(active(4).question), 75);
+  assert.equal(questionProgress(active(1).question), 25); assert.equal(questionProgress(active(4).question), 100);
 });
 test('result course actions reuse Courses truth, including nullable course and paid courses', () => {
   assert.equal(resultCourseAction(result), null);
@@ -117,4 +117,12 @@ test('root stack replaces Diagnostic with course destination; Back cannot reopen
   }
   const catalog = router.getStateForAction(diagnostic, StackActions.popTo('MainTabs', { screen: 'CoursesTab' }), config);
   assert.equal(catalog.routes.length, 1); assert.equal(catalog.routes[0].params.screen, 'CoursesTab');
+});
+
+
+test('Intro de-emphasizes only the explicit demo suffix in development, preserving production titles', () => {
+  assert.deepEqual(introHeading('Descubre tu nivel (demo)', true), { title: 'Descubre tu nivel', demo: true });
+  assert.deepEqual(introHeading('Descubre tu nivel (demo)', false), { title: 'Descubre tu nivel (demo)', demo: false });
+  assert.deepEqual(introHeading('Mi diagnóstico', true), { title: 'Mi diagnóstico', demo: false });
+  assert.deepEqual([1,2,3,4].map(position => questionProgress(active(position).question)), [25,50,75,100]);
 });

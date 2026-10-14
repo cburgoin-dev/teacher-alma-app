@@ -6,7 +6,7 @@ import type { Course } from '../types';
 import { Cover, ProgressBar } from './ui';
 import { CourseVisualIcon } from './CourseVisualIcon';
 
-export function CourseCard({ course, onPress, actionLabel }: { course: Omit<Course, 'slug'>; onPress: () => void; actionLabel?: string }) {
+export function CourseCard({ course, onPress, actionLabel, showAction = true }: { course: Omit<Course, 'slug'>; onPress: () => void; actionLabel?: string; showAction?: boolean }) {
   const { fontScale } = useWindowDimensions();
   const scale = Math.max(1, Math.min(fontScale, 1.5));
   const soon = course.status === 'COMING_SOON';
@@ -24,19 +24,19 @@ export function CourseCard({ course, onPress, actionLabel }: { course: Omit<Cour
       <Cover uri={course.coverUrl} level={course.level} style={s.cover} badge={soon ? 'soon' : locked ? 'premium' : undefined} />
       <View style={s.body}>
         <View style={s.titleRow}>
-          <Text numberOfLines={2} ellipsizeMode="tail" maxFontSizeMultiplier={1.5} style={s.title}>{course.title}</Text>
+          <Text numberOfLines={showAction ? 2 : undefined} ellipsizeMode="tail" maxFontSizeMultiplier={1.5} style={s.title}>{course.title}</Text>
           <Text style={s.chevron} accessible={false}>›</Text>
         </View>
-        <Text numberOfLines={2} maxFontSizeMultiplier={1.5} style={[s.description, { minHeight: 38 * scale }]}>{course.description ?? ''}</Text>
+        <Text numberOfLines={showAction ? 2 : undefined} maxFontSizeMultiplier={1.5} style={[s.description, { minHeight: 38 * scale }]}>{course.description ?? ''}</Text>
         <View style={s.metadata}>
           <NavigationIcon name="CoursesTab" color={colors.muted} size={15} />
-          <Text numberOfLines={1} maxFontSizeMultiplier={1.5} style={s.meta}>{metadata}</Text>
+          <Text numberOfLines={showAction ? 1 : undefined} maxFontSizeMultiplier={1.5} style={s.meta}>{metadata}</Text>
         </View>
         {course.progress ? <View style={s.progressSlot}><ProgressBar percentage={course.progress.percentage} red compact /></View> : null}
-        <View style={[s.cta, { backgroundColor: background }]}>
+        {showAction ? <View style={[s.cta, { backgroundColor: background }]}>
           <Text maxFontSizeMultiplier={1.5} numberOfLines={1} style={[s.ctaLabel, { color: tint }]}>{(actionLabel ?? catalogLabel(course))}</Text>
           {!soon ? <CourseVisualIcon name="arrow" color={tint} size={19} /> : null}
-        </View>
+        </View> : null}
       </View>
     </View>
   </Pressable>;

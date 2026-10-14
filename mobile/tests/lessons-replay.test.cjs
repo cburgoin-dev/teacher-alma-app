@@ -117,7 +117,7 @@ function component(relative, overrides = {}) {
     if (name === 'react-native-safe-area-context') return { useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) };
     if (name === 'react-native-svg') return { default: 'Svg', Circle: 'Circle', Path: 'Path', Rect: 'Rect' };
     if (name.endsWith('/ui')) return { Button: 'Button', styles: { button: { minHeight: 48 }, buttonText: {} } };
-    if (name.endsWith('/theme')) return { colors: {} };
+    if (name.endsWith('/theme')) return { colors: {}, shadows: { card: {} } };
     if (name.endsWith('/lessonStyles')) return { lessonStyles: {} };
     if (name.endsWith('/LearningIcon')) return { LearningIcon: 'LearningIcon' };
     if (name.endsWith('/MatchingPairs')) return { MatchingPairs: 'MatchingPairs' };
@@ -183,8 +183,39 @@ test('Diagnostic Result has no empty strengths sections, nullable course stays u
   tree.find(n => n.type === 'Button' && n.props.title === 'Explorar cursos').props.onPress();
   assert.deepEqual(destination, ['MainTabs', { screen: 'CoursesTab' }]);
   state = { ...state, result: { ...result, recommendedCourse: { id: 'course', status: 'PUBLISHED', progress: { status: 'IN_PROGRESS' } } } };
-  tree = render(); tree.find(n => n.type === 'Button' && n.props.title === 'Continuar curso').props.onPress();
+  tree = render();
+  assert.equal(tree.find(n => n.type === 'CourseCard').props.showAction, false);
+  assert.equal(tree.filter(n => n.type === 'Button' && n.props.title === 'Continuar curso').length, 1);
+  assert.equal(tree.filter(n => n.type === 'Button' && n.props.title === 'Repetir diagnóstico').length, 0);
+  tree.find(n => n.type === 'Button' && n.props.title === 'Continuar curso').props.onPress();
   assert.deepEqual(destination, ['Roadmap', { courseId: 'course' }]);
+});
+
+test('Diagnostic visual options preserve default course actions and accessible progress', () => {
+  const theme = { colors: {}, radius: {}, type: {}, shadows: { card: {} } };
+  const { ProgressBar } = component('../src/features/courses/components/ui.tsx', {
+    '../../../theme': theme, './CourseVisualIcon': { CourseVisualIcon: 'Icon' }, './CourseCover': { CourseCover: 'Cover' },
+  });
+  const normal = ProgressBar({ percentage: 25 });
+  const minimal = ProgressBar({ percentage: 25, minimal: true });
+  assert.equal(nodes(normal).filter(n => n.type === 'Text').length, 1);
+  assert.equal(nodes(minimal).filter(n => n.type === 'Text').length, 0);
+  assert.deepEqual(minimal.props.accessibilityValue, normal.props.accessibilityValue);
+  const { CourseCard } = component('../src/features/courses/components/CourseCard.tsx', {
+    '../../../theme': theme, '../../../components/NavigationIcon': { NavigationIcon: 'Icon' },
+    './CourseVisualIcon': { CourseVisualIcon: 'Icon' }, './ui': { Cover: 'Cover', ProgressBar: 'ProgressBar' },
+    dimensions: { width: 360, fontScale: 1.5 },
+  });
+  let pressed = 0;
+  const props = { course: { title: 'Un título largo de curso', description: 'Descripción del curso', status: 'PUBLISHED', access: { hasFullAccess: true } },
+    actionLabel: 'Ver curso recomendado', onPress: () => pressed++ };
+  const catalog = CourseCard(props), diagnostic = CourseCard({ ...props, showAction: false });
+  assert.ok(nodes(catalog).includes(props.actionLabel));
+  assert.ok(!nodes(diagnostic).includes(props.actionLabel));
+  assert.equal(nodes(catalog).find(n => n.props?.children === props.course.title).props.numberOfLines, 2);
+  assert.equal(nodes(diagnostic).find(n => n.props?.children === props.course.title).props.numberOfLines, undefined);
+  diagnostic.props.onPress(); assert.equal(pressed, 1);
+  assert.equal(diagnostic.props.accessibilityLabel, catalog.props.accessibilityLabel);
 });
 
 test('shared CTA owns the full painted touch surface; busy preserves its label layout and blocks repeat taps', () => {

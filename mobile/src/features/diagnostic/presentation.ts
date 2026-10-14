@@ -2,8 +2,13 @@ import { ApiError } from '../../services/api/client';
 import { catalogDestination } from '../courses/presentation';
 import type { DiagnosticQuestion, DiagnosticResult } from './types';
 
+export function introHeading(title: string, development: boolean) {
+  const demo = development && /\s+\(demo\)$/.test(title);
+  return { title: demo ? title.replace(/\s+\(demo\)$/, '') : title, demo };
+}
+
 export function questionProgress(question: DiagnosticQuestion): number {
-  return Math.max(0, Math.min(100, (question.position - 1) / question.totalQuestions * 100));
+  return Math.max(0, Math.min(100, question.position / question.totalQuestions * 100));
 }
 export function resultCourseAction(result: DiagnosticResult) {
   const course = result.recommendedCourse;
