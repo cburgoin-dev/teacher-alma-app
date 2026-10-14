@@ -1,5 +1,7 @@
 import 'dotenv/config';
+import { isDeepStrictEqual } from 'node:util';
 import { diagnosticDemoData } from './diagnostic-demo-data.js';
+import { demoId } from './courses-demo-data.js';
 import { availableDiagnostic, usefulDestinations, validDefinition } from '../src/modules/diagnostics/diagnostic.availability.js';
 import { DiagnosticSession, definitionInclude } from '../src/modules/diagnostics/diagnostic.repository.js';
 
@@ -15,7 +17,8 @@ async function main() {
     if (action === '--apply') await prisma.$transaction(async tx => {
       await tx.$executeRaw`LOCK TABLE diagnostics, diagnostic_questions, activities, courses IN SHARE ROW EXCLUSIVE MODE`;
       const current = await tx.diagnostic.findMany({ where: { status: 'PUBLISHED' } });
-      if (current.some(d => d.id !== data.diagnostic.id)) throw new Error('Another Diagnostic is published; demo seed will not replace it');
+      const previousDemoId = demoId(80000);
+      if (current.some(d => d.id !== data.diagnostic.id && !(d.id === previousDemoId && d.version === 1 && d.title === 'Descubre tu nivel (demo)'))) throw new Error('Another Diagnostic is published; demo seed will not replace it');
       const existing = await tx.diagnostic.findUnique({ where: { id: data.diagnostic.id } });
       if (existing && existing.status !== 'PUBLISHED') throw new Error('Demo version already exists but is not published; create a new authored version');
       if (!existing) {
@@ -25,6 +28,8 @@ async function main() {
         const definition = await tx.diagnostic.findUniqueOrThrow({ where: { id: data.diagnostic.id }, include: definitionInclude });
         const destinations = usefulDestinations(await new DiagnosticSession(tx).destinations());
         if (!validDefinition(definition, destinations)) throw new Error('Requires valid PUBLISHED A1 and A2 courses. Apply the Courses demo first.');
+        // Preserve immutable v1 content and all attempts bound to it.
+        await tx.diagnostic.updateMany({ where: { id: previousDemoId, status: 'PUBLISHED' }, data: { status: 'ARCHIVED' } });
         await tx.diagnostic.update({ where: { id: data.diagnostic.id }, data: { status: 'PUBLISHED' } });
       }
     });
@@ -37,6 +42,10 @@ async function main() {
       console.log('Diagnostic unavailable as expected. No data changed.');
     } else {
       if (definition?.id !== data.diagnostic.id) throw new Error('Demo Diagnostic is unavailable or a different version is published');
+      if (definition.diagnosticQuestions.length !== data.questions.length || definition.diagnosticQuestions.some((q, index) => {
+        const expected = data.activities[index]!;
+        return q.id !== data.questions[index]!.id || q.activity.prompt !== expected.prompt || !isDeepStrictEqual(q.activity.config, expected.config);
+      })) throw new Error('Published demo does not match the expected acceptance content');
       console.log(JSON.stringify({ demoOnly: true, available: true, id: definition.id, version: definition.version,
         questionCount: definition.diagnosticQuestions.length, estimatedMinutes: definition.estimatedMinutes }));
     }

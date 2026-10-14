@@ -20,7 +20,7 @@ Result muestra recommendedLevel y Course nullable; completedAt se conserva en el
 
 Home NEW usa `hero.diagnosticAvailable`: true conecta el hero actual; false ofrece el curso inicial/catálogo sin CTA de Diagnostic. ASSESSED añade **Ver mi resultado**. No cambia precedencia. El refresco al enfocar Home ya existente obtiene el estado nuevo. Los previews DEV de Home siguen siendo sólo visuales: seleccionar **REAL** para operar el backend.
 
-Result ofrece **Repetir diagnóstico**, vuelve a cargar Intro y crea un intento nuevo sólo al confirmar Comenzar. Profile permanece intacto. Falta una entrada permanente a resultado/retake para quien ya tenga Home ACTIVE/COURSE_COMPLETED.
+Result no ofrece **Repetir diagnóstico** desde la tercera iteración visual: el siguiente paso inmediato es aprender. La capacidad de retake permanece en backend/flow (nueva intención y nuevo intento); falta una entrada permanente secundaria futura, por ejemplo Perfil → Tu nivel. Profile permanece intacto.
 
 ## Mockups y deuda visual
 
@@ -33,7 +33,7 @@ Los cinco originales están en `docs/mockups/diagnostic/`, con precedencia en su
 Con Backend development y Expo ya funcionando contra PostgreSQL local `teacher_alma_dev`, abrir **Inicio → DEV · Diagnostic** (junto a los controles DEV de Home). No seleccionar el preview visual NEW; el panel prepara datos reales y vuelve automáticamente a Home REAL.
 
 1. **Preparar NEW / Restablecer Diagnostic NEW**: selecciona al usuario fijo `diagnostic-dev`, elimina sólo sus CourseProgress y attempts Diagnostic (con sus answers) y refresca Home. El panel se cierra al cambiar el escenario. Tocar normalmente **Hacer diagnóstico** → Intro → Comenzar.
-2. **Preparar ASSESSED · A1** o **A2**: restablece esos mismos datos personales y contesta las cuatro preguntas demo a través del servicio real. Scoring, evaluación, receipts, COMPLETED y recomendación se guardan realmente. Home muestra ASSESSED; **Ver mi resultado** abre el Result real. **Repetir diagnóstico** sigue creando un intento normal.
+2. **Preparar ASSESSED · A1** o **A2**: restablece esos mismos datos personales y contesta las cuatro preguntas demo a través del servicio real. Scoring, evaluación, receipts, COMPLETED y recomendación se guardan realmente. Home muestra ASSESSED; **Ver mi resultado** abre el Result real, sin acción de retake inmediato.
 3. **Limpiar intento activo**: marca ACTIVE como ABANDONED para el usuario dedicado; conserva COMPLETED y CourseProgress. No promete NEW si hay un curso activo o un resultado previo.
 4. **Volver al usuario habitual**: vuelve a la identidad configurada originalmente en Backend, sin cambiar `DEV_AUTH_USER_ID` ni reiniciar procesos. El estado del usuario habitual se conserva.
 5. Si el demo no está publicado o faltan los cursos con contenido, muestra error y revierte la preparación. No recrea catálogo. Si se pierde la conexión, consultar el escenario al reabrir el panel antes de reintentar; no se muestra éxito sin confirmación.
@@ -97,9 +97,9 @@ Android y PC en la misma red; comprobar `http://<IP-PC>:3000/health` desde el te
 
 1. Home debe ser NEW con **Hacer diagnóstico**. Intro demo indica 4 preguntas/5 min desde API. Ahora no vuelve sin crear intento.
 2. Comenzar y recorrer MC → Fill options → Fill text → Matching TAP. Ver posición/barra; nunca aciertos, explicación, score, Skip o nivel académico privado.
-3. Para A2: **Hello!**, **is**, **went**, Book ↔ libro y Cup ↔ taza. Para A1: **Goodbye!**, y las demás igual. Estas respuestas son sólo la receta del seed demo, nunca lógica Mobile.
+3. Demo v2, para A2: **A coffee, please.**, **at**, **visited**; Something to read ↔ libro, Something to play with ↔ pelota, Something to drink from ↔ taza. Para A1: **My name is Alex.**, y las demás igual. Estas respuestas son sólo la receta del seed demo, nunca lógica Mobile.
 4. El último envío abre Result; no hay pantalla de aciertos ni llamada complete. Las secciones cualitativas nulas no dejan huecos. Ver curso recomendado abre Detail; no inicia progreso. Volver a Home muestra ASSESSED mientras no se haya iniciado un curso.
-5. Home ASSESSED → Ver mi resultado consulta el resultado vigente. Repetir diagnóstico → Intro → Comenzar crea otro intento. El último COMPLETED sustituye la recomendación vigente; abandonar un retake conserva la anterior.
+5. Home ASSESSED → Ver mi resultado consulta el resultado vigente. Result no muestra retake. Sus reglas de dominio (último COMPLETED vigente y abandono que conserva el anterior) siguen verificadas por tests de flow.
 6. En una pregunta, chevron y Back Android solicitan confirmación. Cancelar conserva selección. Salir espera abandon. Volver a entrar empieza desde pregunta 1 con intento nuevo.
 7. Desactivar Wi-Fi durante submit: no avanza sin confirmación; al fallar/timeout conserva selección bloqueada. Restaurar Wi-Fi y Reintentar envío: avanza una sola vez. Repetir durante abandon: no sale fingiendo éxito; restaurar red y confirmar salida.
 8. Tras Result → CourseDetail/Roadmap o Courses, Back no vuelve a Questions. Para comprobar Roadmap con progreso previo, iniciar un curso **desde CourseDetail**; volver a Result aún montado no es posible por diseño. La resolución IN_PROGRESS/COMPLETED está cubierta por tests de Courses y Diagnostic, y una futura entrada permanente permitirá acceder cómodamente desde Home ACTIVE.
@@ -128,7 +128,7 @@ Backend TypeScript y 50 tests DEV/Diagnostic/Home correctos, incluidos HTTP, Pos
 Export de producción Android con `--no-bytecode` para inspeccionar JavaScript: sin `/dev/diagnostic`, `X-Teacher-Alma-Dev-Learner`, alias `diagnostic-dev` ni marcadores del panel operativo en el bundle. El flag sólo se usó para esta inspección, no modifica la configuración Hermes del proyecto. `git diff --check` correcto. La aceptación física del panel queda pendiente en el dispositivo. No se modificó el seed/catalogo local ni el usuario habitual durante esta validación; las pruebas de escritura usaron esquemas aislados.
 
 
-### Segunda iteración visual de Diagnostic
+### Segunda iteración visual de Diagnostic (histórico; v3 prevalece)
 
 Intro usa una composición gráfica con el logo oficial, formas decorativas e iconografía existente; metadata compacta y beneficios breves sobre blanco. En development el sufijo exacto `(demo)` pasa del título al eyebrow DEMO; producción conserva el título íntegro. Ahora no es una acción de texto.
 
@@ -139,3 +139,17 @@ Result prioriza el nivel con decoración geométrica suave y acento rojo. Se omi
 El flujo anterior fue aceptado físicamente por el usuario. Esta nueva composición requiere revisar de nuevo Intro/Result A1/A2 en Android ~360dp, fontScale normal/1.3–1.5, títulos largos, scroll, safe areas y Fill Text con teclado. No se generaron imágenes de Alma ni se modificaron mockups originales. Permanece pendiente una ilustración oficial si se busca la fidelidad figurativa exacta del mockup.
 
 Validación de esta iteración: Mobile TypeScript y 118 pruebas Diagnostic/Lessons/Courses/Home/Review correctos, incluida regresión de los defaults de CourseCard/ProgressBar y conservación de navegación/accesibilidad. Export Android con bytecode Hermes correcto en `dist/diagnostic-visual-v2-check`; `git diff --check` correcto. No se ejecutó Backend ni se realizó aceptación física del nuevo polish.
+
+### Tercera iteración visual de Diagnostic
+
+Intro elimina la marca DEMO en cualquier build, conserva título/metadata del servidor y muestra minutos/preguntas exactos. Branding simplificado sin iconos flotantes, tres beneficios con barras de nivel, target y bombilla; disclaimer sólo en Result. Questions conserva ActivityStep y sus cuatro renderers: sólo se reduce el spacing DIAGNOSTIC para dar lugar al contenido, con barra por posición y CTA fijo.
+
+Result usa un hero más compacto, copy editorial y una capa decorativa independiente que permite incorporar una futura ilustración oficial. Mantiene una CTA principal contextual; Explorar otros cursos tiene fondo suave y flecha. No ofrece retake inmediato ni inventa fortalezas. La nota final única aclara que no es certificación.
+
+`courseMetadata.ts` consume el GET Course Detail existente para mostrar lessonCount/topicCount reales mediante `CourseCard.academicMetadata`, opt-in. El Result y sus acciones se muestran inmediatamente: fallo de red conserva la metadata previa de la card; cancelación/desmontaje o cambio de curso descarta respuestas tardías. Sólo se toman los conteos, sin reemplazar acceso, progreso o routing del receipt Diagnostic. Defaults Courses/Lessons/Review intactos.
+
+Demo v2 publicada: conversación de cafetería con cuatro opciones y contexto DIALOGUE, horario del tren con tres opciones, pasado de visit y Matching de tres expresiones con imágenes locales existentes. Se mantienen pesos y umbrales A1/A2. El seed archiva la definición demo v1 y crea v2, conservando intentos e historial. Por autorización explícita, el único cambio en DEV tooling es actualizar IDs y respuestas fijos; identidad, escenarios, UI, endpoints y gating permanecen intactos.
+
+Aceptación física pendiente: Intro completa; MC con cuatro opciones/contexto; Fill Options; Fill Text con teclado; Matching con tres pares y labels largos; Result A1/A2, curso nulo y fallo de enrichment. Revisar ~360dp, fontScale normal/1.3–1.5, scroll, barras del sistema y CTA. Deudas: ilustración oficial de Alma, polish de Home ASSESSED (fuera de scope) y futura entrada permanente de retake. Mockups originales intactos.
+
+Validación v3: TypeScript Mobile/Backend correcto; 74 tests Diagnostic/Courses/Review/navegación/componentes y luego 59 regresiones Lessons/componentes (grupos con solapamiento), sin fallos. Cuatro tests demo/DEV correctos, incluyendo PostgreSQL aislado, outcomes A1/A2, NEW, aislamiento y gating HTTP. Seed --apply y --check confirman v2 disponible, cuatro preguntas/cinco minutos. Export Android/Hermes correcto en `dist/diagnostic-visual-v3-check`. No se ejecutó suite Backend completa ni aceptación física nueva.

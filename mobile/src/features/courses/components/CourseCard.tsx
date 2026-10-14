@@ -6,7 +6,7 @@ import type { Course } from '../types';
 import { Cover, ProgressBar } from './ui';
 import { CourseVisualIcon } from './CourseVisualIcon';
 
-export function CourseCard({ course, onPress, actionLabel, showAction = true }: { course: Omit<Course, 'slug'>; onPress: () => void; actionLabel?: string; showAction?: boolean }) {
+export function CourseCard({ course, onPress, actionLabel, showAction = true, academicMetadata }: { course: Omit<Course, 'slug'>; onPress: () => void; actionLabel?: string; showAction?: boolean; academicMetadata?: string }) {
   const { fontScale } = useWindowDimensions();
   const scale = Math.max(1, Math.min(fontScale, 1.5));
   const soon = course.status === 'COMING_SOON';
@@ -30,7 +30,7 @@ export function CourseCard({ course, onPress, actionLabel, showAction = true }: 
         <Text numberOfLines={showAction ? 2 : undefined} maxFontSizeMultiplier={1.5} style={[s.description, { minHeight: 38 * scale }]}>{course.description ?? ''}</Text>
         <View style={s.metadata}>
           <NavigationIcon name="CoursesTab" color={colors.muted} size={15} />
-          <Text numberOfLines={showAction ? 1 : undefined} maxFontSizeMultiplier={1.5} style={s.meta}>{metadata}</Text>
+          <Text numberOfLines={showAction ? 1 : undefined} maxFontSizeMultiplier={1.5} style={s.meta}>{academicMetadata ?? metadata}</Text>
         </View>
         {course.progress ? <View style={s.progressSlot}><ProgressBar percentage={course.progress.percentage} red compact /></View> : null}
         {showAction ? <View style={[s.cta, { backgroundColor: background }]}>

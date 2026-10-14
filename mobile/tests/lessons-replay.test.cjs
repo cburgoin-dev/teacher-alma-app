@@ -163,17 +163,32 @@ test('Diagnostic reuses all Activity types without hints, correctness, explanati
   }
 });
 
+test('Diagnostic framing remains opt-in; Lessons and Review keep the same native layout defaults', () => {
+  const { ActivityStep } = component('../src/features/lessons/components/ActivityStep.tsx', { dimensions: { width: 360, fontScale: 1.5 } });
+  const props = { activity: { id: 'a', type: 'FILL_BLANK_TEXT', prompt: 'Yesterday I ____ home.' }, feedback: null, busy: false, onSubmit() {}, onContinue() {} };
+  const render = mode => nodes(ActivityStep({ ...props, ...(mode ? { mode } : {}) }));
+  const lesson = render(), review = render('REVIEW'), diagnostic = render('DIAGNOSTIC');
+  const scroll = tree => tree.find(n => n.type === 'ScrollView').props;
+  assert.deepEqual(scroll(lesson).contentContainerStyle, scroll(review).contentContainerStyle);
+  assert.equal(scroll(lesson).contentContainerStyle[1], false);
+  assert.ok(scroll(diagnostic).contentContainerStyle[1]);
+  const input = tree => tree.find(n => n.type === 'TextInput').props;
+  assert.deepEqual(input(diagnostic).style, input(lesson).style);
+  assert.equal(input(diagnostic).multiline, false);
+});
+
 test('Diagnostic Result has no empty strengths sections, nullable course stays useful, course CTA replaces the flow', () => {
   const result = { attemptId: 'a', completedAt: '2026-10-13T12:00:00Z', recommendedLevel: 'A2', recommendedCourse: null, strengths: null, reinforcementAreas: null };
   let state = { phase: 'result', result, busy: false, active: null, startKey: null, error: null };
   const flow = { snapshot: () => state, subscribe() {}, load() {}, dispose() {}, back: () => false, retake() {} };
   const { DiagnosticScreen } = component('../src/features/diagnostic/DiagnosticScreen.tsx', {
-    react: { useMemo: fn => fn(), useSyncExternalStore: (_, snapshot) => snapshot(), useEffect() {}, useCallback: fn => fn },
-    'react-native': { View: 'View', Text: 'Text', ScrollView: 'ScrollView', KeyboardAvoidingView: 'KeyboardAvoidingView', Platform: { OS: 'android' }, StyleSheet: { create: v => v } },
+    react: { useMemo: fn => fn(), useState: initial => [initial, () => {}], useSyncExternalStore: (_, snapshot) => snapshot(), useEffect() {}, useCallback: fn => fn },
+    'react-native': { View: 'View', Text: 'Text', Pressable: 'Pressable', ScrollView: 'ScrollView', KeyboardAvoidingView: 'KeyboardAvoidingView', Platform: { OS: 'android' }, StyleSheet: { create: v => v } },
     '@react-navigation/native': { useFocusEffect() {}, usePreventRemove() {} },
     './flow': { DiagnosticFlow: function () { return flow; } },
     '../../components/AlmaLogo': { AlmaLogo: 'AlmaLogo' },
     '../courses/components/CourseCard': { CourseCard: 'CourseCard' },
+    '../courses/components/CourseVisualIcon': { CourseVisualIcon: 'CourseVisualIcon' },
   });
   let destination; const navigation = { replace: (...args) => { destination = args; }, popTo: (...args) => { destination = args; } };
   const render = () => nodes(DiagnosticScreen({ route: { key: 'diagnostic' }, navigation }));
@@ -184,11 +199,17 @@ test('Diagnostic Result has no empty strengths sections, nullable course stays u
   assert.deepEqual(destination, ['MainTabs', { screen: 'CoursesTab' }]);
   state = { ...state, result: { ...result, recommendedCourse: { id: 'course', status: 'PUBLISHED', progress: { status: 'IN_PROGRESS' } } } };
   tree = render();
+  assert.doesNotMatch(tree.filter(n => typeof n === 'string').join(' '), /Repetir diagnóstico/);
   assert.equal(tree.find(n => n.type === 'CourseCard').props.showAction, false);
   assert.equal(tree.filter(n => n.type === 'Button' && n.props.title === 'Continuar curso').length, 1);
   assert.equal(tree.filter(n => n.type === 'Button' && n.props.title === 'Repetir diagnóstico').length, 0);
   tree.find(n => n.type === 'Button' && n.props.title === 'Continuar curso').props.onPress();
   assert.deepEqual(destination, ['Roadmap', { courseId: 'course' }]);
+  state = { ...state, phase: 'intro', result: null, metadata: { available: true, diagnostic: { title: 'Descubre tu nivel (demo)', estimatedMinutes: 7, questionCount: 9 } } };
+  tree = render(); const introText = tree.filter(n => typeof n === 'string' || typeof n === 'number').join(' ');
+  assert.doesNotMatch(introText, /demo|certificación|empiezas de nuevo|A tu ritmo/i);
+  assert.match(introText, /7\s+minutos/); assert.match(introText, /9\s+preguntas/);
+  assert.match(introText, /Descubrir tu nivel inicial/); assert.match(introText, /Recomendar el curso adecuado/); assert.match(introText, /Empezar con más claridad/);
 });
 
 test('Diagnostic visual options preserve default course actions and accessible progress', () => {
@@ -216,6 +237,10 @@ test('Diagnostic visual options preserve default course actions and accessible p
   assert.equal(nodes(diagnostic).find(n => n.props?.children === props.course.title).props.numberOfLines, undefined);
   diagnostic.props.onPress(); assert.equal(pressed, 1);
   assert.equal(diagnostic.props.accessibilityLabel, catalog.props.accessibilityLabel);
+  const enriched = nodes(CourseCard({ ...props, showAction: false, academicMetadata: '8 lecciones · 4 temas' }));
+  assert.ok(enriched.includes('8 lecciones · 4 temas'));
+  assert.ok(!enriched.includes('Acceso completo'));
+  assert.ok(nodes(catalog).includes('Acceso completo'));
 });
 
 test('shared CTA owns the full painted touch surface; busy preserves its label layout and blocks repeat taps', () => {

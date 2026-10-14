@@ -120,9 +120,27 @@ test('root stack replaces Diagnostic with course destination; Back cannot reopen
 });
 
 
-test('Intro de-emphasizes only the explicit demo suffix in development, preserving production titles', () => {
-  assert.deepEqual(introHeading('Descubre tu nivel (demo)', true), { title: 'Descubre tu nivel', demo: true });
-  assert.deepEqual(introHeading('Descubre tu nivel (demo)', false), { title: 'Descubre tu nivel (demo)', demo: false });
-  assert.deepEqual(introHeading('Mi diagnóstico', true), { title: 'Mi diagnóstico', demo: false });
+test('Intro removes learner-visible demo markers independently of build mode', () => {
+  assert.equal(introHeading('Descubre tu nivel (demo)'), 'Descubre tu nivel');
+  assert.equal(introHeading('Diagnóstico de nivel DEMO'), 'Diagnóstico de nivel');
+  assert.equal(introHeading('Mi diagnóstico'), 'Mi diagnóstico');
+  assert.equal(introHeading('(DEMO)'), 'Diagnóstico de nivel');
   assert.deepEqual([1,2,3,4].map(position => questionProgress(active(position).question)), [25,50,75,100]);
+});
+
+test('optional Course Detail enrichment uses real counts, tolerates failure and ignores stale responses', async () => {
+  const { loadCourseMetadata } = require('../src/features/diagnostic/courseMetadata.ts');
+  const labels = [], publish = label => labels.push(label);
+  const tick = () => new Promise(resolve => setImmediate(resolve));
+  loadCourseMetadata('c', publish, { detail: async id => ({ id, content: { lessonCount: 8, topicCount: 4 } }) });
+  await tick(); assert.deepEqual(labels, ['8 lecciones · 4 temas']);
+  loadCourseMetadata('c', publish, { detail: async () => { throw Error('offline'); } });
+  loadCourseMetadata('c', publish, { detail: async () => ({ id: 'other', content: { lessonCount: 99, topicCount: 99 } }) });
+  let resolve, signal;
+  const cancel = loadCourseMetadata('old', publish, { detail: (_, s) => { signal = s; return new Promise(r => resolve = r); } });
+  cancel(); assert.equal(signal.aborted, true);
+  resolve({ id: 'old', content: { lessonCount: 99, topicCount: 99 } });
+  await tick(); assert.deepEqual(labels, ['8 lecciones · 4 temas']);
+  loadCourseMetadata('c', publish, { detail: async id => ({ id, content: { lessonCount: 1, topicCount: 1 } }) });
+  await tick(); assert.equal(labels.at(-1), '1 lección · 1 tema');
 });

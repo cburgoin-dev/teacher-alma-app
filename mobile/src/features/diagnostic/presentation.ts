@@ -2,9 +2,8 @@ import { ApiError } from '../../services/api/client';
 import { catalogDestination } from '../courses/presentation';
 import type { DiagnosticQuestion, DiagnosticResult } from './types';
 
-export function introHeading(title: string, development: boolean) {
-  const demo = development && /\s+\(demo\)$/.test(title);
-  return { title: demo ? title.replace(/\s+\(demo\)$/, '') : title, demo };
+export function introHeading(title: string) {
+  return title.replace(/\s*\(demo\)\s*/gi, ' ').replace(/\bdemo\b/gi, '').trim() || 'Diagnóstico de nivel';
 }
 
 export function questionProgress(question: DiagnosticQuestion): number {

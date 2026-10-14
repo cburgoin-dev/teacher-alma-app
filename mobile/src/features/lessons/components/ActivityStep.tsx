@@ -141,8 +141,8 @@ export function ActivityStep({ activity, feedback: suppliedFeedback, busy, onSub
 }
 const local = StyleSheet.create({
   activity: { flex: 1 },
-  diagnosticBody: { paddingTop: 18, gap: 24 },
-  diagnosticHeading: { flexDirection: 'column', alignItems: 'center', gap: 10 },
+  diagnosticBody: { paddingTop: 12, gap: 18 },
+  diagnosticHeading: { flexDirection: 'column', alignItems: 'center', gap: 8 },
   diagnosticTitle: { textAlign: 'center', fontSize: 25, lineHeight: 31 },
   body: { gap: 18, padding: 20, paddingBottom: 24, width: '100%', maxWidth: 640, alignSelf: 'center' },
   footer: { width: '100%', maxWidth: 640, alignSelf: 'center', paddingHorizontal: 20, paddingTop: 10, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#EDF1F6' },
