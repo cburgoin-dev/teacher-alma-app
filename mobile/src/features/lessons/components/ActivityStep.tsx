@@ -83,11 +83,11 @@ export function ActivityStep({ activity, feedback: suppliedFeedback, busy, onSub
       onLayout={event => { viewport.current = event.nativeEvent.layout.height; if (feedback) revealFeedback(); }}
       onContentSizeChange={() => { if (feedback) revealFeedback(); }}
       onScroll={event => { scrollY.current = event.nativeEvent.contentOffset.y; }} scrollEventThrottle={16}
-      contentContainerStyle={[local.body, mode === 'DIAGNOSTIC' && local.diagnosticBody]}>
+      contentContainerStyle={local.body}>
     {error ? <Text accessibilityLiveRegion="polite" style={s.error}>{error}</Text> : null}
-    <View style={[local.heading, mode === 'DIAGNOSTIC' && local.diagnosticHeading]}><LearningIcon kind={fill ? 'pencil' : matching ? 'matching' : 'chat'} /><View style={mode === 'DIAGNOSTIC' ? { alignSelf: 'stretch' } : { flex: 1 }}>
-      <Text style={[local.title, mode === 'DIAGNOSTIC' && local.diagnosticTitle]}>{presentation.title}</Text>
-      <Text style={[s.body, { marginTop: 6 }, mode === 'DIAGNOSTIC' && { textAlign: 'center' }]}>{presentation.instruction}</Text>
+    <View style={local.heading}><LearningIcon kind={fill ? 'pencil' : matching ? 'matching' : 'chat'} /><View style={{ flex: 1 }}>
+      <Text style={local.title}>{presentation.title}</Text>
+      <Text style={[s.body, { marginTop: 6 }]}>{presentation.instruction}</Text>
     </View></View>
     <View style={local.exercise}>
     {activity.context ? <View style={[local.context, activity.context.type === 'DIALOGUE' && local.dialogueContext, activity.type === 'FILL_BLANK_TEXT' && activity.context.type === 'IMAGE' && local.compactContext]}>
@@ -141,9 +141,6 @@ export function ActivityStep({ activity, feedback: suppliedFeedback, busy, onSub
 }
 const local = StyleSheet.create({
   activity: { flex: 1 },
-  diagnosticBody: { paddingTop: 12, gap: 18 },
-  diagnosticHeading: { flexDirection: 'column', alignItems: 'center', gap: 8 },
-  diagnosticTitle: { textAlign: 'center', fontSize: 25, lineHeight: 31 },
   body: { gap: 18, padding: 20, paddingBottom: 24, width: '100%', maxWidth: 640, alignSelf: 'center' },
   footer: { width: '100%', maxWidth: 640, alignSelf: 'center', paddingHorizontal: 20, paddingTop: 10, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#EDF1F6' },
   exercise: { gap: 16 },

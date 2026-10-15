@@ -163,15 +163,17 @@ test('Diagnostic reuses all Activity types without hints, correctness, explanati
   }
 });
 
-test('Diagnostic framing remains opt-in; Lessons and Review keep the same native layout defaults', () => {
+test('Diagnostic, Lessons and Review use identical Activity layout defaults and inputs', () => {
   const { ActivityStep } = component('../src/features/lessons/components/ActivityStep.tsx', { dimensions: { width: 360, fontScale: 1.5 } });
   const props = { activity: { id: 'a', type: 'FILL_BLANK_TEXT', prompt: 'Yesterday I ____ home.' }, feedback: null, busy: false, onSubmit() {}, onContinue() {} };
   const render = mode => nodes(ActivityStep({ ...props, ...(mode ? { mode } : {}) }));
   const lesson = render(), review = render('REVIEW'), diagnostic = render('DIAGNOSTIC');
   const scroll = tree => tree.find(n => n.type === 'ScrollView').props;
   assert.deepEqual(scroll(lesson).contentContainerStyle, scroll(review).contentContainerStyle);
-  assert.equal(scroll(lesson).contentContainerStyle[1], false);
-  assert.ok(scroll(diagnostic).contentContainerStyle[1]);
+  assert.deepEqual(scroll(lesson).contentContainerStyle, scroll(diagnostic).contentContainerStyle);
+  assert.equal(scroll(lesson).contentContainerStyle.padding, 20);
+  const headings = tree => tree.filter(n => n.type === 'Text').map(n => n.props.style);
+  assert.deepEqual(headings(lesson), headings(diagnostic));
   const input = tree => tree.find(n => n.type === 'TextInput').props;
   assert.deepEqual(input(diagnostic).style, input(lesson).style);
   assert.equal(input(diagnostic).multiline, false);
@@ -186,6 +188,7 @@ test('Diagnostic Result has no empty strengths sections, nullable course stays u
     'react-native': { View: 'View', Text: 'Text', Pressable: 'Pressable', ScrollView: 'ScrollView', KeyboardAvoidingView: 'KeyboardAvoidingView', Platform: { OS: 'android' }, StyleSheet: { create: v => v } },
     '@react-navigation/native': { useFocusEffect() {}, usePreventRemove() {} },
     './flow': { DiagnosticFlow: function () { return flow; } },
+    './HeroArtwork': { HeroArtwork: 'HeroArtwork' },
     '../../components/AlmaLogo': { AlmaLogo: 'AlmaLogo' },
     '../courses/components/CourseCard': { CourseCard: 'CourseCard' },
     '../courses/components/CourseVisualIcon': { CourseVisualIcon: 'CourseVisualIcon' },
@@ -193,7 +196,8 @@ test('Diagnostic Result has no empty strengths sections, nullable course stays u
   let destination; const navigation = { replace: (...args) => { destination = args; }, popTo: (...args) => { destination = args; } };
   const render = () => nodes(DiagnosticScreen({ route: { key: 'diagnostic' }, navigation }));
   let tree = render(); const text = tree.filter(n => typeof n === 'string').join(' ');
-  assert.match(text, /A2/); assert.doesNotMatch(text, /Fortalezas|Para reforzar|score/i);
+  assert.match(text, /A2/); assert.doesNotMatch(text, /Fortalezas|score/i);
+  assert.ok(!tree.some(n => n.type === 'Text' && n.props.children === 'Para reforzar'));
   assert.equal(tree.filter(n => n.type === 'CourseCard').length, 0);
   tree.find(n => n.type === 'Button' && n.props.title === 'Explorar cursos').props.onPress();
   assert.deepEqual(destination, ['MainTabs', { screen: 'CoursesTab' }]);
@@ -208,6 +212,7 @@ test('Diagnostic Result has no empty strengths sections, nullable course stays u
   state = { ...state, phase: 'intro', result: null, metadata: { available: true, diagnostic: { title: 'Descubre tu nivel (demo)', estimatedMinutes: 7, questionCount: 9 } } };
   tree = render(); const introText = tree.filter(n => typeof n === 'string' || typeof n === 'number').join(' ');
   assert.doesNotMatch(introText, /demo|certificación|empiezas de nuevo|A tu ritmo/i);
+  assert.match(introText, /Descubre tu nivel/);
   assert.match(introText, /7\s+minutos/); assert.match(introText, /9\s+preguntas/);
   assert.match(introText, /Descubrir tu nivel inicial/); assert.match(introText, /Recomendar el curso adecuado/); assert.match(introText, /Empezar con más claridad/);
 });

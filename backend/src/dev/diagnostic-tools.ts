@@ -31,9 +31,9 @@ export class DiagnosticDevTools {
       if (action === 'CLEAR_ACTIVE') { await session.abandonActive(userId, new Date()); return; }
       await session.lockPublication();
       const definition = await availableDiagnostic(session);
-      const questionIds = [81201, 81202, 81203, 81204].map(n => `6ac0de00-0000-4000-8000-${String(n).padStart(12, '0')}`);
+      const questionIds = [82201, 82202, 82203, 82204].map(n => `6ac0de00-0000-4000-8000-${String(n).padStart(12, '0')}`);
       const types = ['MULTIPLE_CHOICE', 'FILL_BLANK_OPTIONS', 'FILL_BLANK_TEXT', 'MATCH_WORD_IMAGE'];
-      if (!definition || definition.id !== '6ac0de00-0000-4000-8000-000000081000'
+      if (!definition || definition.id !== '6ac0de00-0000-4000-8000-000000082000'
         || definition.diagnosticQuestions.length !== 4
         || definition.diagnosticQuestions.some((q, i) => q.id !== questionIds[i] || q.activity.type !== types[i])) {
         throw new HttpError(409, 'DIAGNOSTIC_DEV_CONTENT_REQUIRED', 'Falta el Diagnostic demo A1/A2 publicado con sus cuatro Activities y cursos con contenido. No se modificó el escenario.');
@@ -46,7 +46,7 @@ export class DiagnosticDevTools {
       const service = new DiagnosticService({ read: work => work(session), write: (_id, work) => work(session) });
       const started = await service.start(userId, randomUUID());
       const answers = [{ selectedOptionId: action === 'ASSESSED_A1' ? 'name' : 'coffee' }, { selectedOptionId: 'at' }, { text: 'visited' },
-        { pairs: [{ wordId: 'read', imageId: 'book-image' }, { wordId: 'play', imageId: 'ball-image' }, { wordId: 'drink', imageId: 'cup-image' }] }];
+        { pairs: [{ wordId: 'backpack', imageId: 'backpack-image' }, { wordId: 'umbrella', imageId: 'umbrella-image' }, { wordId: 'key', imageId: 'key-image' }] }];
       for (let i = 0; i < questionIds.length; i++) await service.submit(userId, started.attempt.id, questionIds[i]!, randomUUID(), answers[i]);
       const result = (await service.result(userId)).result;
       if (result.recommendedLevel !== (action === 'ASSESSED_A1' ? 'A1' : 'A2')) throw new HttpError(409, 'DEV_RESULT_MISMATCH', 'El contenido no produce el resultado esperado; no se guardaron cambios');

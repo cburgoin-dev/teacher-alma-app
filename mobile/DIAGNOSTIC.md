@@ -6,7 +6,7 @@
 
 Una sola ruta raíz `Diagnostic` presenta Intro, Questions y Result, sin tabs. El estado es exclusivamente en memoria; no se persiste ni recupera un ACTIVE al reiniciar la app. El servidor abandona el intento anterior cuando se inicia una intención nueva según su contrato. Pasar la app a segundo plano no crea un endpoint ni un token de Resume.
 
-Intro consume `GET /diagnostic`, muestra título, preguntas y duración opcional reales. No crea intentos al entrar o al pulsar Ahora no. La disponibilidad es exclusivamente backend. Questions consume start y submit; Result recibe directamente el receipt final. `GET /diagnostic/result` se usa al consultar posteriormente desde Home ASSESSED y excepcionalmente para resolver una finalización cuya respuesta se perdió mientras se intentaba abandonar.
+Intro consume `GET /diagnostic`, muestra preguntas y duración opcional reales. El título editorial de v4 es «Descubre tu nivel», con «Diagnóstico» en el header. No crea intentos al entrar o al pulsar Ahora no. La disponibilidad es exclusivamente backend. Questions consume start y submit; Result recibe directamente el receipt final. `GET /diagnostic/result` se usa al consultar posteriormente desde Home ASSESSED y excepcionalmente para resolver una finalización cuya respuesta se perdió mientras se intentaba abandonar.
 
 API usada: `GET /diagnostic`, `POST /diagnostic/attempts`, `POST /diagnostic/attempts/:attemptId/questions/:questionId/submit`, `POST /diagnostic/attempts/:attemptId/abandon`, `GET /diagnostic/result`. La API pública no cambia. El tooling DEV separado descrito abajo añade únicamente rutas de preparación locales; no añade dependencias.
 
@@ -97,7 +97,7 @@ Android y PC en la misma red; comprobar `http://<IP-PC>:3000/health` desde el te
 
 1. Home debe ser NEW con **Hacer diagnóstico**. Intro demo indica 4 preguntas/5 min desde API. Ahora no vuelve sin crear intento.
 2. Comenzar y recorrer MC → Fill options → Fill text → Matching TAP. Ver posición/barra; nunca aciertos, explicación, score, Skip o nivel académico privado.
-3. Demo v2, para A2: **A coffee, please.**, **at**, **visited**; Something to read ↔ libro, Something to play with ↔ pelota, Something to drink from ↔ taza. Para A1: **My name is Alex.**, y las demás igual. Estas respuestas son sólo la receta del seed demo, nunca lógica Mobile.
+3. Demo v3, para A2: **A coffee, please.**, **at**, **visited**; Backpack ↔ mochila, Umbrella ↔ paraguas, Key ↔ llave. Para A1: **My name is Alex.**, y las demás igual. Estas respuestas son sólo la receta del seed demo, nunca lógica Mobile.
 4. El último envío abre Result; no hay pantalla de aciertos ni llamada complete. Las secciones cualitativas nulas no dejan huecos. Ver curso recomendado abre Detail; no inicia progreso. Volver a Home muestra ASSESSED mientras no se haya iniciado un curso.
 5. Home ASSESSED → Ver mi resultado consulta el resultado vigente. Result no muestra retake. Sus reglas de dominio (último COMPLETED vigente y abandono que conserva el anterior) siguen verificadas por tests de flow.
 6. En una pregunta, chevron y Back Android solicitan confirmación. Cancelar conserva selección. Salir espera abandon. Volver a entrar empieza desde pregunta 1 con intento nuevo.
@@ -140,7 +140,7 @@ El flujo anterior fue aceptado físicamente por el usuario. Esta nueva composici
 
 Validación de esta iteración: Mobile TypeScript y 118 pruebas Diagnostic/Lessons/Courses/Home/Review correctos, incluida regresión de los defaults de CourseCard/ProgressBar y conservación de navegación/accesibilidad. Export Android con bytecode Hermes correcto en `dist/diagnostic-visual-v2-check`; `git diff --check` correcto. No se ejecutó Backend ni se realizó aceptación física del nuevo polish.
 
-### Tercera iteración visual de Diagnostic
+### Tercera iteración visual de Diagnostic (histórico; v4 prevalece)
 
 Intro elimina la marca DEMO en cualquier build, conserva título/metadata del servidor y muestra minutos/preguntas exactos. Branding simplificado sin iconos flotantes, tres beneficios con barras de nivel, target y bombilla; disclaimer sólo en Result. Questions conserva ActivityStep y sus cuatro renderers: sólo se reduce el spacing DIAGNOSTIC para dar lugar al contenido, con barra por posición y CTA fijo.
 
@@ -153,3 +153,19 @@ Demo v2 publicada: conversación de cafetería con cuatro opciones y contexto DI
 Aceptación física pendiente: Intro completa; MC con cuatro opciones/contexto; Fill Options; Fill Text con teclado; Matching con tres pares y labels largos; Result A1/A2, curso nulo y fallo de enrichment. Revisar ~360dp, fontScale normal/1.3–1.5, scroll, barras del sistema y CTA. Deudas: ilustración oficial de Alma, polish de Home ASSESSED (fuera de scope) y futura entrada permanente de retake. Mockups originales intactos.
 
 Validación v3: TypeScript Mobile/Backend correcto; 74 tests Diagnostic/Courses/Review/navegación/componentes y luego 59 regresiones Lessons/componentes (grupos con solapamiento), sin fallos. Cuatro tests demo/DEV correctos, incluyendo PostgreSQL aislado, outcomes A1/A2, NEW, aislamiento y gating HTTP. Seed --apply y --check confirman v2 disponible, cuatro preguntas/cinco minutos. Export Android/Hermes correcto en `dist/diagnostic-visual-v3-check`. No se ejecutó suite Backend completa ni aceptación física nueva.
+
+### Cuarta iteración visual de Diagnostic
+
+Intro usa «Descubre tu nivel», un hero más alto con logo integrado sobre blobs/nubes SVG y mayor separación entre secciones. Benefits comparte badges de 44dp: nivel y bombilla azules sobre fondo claro; target rojo. Result reutiliza la capa orgánica independiente, mantiene el curso y los conteos académicos reales, una sola CTA principal y la nota final. No retake ni fortalezas/áreas inventadas. La ilustración oficial de Alma y futuras secciones cualitativas esperan assets/datos reales.
+
+Activities vuelve al layout normal de Lessons: icono a la izquierda, título/instruction a la derecha, mismos contextos, opciones, inputs y Matching. Se retiraron los estilos centrados DIAGNOSTIC. Sólo siguen las diferencias de flujo: sin hint/feedback/retry pedagógico y CTA Siguiente/Ver resultado. Contador y barra Diagnostic expresan la misma posición (1/4=25%, 4/4=100%), sin porcentaje textual.
+
+Demo v3 publicada para v4 visual: tres escenas originales 800×450 (barista, estación, visita al café) y tres objetos 480×360 (mochila, paraguas, llave) en `backend/scripts/assets/diagnostic-*.png`. Fuente reproducible: `generate-diagnostic-assets.ps1`, mismo pipeline System.Drawing de Lessons. MC muestra persona/escena y diálogo mediante IMAGE/caption; no audio ficticio. Fill Options usa la estación y Fill Text la visita al café; este último conserva la variante compacta normal de Lessons para el teclado. Todos usan contain, sin recortes. Matching conserva tres pares y TAP con objetos nuevos.
+
+Los contextos siguen `/demo-media` development del backend local; Matching usa data URLs. No son assets estáticos del bundle Mobile: se verifican por HTTP y en la proyección pública, sin proveedor externo. Antes de seed apply/check, establecer `LESSONS_DEMO_ASSET_BASE_URL` al mismo origen LAN que `EXPO_PUBLIC_API_URL`; esta publicación usó `http://192.168.1.65:3000`. El seed archiva versiones previas y conserva intentos; DEV cambia sólo IDs y respuestas Matching. Cuatro preguntas, cinco minutos, pesos y umbrales intactos.
+
+Aceptación física pendiente v4: Intro completa y badges; MC con ilustración, diálogo y cuatro opciones (scroll); Fill Options con estación; Fill Text con café/teclado; Matching con tres objetos; Result A1/A2 con metadata y sin retake. Revisar ~360dp, fontScale normal/aumentado, safe areas, scroll y footer.
+
+Deudas Lessons v2 fuera de scope: aclarar contador de posición de Lesson frente a barra de avance interno («Lección 3 de 8»); evaluar tamaños de context illustrations; distinguir naming de Review/errores y volver a hacer una Lesson completada. Home ASSESSED y las demás verticales permanecen intactas.
+
+Validación v4: TypeScript Mobile/Backend; 96 tests Mobile Diagnostic/Lessons/Matching/Courses/Review/navegación; 6 tests demo/DEV/media, incluidos PostgreSQL aislado y determinismo A1/A2; seed apply/check y las tres escenas HTTP 200 desde LAN. Export Android/Hermes correcto en `dist/diagnostic-visual-v4-check`; `git diff --check` limpio. Los assets de contenido llegan por el pipeline Backend descrito, no dentro del bundle. No se hizo nueva aceptación en dispositivo.

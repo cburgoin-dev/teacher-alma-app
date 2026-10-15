@@ -17,8 +17,8 @@ async function main() {
     if (action === '--apply') await prisma.$transaction(async tx => {
       await tx.$executeRaw`LOCK TABLE diagnostics, diagnostic_questions, activities, courses IN SHARE ROW EXCLUSIVE MODE`;
       const current = await tx.diagnostic.findMany({ where: { status: 'PUBLISHED' } });
-      const previousDemoId = demoId(80000);
-      if (current.some(d => d.id !== data.diagnostic.id && !(d.id === previousDemoId && d.version === 1 && d.title === 'Descubre tu nivel (demo)'))) throw new Error('Another Diagnostic is published; demo seed will not replace it');
+      const previousDemos = [{ id: demoId(80000), version: 1, title: 'Descubre tu nivel (demo)' }, { id: demoId(81000), version: 2, title: 'Diagnóstico de nivel' }];
+      if (current.some(d => d.id !== data.diagnostic.id && !previousDemos.some(old => d.id === old.id && d.version === old.version && d.title === old.title))) throw new Error('Another Diagnostic is published; demo seed will not replace it');
       const existing = await tx.diagnostic.findUnique({ where: { id: data.diagnostic.id } });
       if (existing && existing.status !== 'PUBLISHED') throw new Error('Demo version already exists but is not published; create a new authored version');
       if (!existing) {
@@ -28,8 +28,8 @@ async function main() {
         const definition = await tx.diagnostic.findUniqueOrThrow({ where: { id: data.diagnostic.id }, include: definitionInclude });
         const destinations = usefulDestinations(await new DiagnosticSession(tx).destinations());
         if (!validDefinition(definition, destinations)) throw new Error('Requires valid PUBLISHED A1 and A2 courses. Apply the Courses demo first.');
-        // Preserve immutable v1 content and all attempts bound to it.
-        await tx.diagnostic.updateMany({ where: { id: previousDemoId, status: 'PUBLISHED' }, data: { status: 'ARCHIVED' } });
+        // Preserve immutable previous versions and all attempts bound to them.
+        await tx.diagnostic.updateMany({ where: { id: { in: previousDemos.map(d => d.id) }, status: 'PUBLISHED' }, data: { status: 'ARCHIVED' } });
         await tx.diagnostic.update({ where: { id: data.diagnostic.id }, data: { status: 'PUBLISHED' } });
       }
     });

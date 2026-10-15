@@ -20,7 +20,8 @@ import { lessonAudio } from '../lessons/components/AudioButton';
 import { lessonStyles as s } from '../lessons/components/lessonStyles';
 import { DiagnosticFlow } from './flow';
 import { loadCourseMetadata } from './courseMetadata';
-import { diagnosticError, introHeading, questionProgress, resultCourseAction } from './presentation';
+import { HeroArtwork } from './HeroArtwork';
+import { diagnosticError, questionProgress, resultCourseAction } from './presentation';
 
 export function DiagnosticScreen({ route, navigation }: NativeStackScreenProps<RootStackParamList, 'Diagnostic'>) {
   const flow = useMemo(() => new DiagnosticFlow(route.params?.view), [route.key]);
@@ -46,7 +47,6 @@ export function DiagnosticScreen({ route, navigation }: NativeStackScreenProps<R
   const explore = () => navigation.popTo('MainTabs', { screen: 'CoursesTab' });
   const question = state.active?.question;
   const metadata = state.metadata?.diagnostic;
-  const heading = metadata ? introHeading(metadata.title) : null;
   const result = state.result;
   const courseId = result?.recommendedCourse?.id;
   const [courseMetadata, setCourseMetadata] = useState<{ id: string; label: string } | null>(null);
@@ -77,12 +77,11 @@ export function DiagnosticScreen({ route, navigation }: NativeStackScreenProps<R
           </View> : state.metadata.available && metadata ? <>
             <View style={local.introHero}>
               <View style={local.brandScene}>
-                <View pointerEvents="none" accessible={false} style={local.orbit} />
-                <View pointerEvents="none" accessible={false} style={local.orbitSmall} />
-                <View style={local.brandPlaque}><AlmaLogo horizontal horizontalWidth={190} /></View>
+                <View pointerEvents="none" style={StyleSheet.absoluteFill}><HeroArtwork /></View>
+                <AlmaLogo horizontal horizontalWidth={210} />
                 <View accessible={false} style={local.sceneRule} />
               </View>
-              <Text accessibilityRole="header" style={local.introTitle}>{heading}</Text>
+              <Text accessibilityRole="header" style={local.introTitle}>Descubre tu nivel</Text>
               <Text style={[local.introCopy, local.centered]}>Realiza un breve test opcional para que podamos recomendarte por dónde empezar.</Text>
             </View>
             <View style={local.facts}>
@@ -93,7 +92,7 @@ export function DiagnosticScreen({ route, navigation }: NativeStackScreenProps<R
               <Text style={local.benefitsTitle}>Este diagnóstico te ayuda a:</Text>
               <View style={local.benefit}><View accessible={false} style={local.levelIcon}><View style={[local.bar, { height: 10 }]} /><View style={[local.bar, { height: 17 }]} /><View style={[local.bar, { height: 25 }]} /></View><View style={local.flex}><Text style={local.benefitTitle}>Descubrir tu nivel inicial</Text><Text style={local.small}>Conoce tu punto de partida.</Text></View></View>
               <View style={local.benefit}><View accessible={false} style={local.roseIcon}><Target size={27} color={colors.red} strokeWidth={2.5} /></View><View style={local.flex}><Text style={local.benefitTitle}>Recomendar el curso adecuado</Text><Text style={local.small}>Te sugerimos la mejor ruta para ti.</Text></View></View>
-              <View style={local.benefit}><LearningIcon kind="bulb" /><View style={local.flex}><Text style={local.benefitTitle}>Empezar con más claridad</Text><Text style={local.small}>Avanza con un plan que se adapte a ti.</Text></View></View>
+              <View style={local.benefit}><View style={local.blueIcon}><LearningIcon kind="bulb" plain size={27} /></View><View style={local.flex}><Text style={local.benefitTitle}>Empezar con más claridad</Text><Text style={local.small}>Avanza con un plan que se adapte a ti.</Text></View></View>
             </View>
             <Button title={state.startKey && state.error ? 'Reintentar inicio' : 'Comenzar diagnóstico'} arrow busy={state.busy} onPress={flow.start} />
           </> : <View style={s.card}><Text style={s.title}>Por ahora, explora los cursos</Text><Text style={s.body}>El diagnóstico no está disponible en este momento. Puedes elegir por dónde empezar.</Text><Button title="Explorar cursos" onPress={explore} /></View>}
@@ -101,14 +100,14 @@ export function DiagnosticScreen({ route, navigation }: NativeStackScreenProps<R
         </> : state.phase === 'result' ? result ? <>
           <View style={local.resultHero}>
             <View pointerEvents="none" accessible={false} style={local.resultArtwork}>
-              <View style={local.resultOrbit} /><View style={local.resultDisc} /><View style={local.resultSlash} />
+              <HeroArtwork result />
             </View>
             <View style={local.resultEditorial}>
             <Text style={local.eyebrow}>TU NIVEL RECOMENDADO</Text>
             <Text style={local.recommendation}>Te recomendamos empezar en</Text>
             <Text accessibilityRole="header" style={local.level}>Inglés {result.recommendedLevel}</Text>
             <View style={local.accent} />
-            <Text style={local.resultCopy}>Tu próximo paso para aprender con más confianza.</Text>
+            <Text style={local.resultCopy}>Empieza aquí para reforzar lo que sabes y seguir aprendiendo, paso a paso, con confianza.</Text>
             </View>
           </View>
           <Text style={local.sectionTitle}>TU SIGUIENTE PASO</Text>
@@ -134,13 +133,10 @@ export function DiagnosticScreen({ route, navigation }: NativeStackScreenProps<R
   </KeyboardAvoidingView>;
 }
 const local = StyleSheet.create({
-  content: { flexGrow: 1, gap: 16, paddingTop: 8 },
-  introHero: { alignItems: 'center', gap: 10, paddingBottom: 6 },
-  brandScene: { height: 116, width: '100%', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderRadius: 28, borderBottomLeftRadius: 56, backgroundColor: '#EFF6FF', marginBottom: 6 },
-  orbit: { position: 'absolute', width: 220, height: 220, borderRadius: 110, borderWidth: 24, borderColor: '#E3EEFF', right: -50, top: -120 },
-  orbitSmall: { position: 'absolute', width: 120, height: 120, borderRadius: 60, backgroundColor: '#E8F2FF', left: -45, bottom: -65 },
-  brandPlaque: { backgroundColor: '#FFF', borderRadius: 20, padding: 18, ...shadows.card },
-  sceneRule: { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.red, position: 'absolute', bottom: 15 },
+  content: { flexGrow: 1, gap: 20, paddingTop: 8 },
+  introHero: { alignItems: 'center', gap: 14, paddingBottom: 6 },
+  brandScene: { height: 164, width: '100%', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderRadius: 28, borderBottomLeftRadius: 48, backgroundColor: '#F2F8FF', marginBottom: 6 },
+  sceneRule: { width: 34, height: 4, borderRadius: 2, backgroundColor: colors.red, position: 'absolute', bottom: 30, transform: [{ rotate: '-8deg' }] },
   introTitle: { fontSize: 29, lineHeight: 35, fontWeight: '800', letterSpacing: -.7, color: colors.ink, textAlign: 'center' },
   introCopy: { color: colors.muted, fontSize: 16, lineHeight: 23 },
   centered: { textAlign: 'center' },
@@ -150,20 +146,18 @@ const local = StyleSheet.create({
   factIcon: { padding: 10, backgroundColor: '#EDF5FF', borderRadius: 24 },
   factTitle: { color: colors.ink, fontSize: 16, lineHeight: 22, fontWeight: '700' },
   small: { color: colors.muted, fontSize: 13, lineHeight: 19 },
-  benefits: { padding: 16, gap: 14, borderWidth: 1, borderColor: '#E5EDF8', borderRadius: 22, backgroundColor: '#FFF', ...shadows.card },
+  benefits: { padding: 18, gap: 18, borderWidth: 1, borderColor: '#E5EDF8', borderRadius: 22, backgroundColor: '#FFF', ...shadows.card },
   benefitsTitle: { color: colors.ink, fontSize: 18, lineHeight: 24, fontWeight: '800' },
   benefit: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   benefitTitle: { color: colors.ink, fontSize: 15, lineHeight: 21, fontWeight: '700' },
   roseIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFF0F3', alignItems: 'center', justifyContent: 'center' },
+  blueIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#E3F2FF', alignItems: 'center', justifyContent: 'center' },
   levelIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#E3F2FF', flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: 10, gap: 3 },
   bar: { width: 5, borderRadius: 3, backgroundColor: colors.blue },
   flex: { flex: 1, minWidth: 0 },
   resultHero: { backgroundColor: '#EBF5FF', borderRadius: 24, borderBottomRightRadius: 48, borderWidth: 1, borderColor: '#CEE3FC', padding: 20, overflow: 'hidden' },
   resultEditorial: { gap: 8 },
-  resultArtwork: { position: 'absolute', top: 0, right: 0, bottom: 0, width: '30%', overflow: 'hidden' },
-  resultOrbit: { position: 'absolute', width: 200, height: 200, borderRadius: 100, borderWidth: 26, borderColor: '#D9EBFF', top: -65, right: -140 },
-  resultDisc: { position: 'absolute', width: 120, height: 120, borderRadius: 60, backgroundColor: '#DDEEFF', bottom: -62, right: -40 },
-  resultSlash: { position: 'absolute', width: 60, height: 5, borderRadius: 3, backgroundColor: '#C7E1FF', bottom: 38, right: -15, transform: [{ rotate: '-45deg' }] },
+  resultArtwork: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
   recommendation: { color: colors.ink, fontSize: 21, lineHeight: 26, fontWeight: '700', letterSpacing: -.4, marginTop: 5 },
   level: { fontSize: 38, lineHeight: 46, fontWeight: '800', letterSpacing: -.9, color: colors.blue, flexShrink: 1 },
   accent: { width: 42, height: 4, backgroundColor: colors.red, borderRadius: 2, marginVertical: 2 },

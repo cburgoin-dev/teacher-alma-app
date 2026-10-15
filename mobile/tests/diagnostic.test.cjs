@@ -7,7 +7,7 @@ require.extensions['.ts'] = (module, filename) => module._compile(ts.transpileMo
 }).outputText, filename);
 const { DiagnosticFlow } = require('../src/features/diagnostic/flow.ts');
 const { diagnosticApi } = require('../src/features/diagnostic/api.ts');
-const { introHeading, questionProgress, resultCourseAction } = require('../src/features/diagnostic/presentation.ts');
+const { questionProgress, resultCourseAction } = require('../src/features/diagnostic/presentation.ts');
 const { ApiError } = require('../src/services/api/client.ts');
 const metadata = { available: true, diagnostic: { id: 'd', title: 'Diagnostic', version: 1, questionCount: 4, estimatedMinutes: 5 } };
 const active = position => ({ attempt: { id: 'attempt', status: 'ACTIVE', answeredQuestions: position - 1, totalQuestions: 4 },
@@ -120,11 +120,7 @@ test('root stack replaces Diagnostic with course destination; Back cannot reopen
 });
 
 
-test('Intro removes learner-visible demo markers independently of build mode', () => {
-  assert.equal(introHeading('Descubre tu nivel (demo)'), 'Descubre tu nivel');
-  assert.equal(introHeading('Diagnóstico de nivel DEMO'), 'Diagnóstico de nivel');
-  assert.equal(introHeading('Mi diagnóstico'), 'Mi diagnóstico');
-  assert.equal(introHeading('(DEMO)'), 'Diagnóstico de nivel');
+test('Diagnostic counter and bar both describe the current question position', () => {
   assert.deepEqual([1,2,3,4].map(position => questionProgress(active(position).question)), [25,50,75,100]);
 });
 
