@@ -17,7 +17,7 @@ async function main() {
     if (action === '--apply') await prisma.$transaction(async tx => {
       await tx.$executeRaw`LOCK TABLE diagnostics, diagnostic_questions, activities, courses IN SHARE ROW EXCLUSIVE MODE`;
       const current = await tx.diagnostic.findMany({ where: { status: 'PUBLISHED' } });
-      const previousDemos = [{ id: demoId(80000), version: 1, title: 'Descubre tu nivel (demo)' }, { id: demoId(81000), version: 2, title: 'Diagnóstico de nivel' }];
+      const previousDemos = [{ id: demoId(80000), version: 1, title: 'Descubre tu nivel (demo)' }, { id: demoId(81000), version: 2, title: 'Diagnóstico de nivel' }, { id: demoId(82000), version: 3, title: 'Descubre tu nivel' }];
       if (current.some(d => d.id !== data.diagnostic.id && !previousDemos.some(old => d.id === old.id && d.version === old.version && d.title === old.title))) throw new Error('Another Diagnostic is published; demo seed will not replace it');
       const existing = await tx.diagnostic.findUnique({ where: { id: data.diagnostic.id } });
       if (existing && existing.status !== 'PUBLISHED') throw new Error('Demo version already exists but is not published; create a new authored version');

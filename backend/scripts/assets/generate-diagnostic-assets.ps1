@@ -71,7 +71,10 @@ Paint 'diagnostic-cafe-visit' 800 450 {
   Rect $g '#FFFFFF' 115 112 470 55
   foreach($x in @(115,205,295,385,475)) { Rect $g '#FA647A' $x 112 45 55 }
   Person $g 595 134 '#2580EA'
-  Line $g '#173860' 20 608 377 600 425; Line $g '#173860' 20 670 377 680 425
+  # Joined trousers and straight legs, with feet resting on the pavement.
+  Rect $g '#173860' 573 350 144 35
+  Line $g '#173860' 28 595 377 595 419; Line $g '#173860' 28 695 377 695 419
+  Line $g '#51403C' 16 595 426 580 426; Line $g '#51403C' 16 695 426 710 426
   Line $g '#EDBE99' 20 581 279 547 246
   Rect $g '#527E6B' 45 326 52 59; Ellipse $g '#74A58C' 32 251 80 90
 }

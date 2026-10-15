@@ -23,6 +23,9 @@ test('acceptance content has four options, authored context and three complete m
   const mc = publicActivity(activities[0]!);
   assert.ok('options' in mc && mc.options.length === 4);
   assert.equal(mc.context?.type, 'IMAGE');
+  assert.equal(mc.prompt, 'Tu respuesta:');
+  assert.equal(data.diagnostic.version, 4);
+  assert.equal(data.diagnostic.estimatedMinutes, 5);
   const matching = publicActivity(activities[3]!);
   assert.ok('words' in matching && matching.words.length === 3 && matching.images.length === 3);
   const answers = [{ selectedOptionId: 'coffee' }, { selectedOptionId: 'at' }, { text: 'visited' },

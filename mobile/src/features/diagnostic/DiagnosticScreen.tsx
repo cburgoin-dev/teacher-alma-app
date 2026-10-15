@@ -9,13 +9,13 @@ import Clock from 'lucide-react-native/icons/clock';
 import ListChecks from 'lucide-react-native/icons/list-checks';
 import Target from 'lucide-react-native/icons/target';
 import Info from 'lucide-react-native/icons/info';
+import Lightbulb from 'lucide-react-native/icons/lightbulb';
 import { colors, shadows } from '../../theme';
 import { AlmaLogo } from '../../components/AlmaLogo';
 import { Button, ProgressBar } from '../courses/components/ui';
 import { CourseCard } from '../courses/components/CourseCard';
 import { CourseVisualIcon } from '../courses/components/CourseVisualIcon';
 import { ActivityStep } from '../lessons/components/ActivityStep';
-import { LearningIcon } from '../lessons/components/LearningIcon';
 import { lessonAudio } from '../lessons/components/AudioButton';
 import { lessonStyles as s } from '../lessons/components/lessonStyles';
 import { DiagnosticFlow } from './flow';
@@ -68,7 +68,7 @@ export function DiagnosticScreen({ route, navigation }: NativeStackScreenProps<R
       error={state.error ? diagnosticError(state.error) : undefined}
       submitLabel={state.pending && state.error ? 'Reintentar envío' : question.position === question.totalQuestions ? 'Ver resultado' : 'Siguiente'}
       onSubmit={flow.submit} onContinue={() => {}} />
-      : <ScrollView contentContainerStyle={[s.content, local.content, { paddingBottom: Math.max(24, insets.bottom + 12) }]}>
+      : <ScrollView style={state.phase === 'intro' ? local.editorial : undefined} contentContainerStyle={[s.content, local.content, { paddingBottom: Math.max(24, insets.bottom + 12) }]}>
         {state.error ? <Text accessibilityLiveRegion="polite" style={s.error}>{diagnosticError(state.error)}</Text> : null}
         {state.phase === 'intro' ? <>
           {!state.metadata ? <View style={local.status}>
@@ -92,11 +92,9 @@ export function DiagnosticScreen({ route, navigation }: NativeStackScreenProps<R
               <Text style={local.benefitsTitle}>Este diagnóstico te ayuda a:</Text>
               <View style={local.benefit}><View accessible={false} style={local.levelIcon}><View style={[local.bar, { height: 10 }]} /><View style={[local.bar, { height: 17 }]} /><View style={[local.bar, { height: 25 }]} /></View><View style={local.flex}><Text style={local.benefitTitle}>Descubrir tu nivel inicial</Text><Text style={local.small}>Conoce tu punto de partida.</Text></View></View>
               <View style={local.benefit}><View accessible={false} style={local.roseIcon}><Target size={27} color={colors.red} strokeWidth={2.5} /></View><View style={local.flex}><Text style={local.benefitTitle}>Recomendar el curso adecuado</Text><Text style={local.small}>Te sugerimos la mejor ruta para ti.</Text></View></View>
-              <View style={local.benefit}><View style={local.blueIcon}><LearningIcon kind="bulb" plain size={27} /></View><View style={local.flex}><Text style={local.benefitTitle}>Empezar con más claridad</Text><Text style={local.small}>Avanza con un plan que se adapte a ti.</Text></View></View>
+              <View style={local.benefit}><View accessible={false} style={local.blueIcon}><Lightbulb size={27} color={colors.blue} strokeWidth={2.5} /></View><View style={local.flex}><Text style={local.benefitTitle}>Empezar con más claridad</Text><Text style={local.small}>Avanza con un plan que se adapte a ti.</Text></View></View>
             </View>
-            <Button title={state.startKey && state.error ? 'Reintentar inicio' : 'Comenzar diagnóstico'} arrow busy={state.busy} onPress={flow.start} />
           </> : <View style={s.card}><Text style={s.title}>Por ahora, explora los cursos</Text><Text style={s.body}>El diagnóstico no está disponible en este momento. Puedes elegir por dónde empezar.</Text><Button title="Explorar cursos" onPress={explore} /></View>}
-          <Pressable accessibilityRole="button" accessibilityState={{ disabled: state.busy }} disabled={state.busy} onPress={back} style={local.textAction}><Text style={local.link}>Ahora no</Text></Pressable>
         </> : state.phase === 'result' ? result ? <>
           <View style={local.resultHero}>
             <View pointerEvents="none" accessible={false} style={local.resultArtwork}>
@@ -130,9 +128,16 @@ export function DiagnosticScreen({ route, navigation }: NativeStackScreenProps<R
           </>}
         </View>}
       </ScrollView>}
+    {state.phase === 'intro' ? <ScrollView style={local.introActions} contentContainerStyle={[local.actionContent, { paddingBottom: Math.max(8, insets.bottom) }]}>
+      {state.metadata?.available && metadata ? <Button title={state.startKey && state.error ? 'Reintentar inicio' : 'Comenzar diagnóstico'} arrow busy={state.busy} onPress={flow.start} /> : null}
+      <Pressable accessibilityRole="button" accessibilityState={{ disabled: state.busy }} disabled={state.busy} onPress={back} style={local.textAction}><Text style={local.link}>Ahora no</Text></Pressable>
+    </ScrollView> : null}
   </KeyboardAvoidingView>;
 }
 const local = StyleSheet.create({
+  editorial: { flex: 1, minHeight: 0 },
+  introActions: { flexGrow: 0, flexShrink: 1, maxHeight: '50%', borderTopWidth: 1, borderTopColor: '#F0F2F5' },
+  actionContent: { paddingHorizontal: 20, paddingTop: 12, gap: 4, width: '100%', maxWidth: 640, alignSelf: 'center' },
   content: { flexGrow: 1, gap: 20, paddingTop: 8 },
   introHero: { alignItems: 'center', gap: 14, paddingBottom: 6 },
   brandScene: { height: 164, width: '100%', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderRadius: 28, borderBottomLeftRadius: 48, backgroundColor: '#F2F8FF', marginBottom: 6 },

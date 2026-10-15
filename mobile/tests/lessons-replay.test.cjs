@@ -215,6 +215,17 @@ test('Diagnostic Result has no empty strengths sections, nullable course stays u
   assert.match(introText, /Descubre tu nivel/);
   assert.match(introText, /7\s+minutos/); assert.match(introText, /9\s+preguntas/);
   assert.match(introText, /Descubrir tu nivel inicial/); assert.match(introText, /Recomendar el curso adecuado/); assert.match(introText, /Empezar con más claridad/);
+  const [editorial, actions] = tree.filter(n => n.type === 'ScrollView');
+  assert.ok(!nodes(editorial).some(n => n.type === 'Button'));
+  assert.ok(!nodes(editorial).some(n => n === 'Ahora no'));
+  assert.equal(nodes(actions).filter(n => n.type === 'Button').length, 1);
+  assert.ok(nodes(actions).includes('Ahora no'));
+  assert.equal(actions.props.style.maxHeight, '50%');
+  state = { ...state, busy: true, startKey: 'retry', error: 'NETWORK_ERROR' };
+  tree = render();
+  assert.equal(tree.find(n => n.type === 'Button' && n.props.title === 'Reintentar inicio').props.busy, true);
+  assert.equal(tree.find(n => n.type === 'Pressable' && nodes(n).includes('Ahora no')).props.disabled, true);
+
 });
 
 test('Diagnostic visual options preserve default course actions and accessible progress', () => {

@@ -31,9 +31,9 @@ export class DiagnosticDevTools {
       if (action === 'CLEAR_ACTIVE') { await session.abandonActive(userId, new Date()); return; }
       await session.lockPublication();
       const definition = await availableDiagnostic(session);
-      const questionIds = [82201, 82202, 82203, 82204].map(n => `6ac0de00-0000-4000-8000-${String(n).padStart(12, '0')}`);
+      const questionIds = [83201, 83202, 83203, 83204].map(n => `6ac0de00-0000-4000-8000-${String(n).padStart(12, '0')}`);
       const types = ['MULTIPLE_CHOICE', 'FILL_BLANK_OPTIONS', 'FILL_BLANK_TEXT', 'MATCH_WORD_IMAGE'];
-      if (!definition || definition.id !== '6ac0de00-0000-4000-8000-000000082000'
+      if (!definition || definition.id !== '6ac0de00-0000-4000-8000-000000083000'
         || definition.diagnosticQuestions.length !== 4
         || definition.diagnosticQuestions.some((q, i) => q.id !== questionIds[i] || q.activity.type !== types[i])) {
         throw new HttpError(409, 'DIAGNOSTIC_DEV_CONTENT_REQUIRED', 'Falta el Diagnostic demo A1/A2 publicado con sus cuatro Activities y cursos con contenido. No se modificó el escenario.');
