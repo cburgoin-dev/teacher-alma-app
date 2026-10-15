@@ -90,11 +90,12 @@ For incomplete normal lessons, `lesson-session-semantics-v1.md` is canonical: th
 - `docs/diagnostic-semantics-v1.md`
 - `docs/diagnostic-api-contract-v1.md`
 - `docs/diagnostic-v1-freeze.md`
+- `docs/diagnostic-v1-closure.md`
 - `docs/product-decisions-current.md`
 - `docs/database-schema.md` / `backend/prisma/schema.prisma` for current physical persistence truth.
 - Courses/Home contracts only where Diagnostic availability/result projections cross those domains.
 
-Diagnostic v1 design is frozen for Backend v1. Final production questions, thresholds, weights, duration and pedagogical wording remain configurable content; do not block the engine on Alma finalizing those values.
+Diagnostic Backend v1 and Mobile v1 are closed for the current MVP pass. Final production questions, thresholds, weights, duration and pedagogical wording remain configurable content and may be replaced when Alma validates them without reopening the core engine.
 
 Important Diagnostic rules:
 - optional placement/recommendation, not CEFR certification;
@@ -110,6 +111,8 @@ Important Diagnostic rules:
 - recommendation thresholds use exact decimal scoring before storage/display rounding;
 - completed attempt historical `recommendedCourseId` must be preserved; retire referenced courses by visibility/status rather than physical deletion;
 - reuse/extract the shared Activity engine; do not copy a second evaluator into `diagnostics`.
+
+Do not reopen Diagnostic v1 for minor cosmetic experimentation. Known post-v1 debt includes official/digital Alma artwork, richer app-wide art direction, further illustration/icon polish, release accessibility QA, qualitative result sections backed by real pedagogical metadata, a permanent secondary retake entry, final Alma-authored assessment content and Lessons/Courses visual debts discovered during comparison. Use a scoped v2/polish task when one of those items becomes valuable enough.
 
 `docs/data-model.md` contains older Diagnostic wording (`diagnostic_answers.activity_id`) that is superseded for this vertical. The current relation is `DiagnosticAnswer -> DiagnosticQuestion -> Activity` as represented by Prisma/database schema and the frozen Diagnostic docs.
 
@@ -142,7 +145,7 @@ Do not change these unless the user explicitly asks to change product behavior.
 - Incorrect attempts may create Review state; an immediate correct retry does not silently resolve it.
 - TAP is the required Matching interaction; DRAG may be deferred.
 - Optional lesson steps must not block required progression.
-- Diagnostic should be implemented as a complete configurable flow without waiting for Alma to finalize every production question/threshold.
+- Diagnostic v1 is a complete configurable flow; do not wait for Alma to finalize every production question/threshold before maintaining the engine.
 - Diagnostic v1 is non-resumable, supports retakes, does not expose correctness while ACTIVE and does not mutate normal learning/gamification systems.
 - Diagnostic availability is a backend decision and should disappear from learner entry surfaces when it cannot distinguish at least two useful current published entry levels.
 - Current MVP monetization is freemium + Premium subscription. Permanent individual-course purchase is deferred, but the access layer should remain extensible to support another entitlement source in a future version.
