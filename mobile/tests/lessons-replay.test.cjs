@@ -320,7 +320,7 @@ test('LessonScreen wires chevron and hardware Back to the same cancellable exit 
   await flow.load();
   const overrides = {
     '../flow': { LessonFlow: function () { return flow; } },
-    react: { useCallback: fn => fn, useMemo: fn => fn(), useRef: () => ({ current: null }), useSyncExternalStore: (_, snapshot) => snapshot(),
+    react: { useState: initial => [initial, () => {}], useCallback: fn => fn, useMemo: fn => fn(), useRef: () => ({ current: null }), useSyncExternalStore: (_, snapshot) => snapshot(),
       useEffect: (fn, deps) => { if (deps.length === 2 && deps[1] === flow) fn(); } },
     'react-native': { StyleSheet: { create: s => s }, Platform: { OS: 'android' }, Alert: { alert: (...args) => { modal = args; } },
       BackHandler: { addEventListener: (_, fn) => { hardwareBack = fn; return { remove() {} }; } } },
@@ -674,7 +674,7 @@ test('Lesson normal and replay header/hardware both request exit and confirm bef
     const {flow}=replay({read:async()=>mode==='REPLAY'?historical:{...historical,state:{status:'NOT_STARTED'}},start:async()=>({runId:'r',status:'ACTIVE',currentStepId:'0',progress:{percentage:0}}),abandon:async()=>{abandons++;}});
     await flow.load();await flow.continueContent(); // normal mock lacks completeStep: error retained, exit still valid
     const {LessonScreen}=component('../src/features/lessons/screens/LessonScreen.tsx',{
-      react:{useMemo:()=>flow,useSyncExternalStore:(_,fn)=>fn(),useEffect:fn=>effects.push(fn),useCallback:fn=>fn,useRef:v=>({current:v})},
+      react:{useState:initial=>[initial,()=>{}],useMemo:()=>flow,useSyncExternalStore:(_,fn)=>fn(),useEffect:fn=>effects.push(fn),useCallback:fn=>fn,useRef:v=>({current:v})},
       '../flow':{LessonFlow:class{}},
       'react-native':{View:'View',Text:'Text',ScrollView:'ScrollView',KeyboardAvoidingView:'KeyboardAvoidingView',Pressable:'Pressable',Platform:{OS:'android'},StyleSheet:{create:v=>v},Alert:{alert:(...args)=>alerts.push(args)},BackHandler:{addEventListener:(_,fn)=>{hardware=fn;return{remove(){}};}}},
       '@react-navigation/native':{useFocusEffect:fn=>fn(),usePreventRemove:(value,fn)=>{guard=value;}}

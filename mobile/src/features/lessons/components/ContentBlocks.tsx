@@ -1,5 +1,5 @@
 import Play from 'lucide-react-native/icons/play';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Alert, Image, Linking, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Button } from '../../courses/components/ui';
 import type { Block } from '../types';
@@ -47,10 +47,11 @@ export function SummaryContent({ block }: { block: Extract<Block, { type: 'SUMMA
     </View> : null}
   </>;
 }
-export function ContentBlocks({ blocks }: { blocks: Block[] }) {
+export function ContentBlocks({ blocks, renderVideo }: { blocks: Block[]; renderVideo?: (block: Block) => ReactNode }) {
   const { width, fontScale } = useWindowDimensions();
   const stacked = width < 360 || fontScale > 1.25;
   return <>{blocks.map(block => {
+    if (block.type === 'VIDEO' && renderVideo) return <View key={block.id}>{renderVideo(block)}</View>;
     if (block.type === 'ACTIVITY') return null;
     if (block.type === 'EXAMPLE') return <Example key={block.id} block={block} />;
     if (block.type === 'TEXT') return <View key={block.id} style={[local.card, local.concept]}>

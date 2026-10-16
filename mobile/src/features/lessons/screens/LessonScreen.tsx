@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { ActivityIndicator, Alert, BackHandler, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, usePreventRemove } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,6 +21,13 @@ export function LessonScreen({ route, navigation }: NativeStackScreenProps<Cours
   const { lessonId, courseId } = route.params;
   const flow = useMemo(() => new LessonFlow(lessonId), [lessonId]);
   const state = useSyncExternalStore(flow.subscribe, flow.snapshot);
+  const [videoCanContinue, setVideoCanContinue] = useState(false);
+  useEffect(() => { setVideoCanContinue(false); }, [flow]);
+  const videoSpike = typeof __DEV__ !== 'undefined' && __DEV__ && process.env.EXPO_PUBLIC_VIDEO_SPIKE === '1'
+    && lessonId === '6ac0de00-0000-4000-8000-000000001003';
+  const spikeFullscreen = useCallback((full: boolean) => {
+    navigation.setOptions({ orientation: full ? 'all' : 'portrait' });
+  }, [navigation]);
   useEffect(() => () => lessonAudio.stop(), [lessonId, state.stepId]);
   useFocusEffect(useCallback(() => () => lessonAudio.stop(), []));
   const insets = useSafeAreaInsets();
@@ -71,11 +78,15 @@ export function LessonScreen({ route, navigation }: NativeStackScreenProps<Cours
       </> : null}
       {state.error ? <Text accessibilityLiveRegion="polite" style={s.error}>{lessonError(state.error)}</Text> : null}
       {step ? <>
-          <ContentBlocks blocks={step.blocks} />
+          <ContentBlocks blocks={step.blocks} renderVideo={videoSpike ? block => {
+            const { LessonVideoSpike } = require('../components/LessonVideoSpike') as typeof import('../components/LessonVideoSpike');
+            return <LessonVideoSpike key={`${state.runId ?? 'replay'}:${block.id}`} onCanContinue={setVideoCanContinue} onFullscreen={spikeFullscreen} />;
+          } : undefined} />
           {step.type === 'SUMMARY_STEP' && data.activityProgress ? <View style={local.completed}>
             <LearningIcon kind="completion" /><View style={{ flex: 1 }}><Text style={s.heading}>{data.activityProgress.completed} {data.activityProgress.completed === 1 ? 'actividad completada' : 'actividades completadas'}</Text><Text style={s.caption}>Ejercicios y práctica</Text></View>
           </View> : null}
           <Button title={step.type === 'SUMMARY_STEP' ? state.mode === 'REPLAY' ? 'Finalizar repaso' : 'Ver resultado' : 'Continuar'} arrow busy={state.busy}
+            disabled={videoSpike && step.blocks.some(block => block.type === 'VIDEO') && !videoCanContinue}
             onPress={step.type === 'SUMMARY_STEP' ? flow.finish : flow.continueContent} />
         </> : <View style={s.card}><Text style={s.body}>Ya completaste la lección. Consulta tu resultado.</Text><Button title="Ver resultado" busy={state.busy} onPress={flow.finish} /></View>}
     </ScrollView>}
